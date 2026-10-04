@@ -4,69 +4,94 @@
 finding executive and senior-leadership roles, ranks which deserve attention, and
 explains why.
 
-> **Draft:** the four philosophy sections below are a first draft written for Babu to
+> **Draft:** the four philosophy sections below are drawn from the
+> [FIND build specification](docs/spec/FIND-build-specification-v1.0.docx) for Babu to
 > confirm or adjust. Remove this note once they are agreed.
 
 ## What we are building
 
-A personal job-market intelligence analyst for one person's executive career search.
-It works continuously in the background:
+A personal job-market intelligence analyst for an executive career search. It answers
+one question:
 
-- **Finds** executive and senior-leadership opportunities across many sources,
-  including roles that are hard to spot on general job boards.
-- **Ranks** them by how well each one fits the candidate's experience, goals and
-  constraints, so the few that matter rise to the top.
-- **Explains** every ranking in plain language: why a role fits, where it falls short,
-  and what is worth checking before acting.
+> What are the best new opportunities for me right now, why do they fit, and where do
+> I already have an advantage?
 
-It is **not** a job board. A job board lists everything and leaves the judgement to
-the reader. PEJIP does the judgement and shows its working.
+It behaves less like a job board and more like an analyst. The roadmap has three
+phases:
+
+- **Phase 1, FIND** (current): discover, understand, score, prioritize, explain,
+  monitor and learn.
+- **Phase 2, PURSUE:** tailor, network, apply and manage selected opportunities.
+- **Phase 3, WIN & ANTICIPATE:** prepare for interviews, learn from outcomes, and spot
+  opportunities before or as they emerge.
+
+Phase 1 continuously discovers senior-leadership roles from company career sites, job
+sources, professional signals and market intelligence; verifies and deduplicates them;
+matches them against a structured career profile; uses LinkedIn connections as a
+prioritization signal; and presents each opportunity with separate Fit, Confidence and
+Priority assessments and an evidence-backed explanation. It ends at an informed human
+decision. It does not apply for jobs, contact anyone, rewrite resumes or make career
+decisions.
 
 ## Why we are building it
 
-- Executive roles are scarce, scattered across boards, search firms, company sites and
-  networks, and often described in vague titles that keyword search misses.
-- Senior candidates have little time. Reading hundreds of listings to find a handful
-  worth pursuing is the wrong use of it.
-- Generic job tools optimise for volume and clicks. An executive search needs the
-  opposite: fewer, better opportunities, with reasons that can be trusted.
-- A ranking without an explanation is a black box. Explaining every decision makes the
-  system's judgement checkable, correctable and better over time.
+- Executive roles are scattered across career sites, boards and networks, and are
+  described in titles that a short keyword list misses.
+- A senior candidate's time is the scarcest input. Screening hundreds of listings to
+  find the few that matter is the wrong use of it.
+- Most tools collapse everything into one opaque score. A recommendation is only useful
+  if it shows what the job requires, what the candidate has actually done, and how sure
+  the system is.
+- The most important part of the search is finding the right opportunities and
+  understanding them correctly. Phase 1 makes that part dramatically better before
+  automating anything else.
 
 ## How we are building it
 
-- **Signal over volume.** Every feature is judged by whether it helps decide which
-  roles deserve attention, not by how many roles it can show.
-- **Explainable by design.** Each score comes with the evidence behind it. If the
-  system cannot explain a ranking, it does not show it as a recommendation.
-- **Personal first.** The candidate's profile, preferences and feedback drive the
-  ranking, and the data stays private to them.
-- **Quality as a gate, not an afterthought.** 100% line coverage, blocking security
-  gates, staged CI and continuous deploy, as set out in the
-  [build policy](docs/BUILD_POLICY.md).
-- **Small, reviewed, documented changes.** Trunk-based development, one short-lived
-  branch per change, and architecture and design docs that change with the code.
+- **Thin end-to-end slice first.** Build a working pipeline (discover, normalize,
+  verify, analyse, match, score, explain, prioritize, present, learn), then improve
+  coverage, intelligence and reliability from evidence.
+- **Separate concepts stay separate.** Fit is not Priority, Fit is not Confidence,
+  unknown is not negative, no evidence found is not a known gap, and one failed source
+  is not a failed search.
+- **AI interprets, rules decide.** AI reads jobs and drafts explanations; Fit and
+  Priority come from deterministic, versioned scoring. Every recommendation traces from
+  a job requirement to career evidence to the final score.
+- **Never hide uncertainty.** Partial searches, missing data and failures are visible.
+- **Configuration, not code.** Search taxonomy, geography, schedules, weights and
+  sources are editable without a release.
+- **Modular monolith with workers,** replaceable source and AI adapters, and privacy by
+  design for career and network data.
+- **Quality as a gate.** Every change passes the [build policy](docs/BUILD_POLICY.md):
+  full coverage, blocking security gates, staged CI and continuous deploy.
 
 ## How we measure success
 
-- **Precision of attention:** most of the roles PEJIP puts at the top are ones the
-  candidate judges worth pursuing.
-- **Coverage of the market:** relevant roles the candidate hears about elsewhere were
-  already found by PEJIP, and found early.
-- **Trust in the explanations:** the candidate agrees with the stated reasons, and
-  disagreements feed back into better rankings.
-- **Time saved:** less time spent screening listings, more time spent on the few
-  opportunities that matter.
-- **Outcomes:** conversations, interviews and offers that trace back to roles PEJIP
-  surfaced.
+Phase 1 succeeds when the candidate can open the app and confidently answer:
 
-Concrete targets for each measure will be set as the first components land and
-recorded in the [architecture overview](docs/architecture/overview.md).
+- What strong opportunities exist, what is genuinely new, and what changed?
+- Which best match my background, why, and where are the gaps or unknowns?
+- Which deserve attention now, and do I know anyone relevant there?
+- Did today's searches actually complete, and are failures visible?
+
+We track that with:
+
+- **Recommendation quality:** precision of high-Fit recommendations, recall of known
+  strong opportunities, false high-Fit and false low-Fit rates, and unsupported
+  explanation rate.
+- **Discovery quality:** relevant opportunities found and missed, time to discovery,
+  canonical verification rate, and duplicate rate. Volume alone is not success.
+- **Real-world signal:** share of high-Fit roles the candidate marks Interested, and
+  share of low-Fit roles they reject.
+- **Release gate:** a golden evaluation set that every scoring change must pass.
+
+The full definitions, acceptance criteria and Definition of Done are in sections 17
+and 18 of the [specification](docs/spec/FIND-build-specification-v1.0.docx).
 
 ## Status
 
-Early stage. The build policy, repository hygiene and documentation skeletons are in
-place; application code has not landed yet.
+The Phase 1 (FIND) specification is complete. The build policy, repository hygiene
+and documentation skeletons are in place; application code has not landed yet.
 
 ## Getting started
 
@@ -78,6 +103,7 @@ part of the app lands.
 
 | Path | What it holds |
 |---|---|
+| [`docs/spec/`](docs/spec/) | Product and engineering build specification (primary product reference) |
 | [`docs/BUILD_POLICY.md`](docs/BUILD_POLICY.md) | Binding CI/CD and engineering policy |
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
