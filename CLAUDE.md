@@ -26,10 +26,10 @@ adding code, tests, CI workflows or infrastructure. In short:
 
 Sections 10 to 15 of the build policy, in short:
 
-- **Data privacy:** career data is encrypted at rest and in transit, kept only for the set retention period, never in logs or test fixtures, and shared with an outside service only when listed in `docs/SECURITY.md`.
+- **Data privacy:** career data is encrypted at rest and in transit, personal data kept for 90 days, never in logs or test fixtures, and shared with an outside service only when listed in `docs/SECURITY.md`.
 - **Job sources:** fetch only sources listed in `docs/sources.md` whose terms allow it, honour `robots.txt`, and route every fetch through the shared rate limiter.
 - **AI quality:** prompts are versioned files, ranking changes must pass the committed evaluation set, and every explanation cites its evidence.
-- **AI cost:** all AI calls go through one client that enforces the monthly cap and raises alerts; a PR adding an AI call states its expected cost.
+- **AI cost:** all AI calls go through one client that enforces the $100 monthly cap and alerts at 50% and every 10% after; a PR adding an AI call states its expected cost.
 - **Observability:** structured logs, metrics and traces, with personal data redacted and a test that proves it.
 - **Releases:** semantic version tags, `CHANGELOG.md`, backward-compatible migrations and a tested rollback.
 

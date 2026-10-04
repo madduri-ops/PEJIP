@@ -122,8 +122,8 @@ notes. It is treated as personal data.
 - **Access:** only the app's own service identity and Babu can read it, with
   least-privilege IAM defined in Terraform. No public buckets or endpoints that
   return personal data without authentication.
-- **Retention:** personal data is kept for **TBD (Babu to set)**; job postings and
-  derived rankings for **TBD (Babu to set)**. Expired data is deleted by a scheduled
+- **Retention:** personal data is kept for **90 days**; job postings and derived
+  rankings for **TBD (Babu to set)**. Expired data is deleted by a scheduled
   job that has its own tests. Backups follow the same retention.
 - **Deletion and export:** a tested command deletes or exports all personal data on
   request.
@@ -165,11 +165,11 @@ notes. It is treated as personal data.
 
 ## 13. AI cost limits
 
-- **Monthly cap:** total AI spend is capped at **TBD (Babu to set) per month**.
+- **Monthly cap:** total AI spend is capped at **$100 per month**.
   Calls go through one client that tracks spend and refuses new non-essential
   calls once the cap is reached.
-- **Alerts:** email alerts at **TBD (Babu to set; for example 50%, 80% and 100%)** of
-  the cap, configured in Terraform alongside the other alarms.
+- **Alerts:** email alerts at **50% of the cap and at every further 10%** (60%, 70%,
+  80%, 90%, 100%), configured in Terraform alongside the other alarms.
 - **Visibility:** spend is recorded per feature and per model so the cost of each
   feature is known.
 - **Cost in review:** a PR that adds an AI call or changes a model states its
