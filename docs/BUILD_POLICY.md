@@ -111,6 +111,94 @@ Trunk-based development, since every merge to `main` deploys:
 - **Contributor guide:** `CONTRIBUTING.md` explains the local setup, how to run the
   hooks and tests, and the branch and PR flow. It is updated when any of those change.
 
+## 10. Data privacy
+
+PEJIP holds Babu's career data: profile, compensation, preferences, applications and
+notes. It is treated as personal data.
+
+- **Encryption:** personal data is encrypted at rest (cloud KMS-managed keys) and in
+  transit (TLS 1.2 or later). No plaintext copies in buckets, caches, test fixtures or
+  CI artifacts.
+- **Access:** only the app's own service identity and Babu can read it, with
+  least-privilege IAM defined in Terraform. No public buckets or endpoints that
+  return personal data without authentication.
+- **Retention:** personal data is kept for **TBD (Babu to set)**; job postings and
+  derived rankings for **TBD (Babu to set)**. Expired data is deleted by a scheduled
+  job that has its own tests. Backups follow the same retention.
+- **Deletion and export:** a tested command deletes or exports all personal data on
+  request.
+- **Third parties:** personal data is sent to an outside service (an AI provider,
+  for example) only when that service is listed in `docs/SECURITY.md` with what is
+  sent and why, and only with the minimum fields the task needs.
+- **Test data:** tests and demos use synthetic data, never real personal data.
+
+## 11. Job source rules
+
+- **Allowed sources only:** a job source is used only when its terms of service or
+  API terms permit automated access for this use. Each source is recorded in
+  `docs/sources.md` with a link to its terms, the access method (official API, feed or
+  page fetch), its rate limit and the date its terms were last reviewed. A source not
+  listed there is not fetched.
+- **Robots and terms:** page fetchers honour `robots.txt`. No login-walled scraping,
+  CAPTCHA bypassing or rotating identities to evade limits.
+- **Rate limits on every fetch:** every source client goes through a shared limiter
+  with a per-source budget, backoff on 429 and 5xx responses, and a clear user agent.
+  A fetch path that bypasses the limiter fails review, and the limiter has tests.
+- **Terms change:** when a source's terms stop allowing our use, it is disabled in
+  the same change that updates `docs/sources.md`.
+
+## 12. AI quality
+
+- **Versioned prompts:** prompts live in the repo as files with a version, never
+  inline strings built at runtime. Every ranking and explanation records the prompt
+  version and model that produced it.
+- **Evaluation set:** a committed test set of job postings with expected rankings and
+  reasons is the quality bar. A change to a prompt, model, ranking logic or scoring
+  weights runs the evaluation in CI, and the PR fails if scores drop below the
+  committed baseline. Like coverage, the baseline only goes up.
+- **Explanations cite evidence:** every "why this role" explanation cites the
+  specific facts it relies on (posting text, company data, profile fields), and each
+  citation resolves to stored source data. An explanation with an unsupported claim
+  fails its tests.
+- **Failure handling:** model errors, timeouts and malformed output are handled and
+  tested; a failed ranking is shown as unranked, never as a made-up result.
+
+## 13. AI cost limits
+
+- **Monthly cap:** total AI spend is capped at **TBD (Babu to set) per month**.
+  Calls go through one client that tracks spend and refuses new non-essential
+  calls once the cap is reached.
+- **Alerts:** email alerts at **TBD (Babu to set; for example 50%, 80% and 100%)** of
+  the cap, configured in Terraform alongside the other alarms.
+- **Visibility:** spend is recorded per feature and per model so the cost of each
+  feature is known.
+- **Cost in review:** a PR that adds an AI call or changes a model states its
+  expected monthly cost.
+
+## 14. Observability
+
+- **Structured logs:** logs are structured (JSON) with a request or job id that ties
+  related entries together.
+- **Metrics and traces:** each service emits metrics (request rate, errors, latency,
+  fetch counts per source, AI calls and spend) and distributed traces across
+  fetching, ranking and the API.
+- **No personal data in logs:** logs, metrics, traces and error reports never contain
+  personal data or secrets. Logging goes through a redaction layer, and a test
+  asserts that known personal fields are redacted.
+- **Alarms:** alarms on error rate, failed fetch runs and stalled pipelines are
+  defined in Terraform and email Babu, in line with section 6.
+
+## 15. Releases
+
+- **Semantic versioning:** releases are tagged `vMAJOR.MINOR.PATCH`.
+- **Changelog:** `CHANGELOG.md` is updated in each PR that changes user-visible
+  behaviour, and each release lists its changes.
+- **Tested rollback:** each deploy can be rolled back to the previous release with
+  one documented command or workflow. Rollback is exercised in CI or a staging
+  environment, and a failed post-deploy health gate rolls back automatically.
+- **Data migrations:** schema migrations are backward compatible with the previous
+  release so a rollback does not break on the new schema.
+
 ## Keeping this policy current
 
 - This file is the source of truth in the repo. The same policy is also kept in the
