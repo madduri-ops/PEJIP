@@ -69,6 +69,15 @@ CI hygiene:
 - Security posture and reporting live in `docs/SECURITY.md`.
 - Code review by Claude is **on demand only**, not scheduled.
 
+## 8. Branching and merging
+
+Trunk-based development, since every merge to `main` deploys:
+
+- Work happens on short-lived feature branches cut from `main`, one branch per change.
+- Changes reach `main` only through a pull request, and only when every gate is green.
+- Pull requests are squash merged.
+- No direct pushes to `main`.
+
 ## Keeping this policy current
 
 - This file is the source of truth in the repo. The same policy is also kept in the
