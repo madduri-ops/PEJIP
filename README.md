@@ -1,2 +1,125 @@
 # PEJIP
-Personal Executive Job Intelligence Platform
+
+**Personal Executive Job Intelligence Platform:** a personal analyst that keeps
+finding executive and senior-leadership roles, ranks which deserve attention, and
+explains why.
+
+## What we are building
+
+A personal job-market intelligence analyst for an executive career search. It answers
+one question:
+
+> What are the best new opportunities for me right now, why do they fit, and where do
+> I already have an advantage?
+
+It behaves less like a job board and more like an analyst. The roadmap has three
+phases:
+
+- **Phase 1, FIND** (current): discover, understand, score, prioritize, explain,
+  monitor and learn.
+- **Phase 2, PURSUE:** tailor, network, apply and manage selected opportunities.
+- **Phase 3, WIN & ANTICIPATE:** prepare for interviews, learn from outcomes, and spot
+  opportunities before or as they emerge.
+
+Phase 1 continuously discovers senior-leadership roles from company career sites, job
+sources, professional signals and market intelligence; verifies and deduplicates them;
+matches them against a structured career profile; uses LinkedIn connections as a
+prioritization signal; and presents each opportunity with separate Fit, Confidence and
+Priority assessments and an evidence-backed explanation. It ends at an informed human
+decision. It does not apply for jobs, contact anyone, rewrite resumes or make career
+decisions.
+
+## Why we are building it
+
+- Executive roles are scattered across career sites, boards and networks, and are
+  described in titles that a short keyword list misses.
+- A senior candidate's time is the scarcest input. Screening hundreds of listings to
+  find the few that matter is the wrong use of it.
+- Most tools collapse everything into one opaque score. A recommendation is only useful
+  if it shows what the job requires, what the candidate has actually done, and how sure
+  the system is.
+- The most important part of the search is finding the right opportunities and
+  understanding them correctly. Phase 1 makes that part dramatically better before
+  automating anything else.
+
+## How we are building it
+
+- **Thin end-to-end slice first.** Build a working pipeline (discover, normalize,
+  verify, analyse, match, score, explain, prioritize, present, learn), then improve
+  coverage, intelligence and reliability from evidence.
+- **Separate concepts stay separate.** Fit is not Priority, Fit is not Confidence,
+  unknown is not negative, no evidence found is not a known gap, and one failed source
+  is not a failed search.
+- **AI interprets, rules decide.** AI reads jobs and drafts explanations; Fit and
+  Priority come from deterministic, versioned scoring. Every recommendation traces from
+  a job requirement to career evidence to the final score.
+- **Never hide uncertainty.** Partial searches, missing data and failures are visible.
+- **Configuration, not code.** Search taxonomy, geography, schedules, weights and
+  sources are editable without a release.
+- **Modular monolith with workers,** replaceable source and AI adapters, and privacy by
+  design for career and network data.
+- **Quality as a gate.** Every change passes the [build policy](docs/BUILD_POLICY.md):
+  full coverage, blocking security gates, staged CI and continuous deploy.
+
+## How we measure success
+
+Phase 1 succeeds when the candidate can open the app and confidently answer:
+
+- What strong opportunities exist, what is genuinely new, and what changed?
+- Which best match my background, why, and where are the gaps or unknowns?
+- Which deserve attention now, and do I know anyone relevant there?
+- Did today's searches actually complete, and are failures visible?
+
+We track that with:
+
+- **Recommendation quality:** precision of high-Fit recommendations, recall of known
+  strong opportunities, false high-Fit and false low-Fit rates, and unsupported
+  explanation rate.
+- **Discovery quality:** relevant opportunities found and missed, time to discovery,
+  canonical verification rate, and duplicate rate. Volume alone is not success.
+- **Real-world signal:** share of high-Fit roles the candidate marks Interested, and
+  share of low-Fit roles they reject.
+- **Release gate:** a golden evaluation set that every scoring change must pass.
+
+The full definitions, acceptance criteria and Definition of Done are in sections 17
+and 18 of the [specification](docs/spec/FIND-build-specification.md).
+
+## Status
+
+The Phase 1 (FIND) specification is complete. The build policy, repository hygiene,
+documentation skeletons and foundation AWS infrastructure are in place; application
+code has not landed yet.
+
+## Getting started
+
+Setup, local checks and the branch and pull request flow are in
+[CONTRIBUTING.md](CONTRIBUTING.md). Language-specific steps are added there as each
+part of the app lands.
+
+## Project structure
+
+| Path | What it holds |
+|---|---|
+| [`docs/spec/`](docs/spec/) | Product and engineering build specification (primary product reference) |
+| [`docs/BUILD_POLICY.md`](docs/BUILD_POLICY.md) | Binding CI/CD and engineering policy |
+| [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
+| [`docs/design/`](docs/design/) | One design doc per feature |
+| [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
+| [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
+| [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the [build policy](docs/BUILD_POLICY.md).
+
+## Security
+
+Security posture and how to report a vulnerability will live in
+`docs/SECURITY.md` (required by the build policy, section 7). Until it lands, report
+issues privately to the owner through a GitHub security advisory on this repository.
+
+## License
+
+Private project. All rights reserved; no license is granted to use, copy or
+distribute this code.

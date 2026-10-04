@@ -115,6 +115,15 @@ dashboard. The full decision is [ADR-0001](adr/0001-aws-hosting-isolated-from-kr
 - Architecture decision records live in `docs/adr/`. A significant decision gets an
   ADR, and the architecture and design docs are updated to reflect it.
 - Security posture and reporting live in `docs/SECURITY.md`.
+- **README as the entry point:** `README.md` opens with the project's philosophy (what
+  we are building, why, how, and how we measure success), followed by the standard
+  sections (status, getting started, project structure, contributing, security,
+  license). Those sections link to the canonical docs (this policy, `CONTRIBUTING.md`,
+  `docs/SECURITY.md`, `docs/architecture/`, `docs/adr/`) rather than repeating them,
+  and to the product specification in `docs/spec/`; each fact lives in one place. A
+  pull request that changes the project's purpose, approach or success measures, or
+  adds or moves a canonical doc, updates the README in the same PR. Changes to the
+  philosophy sections need Babu's approval, since they are written in their voice.
 - Code review by Claude is **on demand only**, not scheduled.
 
 ## 8. Branching and merging
