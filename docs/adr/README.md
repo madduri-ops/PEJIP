@@ -5,3 +5,9 @@ One file per decision, named `NNNN-short-title.md`, using the
 Title, Status, Context, Decision, Consequences. ADRs are never edited after they are
 accepted; a later ADR supersedes an earlier one. When an ADR changes the
 architecture, update [docs/architecture/](../architecture/) in the same PR.
+
+## Index
+
+| ADR | Title | Status |
+|---|---|---|
+| [0001](0001-aws-hosting-isolated-from-kri.md) | Host PEJIP on AWS, isolated from the KRI dashboard | Accepted |

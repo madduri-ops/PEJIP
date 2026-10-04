@@ -20,6 +20,7 @@ adding code, tests, CI workflows or infrastructure. In short:
 - Trunk-based branching: one short-lived branch off `main` per change, merged only by PR with all gates green, squash merges, no direct pushes to `main`; branch protection lives in `.github/rulesets/main.json`.
 - Once a PR is ready, follows this policy and passes every gate, squash merge it without waiting to be asked (except a PR that loosens a gate, which needs Babu's approval).
 - Architecture docs (`docs/architecture/`) and per-feature design docs (`docs/design/`) are updated in the same PR as any change to architecture, interfaces, data models, integrations or infrastructure; significant decisions also get an ADR in `docs/adr/`.
+- AWS hosting (policy section 5.1, ADR-0001): PEJIP runs in account `275704950192`, `us-west-2`, fully isolated from the KRI dashboard: own state bucket, VPC, ALB, ECR repo, ECS service, KMS key and IAM roles, all named `pejip-*` and tagged `Project = PEJIP`; GitHub deploys via the `pejip-github-deploy` OIDC role (main only). Never reference or modify KRI resources.
 - Dependabot covers every package ecosystem, pre-commit hooks run locally and in CI, and `CONTRIBUTING.md` stays current.
 
 ## Product policies
