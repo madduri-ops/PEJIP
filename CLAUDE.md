@@ -17,7 +17,8 @@ adding code, tests, CI workflows or infrastructure. In short:
 - Security gates fail the build: secrets (any finding), SAST/DAST/dependency audit (high and critical).
 - Every bug fix ships with tests that cover it.
 - Never add `|| true`, `continue-on-error` or similar to make a gate pass.
-- Trunk-based branching: one short-lived branch off `main` per change, merged only by PR with all gates green, squash merges, no direct pushes to `main`.
+- Trunk-based branching: one short-lived branch off `main` per change, merged only by PR with all gates green, squash merges, no direct pushes to `main`; branch protection lives in `.github/rulesets/main.json`.
+- Dependabot covers every package ecosystem, pre-commit hooks run locally and in CI, and `CONTRIBUTING.md` stays current.
 
 ## Keeping the policy current
 

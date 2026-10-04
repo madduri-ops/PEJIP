@@ -77,6 +77,23 @@ Trunk-based development, since every merge to `main` deploys:
 - Changes reach `main` only through a pull request, and only when every gate is green.
 - Pull requests are squash merged.
 - No direct pushes to `main`.
+- **Branch protection as code:** the `main` protection rules are checked in at
+  `.github/rulesets/main.json` (required status checks, PR required, squash only,
+  no force pushes or deletions) and applied to the repository from that file.
+  Any change to the rules goes through a PR that edits it.
+
+## 9. Dependencies and local checks
+
+- **Dependabot:** `.github/dependabot.yml` opens weekly update PRs for every package
+  ecosystem in the repo, GitHub Actions included. When a new ecosystem is added
+  (npm, pip, Docker, Terraform), it is added to `dependabot.yml` in the same change.
+  Dependabot PRs pass the same gates as any other PR.
+- **Pre-commit hooks:** `.pre-commit-config.yaml` runs fast checks before each commit:
+  secrets scanning, whitespace and file hygiene, and the lint and format tools for
+  each language in the repo. CI runs the same hooks, so skipping them locally does
+  not skip them.
+- **Contributor guide:** `CONTRIBUTING.md` explains the local setup, how to run the
+  hooks and tests, and the branch and PR flow. It is updated when any of those change.
 
 ## Keeping this policy current
 

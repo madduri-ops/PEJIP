@@ -1,0 +1,8 @@
+# Weekly dependency update PRs. Add each new package ecosystem here in the
+# same change that introduces it (see docs/BUILD_POLICY.md, section 9).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
