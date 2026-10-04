@@ -6,7 +6,8 @@ Guidance for Claude and other contributors working in this repository.
 
 PEJIP (Personal Executive Job Intelligence Platform): a personal analyst that keeps
 finding executive and senior-leadership roles, ranks which deserve attention, and
-explains why. It is not a generic job board.
+explains why. It is not a generic job board. The Phase 1 (FIND) product and
+architecture reference is [docs/spec/FIND-build-specification.md](docs/spec/FIND-build-specification.md).
 
 ## Build policy
 

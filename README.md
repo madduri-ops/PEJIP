@@ -5,7 +5,7 @@ finding executive and senior-leadership roles, ranks which deserve attention, an
 explains why.
 
 > **Draft:** the four philosophy sections below are drawn from the
-> [FIND build specification](docs/spec/FIND-build-specification-v1.0.docx) for Babu to
+> [FIND build specification](docs/spec/FIND-build-specification.md) for Babu to
 > confirm or adjust. Remove this note once they are agreed.
 
 ## What we are building
@@ -86,7 +86,7 @@ We track that with:
 - **Release gate:** a golden evaluation set that every scoring change must pass.
 
 The full definitions, acceptance criteria and Definition of Done are in sections 17
-and 18 of the [specification](docs/spec/FIND-build-specification-v1.0.docx).
+and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 ## Status
 
