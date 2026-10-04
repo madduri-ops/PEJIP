@@ -58,6 +58,38 @@ CI hygiene:
 - Post-deploy health gate that polls a health endpoint.
 - Infrastructure as code (Terraform), including alarms.
 
+### 5.1 AWS hosting
+
+PEJIP runs on AWS as its own application, isolated from the CyberSecurity-KRI
+dashboard. The full decision is [ADR-0001](adr/0001-aws-hosting-isolated-from-kri.md).
+
+- **Account and region:** AWS account `275704950192`, region `us-west-2` (shared with
+  KRI); isolation comes from separate resources, scoped IAM and separate state.
+- **Nothing shared with KRI:** PEJIP has its own Terraform state, VPC, ALB, ECR
+  repository, ECS cluster and service, IAM roles, KMS key, secrets, log groups, SNS
+  topic and alarms. No PEJIP Terraform references a KRI resource, and no KRI resource
+  is granted access to PEJIP's. The GitHub OIDC identity provider is the one
+  account-wide object both use; PEJIP reads it with a data source and does not manage it.
+- **Naming:** every resource name starts with `pejip-` (`pejip-prod` for the
+  environment-scoped ones); secrets live under `pejip/`, logs under `/ecs/pejip-prod`,
+  metrics in the `PEJIP` namespace.
+- **Tags:** provider `default_tags` set `Project = "PEJIP"`, `Application = "pejip"`,
+  `Environment`, `ManagedBy = "Terraform"`, `Owner = "Babu"` and
+  `Repository = "madduri-ops/PEJIP"`; resources holding career data add
+  `DataClassification = "personal"`. `Project` is a cost allocation tag and the
+  PEJIP AWS Budget filters on it.
+- **Terraform state:** S3 bucket `pejip-tfstate-275704950192`, key
+  `pejip/prod/terraform.tfstate`, versioned, encrypted with the `alias/pejip` KMS key,
+  public access blocked, S3 native locking.
+- **Deploy identity:** GitHub Actions assumes `pejip-github-deploy` (trusts only
+  `main` of `madduri-ops/PEJIP`) to deploy, and `pejip-github-plan` (pull requests,
+  read only) for `terraform plan`. Both are scoped to `pejip` resource ARNs. Role
+  ARNs are GitHub Actions variables; no AWS keys exist in GitHub or the repo.
+- **Images:** ECR repository `pejip` with immutable tags (commit SHA and release
+  version), scan on push, last 10 images kept.
+- **Changes to hosting** (account, region, a shared resource, a wider IAM scope) need
+  a new ADR that supersedes ADR-0001.
+
 ## 6. Alerting
 
 - Email alerts on CI failure.
