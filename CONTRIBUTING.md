@@ -15,6 +15,11 @@ day-to-day steps.
 
 3. Run the hooks once over the whole repo: `pre-commit run --all-files`.
 
+Infrastructure work in `infra/` also needs [Terraform](https://developer.hashicorp.com/terraform/install)
+1.10 or later and [TFLint](https://github.com/terraform-linters/tflint) on your PATH;
+the pre-commit hooks run `terraform fmt` and `tflint`, and CI adds `terraform validate`,
+checkov and, on pull requests, `terraform plan`. See [infra/README.md](infra/README.md).
+
 Language-specific setup (runtimes, package installs, test commands) is added here as
 each part of the app lands.
 

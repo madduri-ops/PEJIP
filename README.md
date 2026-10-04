@@ -86,8 +86,9 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 ## Status
 
-The Phase 1 (FIND) specification is complete. The build policy, repository hygiene
-and documentation skeletons are in place; application code has not landed yet.
+The Phase 1 (FIND) specification is complete. The build policy, repository hygiene,
+documentation skeletons and foundation AWS infrastructure are in place; application
+code has not landed yet.
 
 ## Getting started
 
@@ -104,7 +105,8 @@ part of the app lands.
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
-| [`.github/`](.github/) | Dependabot, PR template, branch protection ruleset |
+| [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
+| [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
 
 ## Contributing
