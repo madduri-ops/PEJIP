@@ -154,8 +154,8 @@ notes. It is treated as personal data.
 - **Access:** only the app's own service identity and Babu can read it, with
   least-privilege IAM defined in Terraform. No public buckets or endpoints that
   return personal data without authentication.
-- **Retention:** personal data is kept for **90 days**; job postings and derived
-  rankings for **TBD (Babu to set)**. Expired data is deleted by a scheduled
+- **Retention:** personal data, job postings and derived rankings are each
+  kept for **90 days**. Expired data is deleted by a scheduled
   job that has its own tests. Backups follow the same retention.
 - **Deletion and export:** a tested command deletes or exports all personal data on
   request.
