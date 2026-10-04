@@ -1,0 +1,87 @@
+# Terraform checks for infra/ (docs/BUILD_POLICY.md sections 3-5, ADR-0001).
+# Stages: lint (fmt, validate, tflint), then SAST (checkov), then plan.
+# Every gate fails the build; nothing here may be made non-blocking.
+name: Infra
+
+on:
+  pull_request:
+    paths: ['infra/**', '.github/workflows/infra.yml']
+  push:
+    branches: [main]
+    paths: ['infra/**', '.github/workflows/infra.yml']
+
+concurrency:
+  group: infra-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: 1.13.3
+  TFLINT_VERSION: v0.64.0
+  CHECKOV_VERSION: 3.3.22
+
+defaults:
+  run:
+    working-directory: infra
+
+jobs:
+  lint:
+    name: Terraform lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform fmt -recursive -check -diff
+      - run: terraform init -backend=false -input=false
+      - run: terraform validate
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+      - run: tflint --init
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+      - run: tflint -f compact
+
+  sast:
+    name: Terraform SAST
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - run: pip install "checkov==${CHECKOV_VERSION}"
+      # Any failed check blocks. Checks are only skipped inline, with a reason.
+      - run: checkov -d . --framework terraform --skip-download --output cli --output junitxml --output-file-path console,checkov-report
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: checkov-report
+          path: infra/checkov-report
+
+  plan:
+    name: Terraform plan
+    needs: sast
+    if: github.event_name == 'pull_request' && vars.AWS_PLAN_ROLE_ARN != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
+          aws-region: us-west-2
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - run: terraform init -input=false
+      - run: terraform plan -input=false -lock-timeout=2m
+        env:
+          TF_VAR_alert_email: ${{ secrets.ALERT_EMAIL }}

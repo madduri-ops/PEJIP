@@ -87,6 +87,10 @@ dashboard. The full decision is [ADR-0001](adr/0001-aws-hosting-isolated-from-kr
   ARNs are GitHub Actions variables; no AWS keys exist in GitHub or the repo.
 - **Images:** ECR repository `pejip` with immutable tags (commit SHA and release
   version), scan on push, last 10 images kept.
+- **Hostname:** `job-search.zephyr-mcg.com`, with DNS at Babu's registrar.
+- **Infra gates:** pull requests touching `infra/` run `terraform fmt`, `validate`,
+  `tflint`, then checkov (any failed check blocks; a skip must be inline with a
+  reason), then `terraform plan` with the plan role.
 - **Changes to hosting** (account, region, a shared resource, a wider IAM scope) need
   a new ADR that supersedes ADR-0001.
 
