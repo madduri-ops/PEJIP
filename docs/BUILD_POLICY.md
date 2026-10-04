@@ -77,6 +77,10 @@ Trunk-based development, since every merge to `main` deploys:
 - Changes reach `main` only through a pull request, and only when every gate is green.
 - Pull requests are squash merged.
 - No direct pushes to `main`.
+- **Auto-merge when green:** once a pull request is ready, complies with this policy and
+  passes every gate, Claude squash merges it without waiting to be asked. A PR with a
+  failing gate, a merge conflict, an unresolved review thread or an open question is
+  not merged. A PR that loosens a gate still waits for Babu's explicit approval.
 - **Branch protection as code:** the `main` protection rules are checked in at
   `.github/rulesets/main.json` (required status checks, PR required, squash only,
   no force pushes or deletions) and applied to the repository from that file.
