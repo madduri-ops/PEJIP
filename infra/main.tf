@@ -1,7 +1,9 @@
 locals {
   name       = "pejip-${var.environment}"
   account_id = data.aws_caller_identity.current.account_id
-  repo_sub   = "repo:${var.github_owner}/${var.github_repo}"
+  # GitHub's OIDC sub claim for this repo carries immutable IDs:
+  # repo:<owner>@<owner_id>/<repo>@<repo_id>:<context>
+  repo_sub = "repo:${var.github_owner}@${var.github_owner_id}/${var.github_repo}@${var.github_repo_id}"
 
   state_bucket = "pejip-tfstate-${var.aws_account_id}"
   state_key    = "pejip/${var.environment}/terraform.tfstate"
