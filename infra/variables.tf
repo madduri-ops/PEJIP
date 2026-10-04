@@ -1,0 +1,47 @@
+variable "aws_account_id" {
+  description = "AWS account PEJIP runs in. The provider refuses to run against any other account."
+  type        = string
+  default     = "275704950192"
+}
+
+variable "aws_region" {
+  description = "AWS region PEJIP runs in."
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "environment" {
+  description = "Deployment environment, used in resource names (pejip-<environment>)."
+  type        = string
+  default     = "prod"
+}
+
+variable "github_owner" {
+  description = "GitHub owner of the PEJIP repository."
+  type        = string
+  default     = "madduri-ops"
+}
+
+variable "github_repo" {
+  description = "GitHub repository whose workflows may assume the PEJIP roles."
+  type        = string
+  default     = "PEJIP"
+}
+
+variable "kms_key_id" {
+  description = "ID of the bootstrap KMS key behind alias/pejip (ADR-0001). Imported, not created."
+  type        = string
+  default     = "fc979f49-0e8a-484b-94bc-eac21b5b5987"
+}
+
+variable "alert_email" {
+  description = "Email address that receives PEJIP alerts. Not committed; pass with TF_VAR_alert_email."
+  type        = string
+  sensitive   = true
+}
+
+variable "monthly_budget_usd" {
+  description = "Monthly AWS spend budget for resources tagged Project = PEJIP, in US dollars."
+  type        = number
+  default     = 50
+}

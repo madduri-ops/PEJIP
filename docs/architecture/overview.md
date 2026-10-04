@@ -26,7 +26,10 @@ Performance, security, reliability and accessibility targets, and how each is te
 PEJIP runs on AWS (account `275704950192`, `us-west-2`) as its own application,
 isolated from the CyberSecurity-KRI dashboard; see
 [ADR-0001](../adr/0001-aws-hosting-isolated-from-kri.md) and build policy section 5.1.
-No infrastructure exists yet; it lands as Terraform in `infra/` with the first app code.
+The foundation is Terraform in [infra/](../../infra/README.md): the adopted KMS key,
+ECR repository `pejip`, the GitHub deploy and plan roles, the `pejip-alerts` topic and
+the `pejip-monthly` budget. The VPC, ALB, ECS service and the certificate for
+`job-search.zephyr-mcg.com` land with the first app code.
 
 ```mermaid
 flowchart LR
