@@ -74,6 +74,11 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
+      # TEMPORARY diagnostic: print the OIDC token's non-secret claims (not the token).
+      - name: Show OIDC claims
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null | jq '{sub, aud, iss, repository, event_name, ref}' || true
       - uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ vars.AWS_PLAN_ROLE_ARN }}
