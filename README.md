@@ -4,10 +4,6 @@
 finding executive and senior-leadership roles, ranks which deserve attention, and
 explains why.
 
-> **Draft:** the four philosophy sections below are drawn from the
-> [FIND build specification](docs/spec/FIND-build-specification.md) for Babu to
-> confirm or adjust. Remove this note once they are agreed.
-
 ## What we are building
 
 A personal job-market intelligence analyst for an executive career search. It answers
