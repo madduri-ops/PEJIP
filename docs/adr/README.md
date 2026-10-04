@@ -1,0 +1,7 @@
+# Architecture decision records
+
+One file per decision, named `NNNN-short-title.md`, using the
+[Michael Nygard format](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions):
+Title, Status, Context, Decision, Consequences. ADRs are never edited after they are
+accepted; a later ADR supersedes an earlier one. When an ADR changes the
+architecture, update [docs/architecture/](../architecture/) in the same PR.

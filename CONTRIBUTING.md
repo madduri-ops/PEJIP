@@ -22,6 +22,9 @@ each part of the app lands.
 
 1. Cut a short-lived branch from `main`, one branch per change.
 2. Make the change with tests. A bug fix always includes tests that reproduce it.
+   If the change touches architecture, an interface, a data model, an integration or
+   infrastructure, update `docs/architecture/` and the feature's doc in `docs/design/`
+   in the same branch.
 3. Run the hooks and the test suite locally.
 4. Open a pull request. It merges (squash only) once every gate is green.
 
