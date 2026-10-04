@@ -65,7 +65,19 @@ CI hygiene:
 
 ## 7. Documentation and review
 
-- Architecture decision records live in `docs/adr/`.
+- **Architecture docs** live in `docs/architecture/`: a system overview, the component
+  catalogue, data flow, and diagrams written in Mermaid so they render on GitHub and
+  diff in review.
+- **Design docs** live in `docs/design/`, one file per feature, covering its purpose,
+  interfaces, data model, and the trade-offs taken.
+- **Docs change with the code:** a pull request that changes architecture, a
+  component's responsibilities, an interface or API, a data model or schema, an
+  external integration, or infrastructure updates the affected architecture and
+  design docs in the same PR. A new feature adds its design doc in the PR that
+  introduces it. The PR template carries a docs checkbox, and stale or missing docs
+  block the merge the same way a failing gate does.
+- Architecture decision records live in `docs/adr/`. A significant decision gets an
+  ADR, and the architecture and design docs are updated to reflect it.
 - Security posture and reporting live in `docs/SECURITY.md`.
 - Code review by Claude is **on demand only**, not scheduled.
 
