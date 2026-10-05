@@ -11,6 +11,8 @@ from pejip.cost.pricing import (
     usd_to_nanos,
 )
 
+RATES = ("input", "output", "cache_write_5m", "cache_write_1h", "cache_read")
+
 
 @pytest.fixture
 def prices() -> PriceTable:
@@ -19,7 +21,13 @@ def prices() -> PriceTable:
             "version": "test",
             "web_search_usd_per_request": "0.01",
             "models": {
-                "m": {"input": "4", "output": "20", "cache_write_5m": "5", "cache_write_1h": "8", "cache_read": "0.20"},
+                "m": {
+                    "input": "4",
+                    "output": "20",
+                    "cache_write_5m": "5",
+                    "cache_write_1h": "8",
+                    "cache_read": "0.20",
+                },
             },
         }
     )
@@ -61,7 +69,15 @@ def test_fractions_of_a_nano_dollar_round_up(prices: PriceTable) -> None:
     # One cache-read token costs 0.2 micro-dollars = 200 nano-dollars exactly;
     # one token at a rate that leaves a remainder must round up, not down.
     odd = PriceTable.from_dict(
-        {"version": "t", "models": {"m": {k: "0.0000001" for k in ("input", "output", "cache_write_5m", "cache_write_1h", "cache_read")}}}
+        {
+            "version": "t",
+            "models": {
+                "m": dict.fromkeys(
+                    ("input", "output", "cache_write_5m", "cache_write_1h", "cache_read"),
+                    "0.0000001",
+                )
+            },
+        }
     )
     assert odd.cost_nanos("m", TokenUsage(input_tokens=1)) == 1
     assert prices.cost_nanos("m", TokenUsage(cache_read_tokens=1)) == 200
@@ -85,7 +101,12 @@ def test_usage_from_sdk_object_with_ttl_breakdown() -> None:
 
 
 def test_usage_without_breakdown_charges_writes_at_one_hour_rate() -> None:
-    usage = {"input_tokens": 10, "output_tokens": 20, "cache_creation_input_tokens": 7, "cache_read_input_tokens": None}
+    usage = {
+        "input_tokens": 10,
+        "output_tokens": 20,
+        "cache_creation_input_tokens": 7,
+        "cache_read_input_tokens": None,
+    }
     tokens = TokenUsage.from_api(usage)
     assert tokens == TokenUsage(input_tokens=10, output_tokens=20, cache_write_1h_tokens=7)
     assert tokens.cache_write_tokens == 7

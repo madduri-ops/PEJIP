@@ -48,7 +48,7 @@ FROM ai_spend WHERE month = ? AND status != 'released'
 """
 
 
-class CapReached(Exception):
+class CapReachedError(Exception):
     """Raised by a ledger when a reservation would take spend past the cap."""
 
     def __init__(self, spent_nanos: int, requested_nanos: int, cap_nanos: int) -> None:
@@ -56,6 +56,18 @@ class CapReached(Exception):
         self.spent_nanos = spent_nanos
         self.requested_nanos = requested_nanos
         self.cap_nanos = cap_nanos
+
+
+@dataclass(frozen=True)
+class SpendRequest:
+    """A call asking to reserve budget: who is calling, and its worst-case cost."""
+
+    month: str
+    at: datetime
+    feature: str
+    model: str
+    amount_nanos: int
+    essential: bool = False
 
 
 @dataclass(frozen=True)
@@ -69,22 +81,14 @@ class SpendLine:
 
 
 class Ledger(Protocol):
-    def reserve(
-        self,
-        *,
-        month: str,
-        at: datetime,
-        feature: str,
-        model: str,
-        amount_nanos: int,
-        essential: bool,
-        cap_nanos: int | None,
-    ) -> int:
+    def reserve(self, request: SpendRequest, *, cap_nanos: int | None) -> int:
         """Record a reservation and return its id, atomically refusing it with
-        ``CapReached`` if it would take the month past ``cap_nanos``."""
+        ``CapReachedError`` if it would take the month past ``cap_nanos``."""
         ...  # pragma: no cover
 
-    def settle(self, reservation_id: int, *, cost_nanos: int, usage: TokenUsage) -> None: ...  # pragma: no cover
+    def settle(
+        self, reservation_id: int, *, cost_nanos: int, usage: TokenUsage
+    ) -> None: ...  # pragma: no cover
 
     def release(self, reservation_id: int) -> None: ...  # pragma: no cover
 
@@ -102,34 +106,33 @@ class SqliteLedger:
     """
 
     def __init__(self, path: str | Path) -> None:
-        self._conn = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False, timeout=30)
+        self._conn = sqlite3.connect(
+            str(path), isolation_level=None, check_same_thread=False, timeout=30
+        )
         self._lock = threading.Lock()
         self._conn.executescript(_SCHEMA)
 
     def close(self) -> None:
         self._conn.close()
 
-    def reserve(
-        self,
-        *,
-        month: str,
-        at: datetime,
-        feature: str,
-        model: str,
-        amount_nanos: int,
-        essential: bool,
-        cap_nanos: int | None,
-    ) -> int:
+    def reserve(self, request: SpendRequest, *, cap_nanos: int | None) -> int:
         with self._lock:
             self._conn.execute("BEGIN IMMEDIATE")
             try:
-                spent = self._conn.execute(_SPENT, (month,)).fetchone()[0]
-                if cap_nanos is not None and spent + amount_nanos > cap_nanos:
-                    raise CapReached(spent, amount_nanos, cap_nanos)
+                spent = self._conn.execute(_SPENT, (request.month,)).fetchone()[0]
+                _check_cap(spent, request.amount_nanos, cap_nanos)
                 cursor = self._conn.execute(
-                    "INSERT INTO ai_spend (created_at, month, feature, model, essential, status, reserved_nanos)"
+                    "INSERT INTO ai_spend"
+                    " (created_at, month, feature, model, essential, status, reserved_nanos)"
                     " VALUES (?, ?, ?, ?, ?, 'reserved', ?)",
-                    (at.isoformat(), month, feature, model, int(essential), amount_nanos),
+                    (
+                        request.at.isoformat(),
+                        request.month,
+                        request.feature,
+                        request.model,
+                        int(request.essential),
+                        request.amount_nanos,
+                    ),
                 )
                 self._conn.execute("COMMIT")
             except BaseException:
@@ -140,8 +143,9 @@ class SqliteLedger:
     def settle(self, reservation_id: int, *, cost_nanos: int, usage: TokenUsage) -> None:
         with self._lock:
             self._conn.execute(
-                "UPDATE ai_spend SET status = 'settled', cost_nanos = ?, input_tokens = ?, output_tokens = ?,"
-                " cache_write_tokens = ?, cache_read_tokens = ?, web_search_requests = ?"
+                "UPDATE ai_spend SET status = 'settled', cost_nanos = ?,"
+                " input_tokens = ?, output_tokens = ?, cache_write_tokens = ?,"
+                " cache_read_tokens = ?, web_search_requests = ?"
                 " WHERE id = ? AND status = 'reserved'",
                 (
                     cost_nanos,
@@ -157,7 +161,8 @@ class SqliteLedger:
     def release(self, reservation_id: int) -> None:
         with self._lock:
             self._conn.execute(
-                "UPDATE ai_spend SET status = 'released', cost_nanos = 0 WHERE id = ? AND status = 'reserved'",
+                "UPDATE ai_spend SET status = 'released', cost_nanos = 0"
+                " WHERE id = ? AND status = 'reserved'",
                 (reservation_id,),
             )
 
@@ -169,7 +174,13 @@ class SqliteLedger:
         with self._lock:
             rows = self._conn.execute(
                 "SELECT feature, model, COUNT(*), SUM(cost_nanos) FROM ai_spend"
-                " WHERE month = ? AND status = 'settled' GROUP BY feature, model ORDER BY feature, model",
+                " WHERE month = ? AND status = 'settled'"
+                " GROUP BY feature, model ORDER BY feature, model",
                 (month,),
             ).fetchall()
         return [SpendLine(feature, model, calls, cost) for feature, model, calls, cost in rows]
+
+
+def _check_cap(spent_nanos: int, requested_nanos: int, cap_nanos: int | None) -> None:
+    if cap_nanos is not None and spent_nanos + requested_nanos > cap_nanos:
+        raise CapReachedError(spent_nanos, requested_nanos, cap_nanos)

@@ -1,7 +1,12 @@
 from decimal import Decimal
 from typing import Any
 
-from pejip.cost.metrics import CALL_COST_METRIC, MONTH_TO_DATE_METRIC, NAMESPACE, CloudWatchSpendMetrics
+from pejip.cost.metrics import (
+    CALL_COST_METRIC,
+    MONTH_TO_DATE_METRIC,
+    NAMESPACE,
+    CloudWatchSpendMetrics,
+)
 
 
 class FakeCloudWatch:
@@ -15,7 +20,10 @@ class FakeCloudWatch:
 def test_publishes_month_to_date_and_per_call_cost() -> None:
     cloudwatch = FakeCloudWatch()
     CloudWatchSpendMetrics(cloudwatch, environment="prod").publish(
-        month_to_date_usd=Decimal("51.25"), cap_usd=Decimal(100), feature="ranking", model="claude-opus-5-5", call_usd=Decimal("0.03")
+        month_to_date_usd=Decimal("51.25"),
+        feature="ranking",
+        model="claude-opus-5-5",
+        call_usd=Decimal("0.03"),
     )
     [request] = cloudwatch.requests
     assert request["Namespace"] == NAMESPACE == "PEJIP"

@@ -22,15 +22,31 @@ class CloudWatchSpendMetrics:
         self._cloudwatch = cloudwatch
         self._environment = environment
 
-    def publish(self, *, month_to_date_usd: Decimal, cap_usd: Decimal, feature: str, model: str, call_usd: Decimal) -> None:
+    def publish(
+        self,
+        *,
+        month_to_date_usd: Decimal,
+        feature: str,
+        model: str,
+        call_usd: Decimal,
+    ) -> None:
         env = {"Name": "Environment", "Value": self._environment}
         self._cloudwatch.put_metric_data(
             Namespace=NAMESPACE,
             MetricData=[
-                {"MetricName": MONTH_TO_DATE_METRIC, "Dimensions": [env], "Value": float(month_to_date_usd), "Unit": "None"},
+                {
+                    "MetricName": MONTH_TO_DATE_METRIC,
+                    "Dimensions": [env],
+                    "Value": float(month_to_date_usd),
+                    "Unit": "None",
+                },
                 {
                     "MetricName": CALL_COST_METRIC,
-                    "Dimensions": [env, {"Name": "Feature", "Value": feature}, {"Name": "Model", "Value": model}],
+                    "Dimensions": [
+                        env,
+                        {"Name": "Feature", "Value": feature},
+                        {"Name": "Model", "Value": model},
+                    ],
                     "Value": float(call_usd),
                     "Unit": "None",
                 },

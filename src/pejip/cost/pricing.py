@@ -7,10 +7,11 @@ exactly. A model missing from the table is refused rather than guessed at.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
 from importlib import resources
-from typing import Any, Mapping
+from typing import Any
 
 NANOS_PER_USD = 1_000_000_000
 _TOKENS_PER_MILLION = 1_000_000

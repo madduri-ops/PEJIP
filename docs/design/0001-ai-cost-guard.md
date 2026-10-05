@@ -40,8 +40,8 @@ sequenceDiagram
     F->>G: reserve(feature, model, input_tokens, max_output_tokens)
     G->>L: reserve worst case (checks cap under a write lock)
     alt month-to-date + worst case > cap
-        L-->>G: CapReached
-        G-->>F: BudgetExceeded (no API call made)
+        L-->>G: CapReachedError
+        G-->>F: BudgetExceededError (no API call made)
     else fits
         L-->>G: reservation id
         F->>A: messages.create(...)
@@ -56,7 +56,7 @@ sequenceDiagram
 - **Before the call**, the guard prices the worst case: input tokens at the 1-hour
   cache write rate (the dearest way an input token is billed) plus `max_tokens` of
   output. If month-to-date spend plus that would pass the cap, it raises
-  `BudgetExceeded` and the call is never made. The check and the reservation happen
+  `BudgetExceededError` and the call is never made. The check and the reservation happen
   in one SQLite write transaction, so concurrent workers can't overshoot together.
 - **After the call**, `settle(response.usage)` replaces the reservation with the
   actual cost, read from `input_tokens`, `output_tokens`, the cache write breakdown,
@@ -80,7 +80,7 @@ sequenceDiagram
 ## Interfaces
 
 ```python
-from pejip.cost import BudgetExceeded, CloudWatchSpendMetrics, CostGuard, SqliteLedger
+from pejip.cost import BudgetExceededError, CloudWatchSpendMetrics, CostGuard, SqliteLedger
 
 guard = CostGuard(
     SqliteLedger("/data/ai_spend.db"),           # persistent storage
@@ -92,13 +92,13 @@ try:
                        input_tokens=estimated_prompt_tokens, max_output_tokens=2048) as call:
         response = client.messages.create(model="claude-opus-5-5", max_tokens=2048, ...)
         call.settle(response.usage)
-except BudgetExceeded:
+except BudgetExceededError:
     ...  # show the role as unranked (policy section 12), not a made-up result
 ```
 
 | Call | Contract |
 |---|---|
-| `CostGuard.reserve(feature, model, input_tokens, max_output_tokens, essential=False)` | Returns a `Reservation`; raises `BudgetExceeded` at the cap, `UnknownModelError` for a model missing from the price table, `ValueError` for a bad feature name or negative counts. `feature` must match `[a-z][a-z0-9_-]{0,63}`. |
+| `CostGuard.reserve(feature, model, input_tokens, max_output_tokens, essential=False)` | Returns a `Reservation`; raises `BudgetExceededError` at the cap, `UnknownModelError` for a model missing from the price table, `ValueError` for a bad feature name or negative counts. `feature` must match `[a-z][a-z0-9_-]{0,63}`. |
 | `Reservation.settle(usage)` | Records the actual cost from an SDK `Usage` object or dict, returns it in USD. |
 | `Reservation.release()` | Drops the reservation; use only when nothing was billed. |
 | `CostGuard.month_to_date_usd()` / `breakdown()` | Spend this month; settled spend per feature and model. |

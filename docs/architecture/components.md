@@ -22,7 +22,7 @@ flowchart TB
 - **Responsibility:** enforces the $100 monthly Claude API cap before each call and
   records what each call cost (policy section 13).
 - **Interfaces:** `pejip.cost.CostGuard.reserve(...)` returning a reservation that is
-  settled with the API response's `usage`; raises `BudgetExceeded` at the cap.
+  settled with the API response's `usage`; raises `BudgetExceededError` at the cap.
   Publishes `PEJIP/AISpendMonthToDateUSD` and `PEJIP/AICallCostUSD` to CloudWatch.
 - **Data:** the `ai_spend` SQLite table (feature, model, tokens, cost; no personal
   data) and the price table `src/pejip/cost/pricing.json`.
