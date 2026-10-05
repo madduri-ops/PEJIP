@@ -116,6 +116,9 @@ None. No token is stored or logged; the SDK caches the Claude token in memory.
 
 ## Open questions
 
-- The CI live evaluation and the app's AI client move to these credentials when the
-  first FIND slice (PR #16) lands; the old `ANTHROPIC_API_KEY` secret and Console key
-  are deleted once that runs green.
+- `AIClient` and the CI live evaluation use these credentials. The old
+  `ANTHROPIC_API_KEY` secret and Console key are deleted once the live evaluation runs
+  green without them.
+- The app's `aws-sts` path needs an STS client (`boto3`), which is not yet a
+  dependency; until it is added, `AIClient` refuses to start with
+  `PEJIP_CLAUDE_IDENTITY=aws-sts` instead of falling back to a key.

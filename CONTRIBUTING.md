@@ -55,7 +55,7 @@ evaluation baseline; see [eval/README.md](eval/README.md).
 Run the job search locally with `pejip run` (see the README's Getting started).
 CI scores the golden set with the ranking pipeline from the model output recorded
 in `eval/recordings/` (`--scorer pejip.golden_eval:replay_scorer`) on every app
-change, and by calling the model (`live_scorer`, needs `ANTHROPIC_API_KEY`) when a
+change, and by calling the model (`live_scorer`, which signs in to Claude without a key in CI) when a
 prompt, the AI client, the analysis code, `config/search.yaml` or `eval/` changes.
 The live run gates only the hard rules (`--gate invariants`); a prompt or model
 change commits fresh recordings, and the replay holds them to the full baseline.
