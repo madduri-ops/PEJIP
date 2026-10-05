@@ -35,6 +35,7 @@
           { "context": "Dependency audit", "integration_id": 15368 },
           { "context": "DAST", "integration_id": 15368 },
           { "context": "Coverage gate", "integration_id": 15368 },
+          { "context": "Evaluation set (live model)", "integration_id": 15368 },
           { "context": "Golden evaluation set", "integration_id": 15368 },
           { "context": "Rollback drill", "integration_id": 15368 },
           { "context": "Container image", "integration_id": 15368 }

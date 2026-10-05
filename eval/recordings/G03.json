@@ -1,0 +1,226 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Location listed as San Francisco Bay Area while hybrid office is in Oakland; Oakland is within the Bay Area, so likely consistent.",
+      "Unclear whether the ~$75M is a budget the role directly owns or the portfolio value it governs."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "ENTERPRISE",
+    "inferred_seniority": "SENIOR_DIRECTOR",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Senior Director, Enterprise Portfolio Management",
+    "positive_scope_signals": [
+      {
+        "quote": "lead the enterprise PMO"
+      },
+      {
+        "quote": "Reporting to the CIO"
+      },
+      {
+        "quote": "45 technology and business programs (about $75M)"
+      },
+      {
+        "quote": "run the quarterly investment\nreview with the executive team"
+      },
+      {
+        "quote": "lead a team of 30 program managers through four\nmanagers"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "lead the enterprise PMO",
+        "text": "Lead the enterprise PMO"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "own portfolio governance\nfor 45 technology and business programs (about $75M)",
+        "text": "Own portfolio governance for 45 technology and business programs (~$75M)"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "Reporting to the CIO",
+        "text": "Reports to the CIO"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "run the quarterly investment\nreview with the executive team",
+        "text": "Run quarterly investment review with the executive team"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "lead a team of 30 program managers through four\nmanagers",
+        "text": "Lead a team of 30 program managers through four managers"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "12+ years of program and portfolio leadership",
+        "text": "12+ years of program and portfolio leadership"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "experience building a PMO\nor transformation office",
+        "text": "Experience building a PMO or transformation office"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "strong executive communication",
+        "text": "Strong executive communication"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "PREFERRED",
+        "id": "R9",
+        "importance": "SUPPORTING",
+        "quote": "experience in healthcare payer or provider organizations",
+        "text": "Experience in healthcare payer or provider organizations"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "PREFERRED",
+        "id": "R10",
+        "importance": "MINOR",
+        "quote": "familiarity\nwith HIPAA-regulated programs",
+        "text": "Familiarity with HIPAA-regulated programs"
+      }
+    ],
+    "role_family": "Program & Portfolio Management / PMO",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E2",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate built and ran a Transformation Management Office, which is directly comparable to leading an enterprise PMO.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate tracked a 60-program, $140M portfolio, which exceeds the required 45 programs and ~$75M.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate has executive exposure to the CIO, though a direct reporting line is not stated.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate ran quarterly value reporting to the executive team, which is closely related to a quarterly investment review.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate managed managers in organizations of up to 320 people, though a team made up specifically of program managers is not stated.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E1",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate has 18 years in leadership including portfolio and transformation programs, though not all of those years are clearly in program and portfolio roles.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate built and ran a Transformation Management Office.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate provided quarterly executive reporting and has exposure to the CIO, CTO, COO and board audit committee.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "NO_MATCH",
+        "rationale": "The candidate's stated industries are enterprise software, cloud infrastructure and fintech, not healthcare payer or provider organizations.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [
+          "E6"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "The candidate ran SOC 2 and ISO 27001 compliance programs, which is loosely related to HIPAA-regulated programs.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:31:48.631109+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:32:02.653423+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

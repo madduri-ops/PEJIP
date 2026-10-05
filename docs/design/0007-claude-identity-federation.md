@@ -10,7 +10,8 @@ section 5 requires. Decision record: [ADR-0004](../adr/0004-keyless-claude-acces
 ## Scope
 
 In scope: the credentials module `pejip.claude_auth`, the AWS permissions in
-`infra/claude_federation.tf`, the `Claude federation` CI check, and the Console
+`infra/claude_federation.tf` (including the policy attachment to the ECS task role
+`pejip-ecs-task`), the `Claude federation` CI check, and the Console
 setup. Out of scope: the AI client itself (it passes these credentials to the SDK)
 and the ECS task definition (the hosting Terraform sets its environment).
 

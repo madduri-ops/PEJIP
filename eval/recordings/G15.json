@@ -1,0 +1,233 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Location listed as San Francisco Bay Area while work model specifies hybrid in Fremont; exact in-office cadence not stated.",
+      "Whether the role owns a budget directly or only advises on capital allocation is unclear."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "SENIOR_DIRECTOR",
+    "missing_information": [
+      "BUDGET"
+    ],
+    "negative_signals": [],
+    "normalized_title": "Senior Director, Technical Program Management",
+    "positive_scope_signals": [
+      {
+        "quote": "reporting\nto the CTO"
+      },
+      {
+        "quote": "lead a 40-person TPM organization through five managers"
+      },
+      {
+        "quote": "company-wide planning and dependency process"
+      },
+      {
+        "quote": "present portfolio health to the executive team monthly"
+      },
+      {
+        "quote": "capital allocation across 35 programs"
+      },
+      {
+        "quote": "portfolio governance at enterprise scale"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will lead a 40-person TPM organization through five managers",
+        "text": "Lead a 40-person TPM organization through five managers"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "own\nportfolio governance for all hardware and software programs",
+        "text": "Own portfolio governance for all hardware and software programs"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "run the\ncompany-wide planning and dependency process",
+        "text": "Run the company-wide planning and dependency process"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "You will present portfolio health to the executive team monthly",
+        "text": "Present portfolio health to the executive team monthly"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "partner with\nfinance on capital allocation across 35 programs",
+        "text": "Partner with finance on capital allocation across 35 programs"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "You have built and led TPM or program management organizations",
+        "text": "Experience building and leading TPM or program management organizations"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "managed managers",
+        "text": "Experience managing managers"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "CORE",
+        "quote": "run portfolio governance at enterprise scale",
+        "text": "Experience running portfolio governance at enterprise scale"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "reporting\nto the CTO",
+        "text": "Reports to the CTO"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "CONTEXTUAL",
+        "id": "R10",
+        "importance": "SUPPORTING",
+        "quote": "all hardware and software programs",
+        "text": "Hardware and software program portfolio context (robotics)"
+      }
+    ],
+    "role_family": "Technical Program Management",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E2",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Candidate has led organizations up to 320 people as a manager of managers, exceeding a 40-person organization led through managers.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Candidate ran governance for a 60-program, $140M portfolio, though the evidence covers software and cloud contexts rather than hardware programs.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Running a transformation across 14 business units and a 60-program portfolio implies cross-organization coordination, but company-wide planning and dependency processes are not explicitly stated.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Candidate delivered quarterly portfolio value reporting to the executive team and had exposure to the CIO, CTO, COO and board audit committee.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Candidate managed a $140M, 60-program portfolio budget, but a finance partnership on capital allocation is not explicitly described.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Candidate built and ran a Transformation Management Office overseeing a program portfolio, which is a program management organization adjacent to a TPM organization.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Candidate is explicitly described as a manager of managers with an organization of up to 320 people.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E1"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Candidate ran portfolio governance for 60 programs and $140M across an enterprise transformation spanning 14 business units.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Candidate has executive exposure to the CTO, though a direct reporting line is not stated.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "Evidence covers enterprise software, cloud infrastructure and fintech, with no information on hardware or robotics programs.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:35:33.289308+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:35:41.775791+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

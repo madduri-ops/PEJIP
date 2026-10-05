@@ -1,0 +1,215 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Budget ownership is not stated",
+      "Unclear whether scope extends beyond the product and engineering organization"
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "HEAD_OF",
+    "missing_information": [
+      "BUDGET"
+    ],
+    "negative_signals": [],
+    "normalized_title": "Head of Product Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "reporting to the Chief\nProduct Officer"
+      },
+      {
+        "quote": "for a 300-person product and engineering\norganization"
+      },
+      {
+        "quote": "You will lead a 25-person team of product operations managers and analysts"
+      },
+      {
+        "quote": "run the\nquarterly planning process with executive stakeholders"
+      },
+      {
+        "quote": "managed managers"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will own the product planning cycle, roadmap governance,\nlaunch readiness, and product metrics",
+        "text": "Own product planning cycle, roadmap governance, launch readiness, and product metrics"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R2",
+        "importance": "IMPORTANT",
+        "quote": "for a 300-person product and engineering\norganization",
+        "text": "Scope covers a 300-person product and engineering organization"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the Chief\nProduct Officer",
+        "text": "Reports to the Chief Product Officer"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "You will lead a 25-person team of product operations managers and analysts",
+        "text": "Lead a 25-person team of product operations managers and analysts"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "run the\nquarterly planning process with executive stakeholders",
+        "text": "Run quarterly planning process with executive stakeholders"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "SUPPORTING",
+        "quote": "partner closely with engineering operations and finance",
+        "text": "Partner closely with engineering operations and finance"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "CORE",
+        "quote": "You have built product or technology operations functions",
+        "text": "Experience building product or technology operations functions"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "led cross-functional\nplanning at scale",
+        "text": "Experience leading cross-functional planning at scale"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "managed managers",
+        "text": "Experience managing managers"
+      }
+    ],
+    "role_family": "Product Operations",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E2",
+      "E3"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E3",
+          "E2"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Release governance and portfolio value reporting cover parts of launch readiness and metrics, but product planning and roadmap governance are not explicitly evidenced.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Owned technology operations for a 320-person engineering organization, comparable to the 300-person scope.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "Profile shows exposure to CIO, CTO and COO but says nothing about reporting to a Chief Product Officer.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led organizations up to 320 people as a manager of managers and ran a Transformation Management Office, exceeding a 25-person team.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Delivered quarterly value reporting to the executive team for a 60-program portfolio, adjacent to running quarterly planning.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E2"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Owned engineering operations directly and managed a $140M portfolio, though finance partnership is not explicitly described.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E3",
+          "E4"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Built a Transformation Management Office, owned technology operations and launched an internal developer platform.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led transformation across 14 business units and a 60-program portfolio, demonstrating cross-functional planning at scale.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Profile states manager of managers with an organization of up to 320 people.",
+        "requirement_id": "R9"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:34:58.936000+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:35:05.933163+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

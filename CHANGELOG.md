@@ -10,21 +10,26 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
-### Security
+### Changed
 
-- Google sign-in on `https://job-search.zephyr-mcg.com`: the load balancer signs
-  every request in with Google and the app admits only Babu's account. Only
-  `/healthz` stays open, for the deploy health gate.
+- The job search covers Anthropic, the one target company whose roles are
+  available through an allowed public API; the example company boards are gone.
 
 ### Added
 
+- First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
+  configured Greenhouse and Lever company boards, filters them by the search
+  taxonomy and geography, analyses each with Claude, scores Fit, Confidence and
+  Priority with deterministic rules, and writes a Markdown digest that explains
+  every ranking with cited evidence.
+- `pejip purge`, `pejip export` and `pejip delete-all` for retention, export and
+  deletion of stored data.
+- The ranking pipeline is scored against the golden evaluation set in CI, from
+  recorded model output on every change and live when prompts or AI code change.
 - One-command production rollback: `gh workflow run rollback.yml` redeploys the
   previous (or a named) release through the deploy health gate.
 - Each release's container image is tagged with its version and kept, so it stays
   available to roll back to.
-
-### Added
-
 - Hosting for `https://job-search.zephyr-mcg.com` in Terraform: VPC, load balancer
   with WAF and HTTPS certificate, ECS Fargate service, service alarms and a daily
   retention purge schedule (off until the app has a database).
@@ -35,6 +40,17 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - Keyless Claude access: CI and the app authenticate to the Claude API through
   Workload Identity Federation (GitHub Actions OIDC, AWS STS) instead of an API key.
+- The app's ECS task role can now request identity tokens for the Claude API only.
+- Google sign-in on `https://job-search.zephyr-mcg.com`: the load balancer signs
+  every request in with Google and the app admits only Babu's account. Only
+  `/healthz` stays open, for the deploy health gate.
+
+### Fixed
+
+- The Terraform plan check can read the load balancer's WAF association again
+  (`wafv2:GetWebACLForResource` is checked against every regional web ACL).
+- Deploy waits for the ECS rollout to finish instead of failing a healthy
+  deploy whose rollout was still marked in progress.
 
 ## 0.1.0 - 2026-10-05
 

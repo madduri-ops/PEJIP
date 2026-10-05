@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import dataclasses
 import json
 import runpy
 import sys
@@ -26,6 +27,7 @@ def scorers(monkeypatch: pytest.MonkeyPatch, oracle: Scorer) -> str:
     module = types.ModuleType("fake_scorers")
     module.oracle = oracle  # type: ignore[attr-defined]
     module.bad = lambda _item: Prediction(fit=50, confidence="LOW", priority="LOW")  # type: ignore[attr-defined]
+    module.noisy = lambda item: dataclasses.replace(oracle(item), fit=0)  # type: ignore[attr-defined]
     module.not_callable = 3  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "fake_scorers", module)
     return "fake_scorers"
@@ -112,6 +114,19 @@ def test_run_fails_below_baseline(baseline: Path, capsys: pytest.CaptureFixture[
     captured = capsys.readouterr()
     assert "REGRESSION citation_validity: 0.0000 is below the baseline 1.0000" in captured.err
     assert "G01:" in captured.out
+
+
+@pytest.mark.usefixtures("scorers")
+def test_invariants_gate_ignores_metrics_that_move_with_the_model(
+    baseline: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    noisy = ["run", "--scorer", "fake_scorers:noisy", "--baseline", str(baseline)]
+    assert cli.main(noisy) == 1
+    assert "REGRESSION fit_in_range" in capsys.readouterr().err
+    assert cli.main([*noisy, "--gate", "invariants"]) == 0
+    bad = ["run", "--scorer", "fake_scorers:bad", "--baseline", str(baseline)]
+    assert cli.main([*bad, "--gate", "invariants"]) == 1
+    assert "REGRESSION citation_validity" in capsys.readouterr().err
 
 
 @pytest.mark.usefixtures("scorers")

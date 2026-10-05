@@ -1,6 +1,6 @@
 # 0004: Data retention
 
-_Status: implemented (window and file purge); store hooks land with the first FIND slice. Last updated: 2026-10-05._
+_Status: implemented; the store and CLI hooks landed with the first FIND slice (PR #16). Last updated: 2026-10-05._
 
 ## Purpose
 
@@ -15,12 +15,14 @@ In scope:
 - `src/pejip/retention.py`: the 90-day window (`RETENTION_DAYS`, `cutoff`) and
   `purge_files`, which deletes expired files such as digests and exports.
 
+Hooked up by the first FIND slice (PR #16): `Store.purge_expired` takes its cutoff
+from `pejip.retention` and deletes expired jobs, analyses, recommendations and run
+records at the start of every run and on `pejip purge`; both commands then run
+`purge_files` on the digest output directory. `retention_days` in
+`config/search.yaml` is validated to 1..90.
+
 Out of scope here, and where it lands:
 
-- Deleting expired database rows. The first FIND slice (PR #16) owns the store and
-  already purges jobs, analyses, recommendations and run records at the start of
-  every run and on `pejip purge`. It should take its cutoff from `pejip.retention`
-  and purge its digest output directory with `purge_files`.
 - A scheduled purge in the deployed service, so data expires even when no search
   runs. It comes with app hosting (ECS scheduled task calling `pejip purge` daily).
 - Backups. None exist yet; when the deployed database gets snapshots or S3 copies,

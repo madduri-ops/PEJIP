@@ -1,0 +1,39 @@
+# Synthetic example profile. Copy to profile.yaml (git-ignored) and replace with
+# your own career evidence. Never commit a real profile.
+name: Alex Example
+email: alex@example.com
+headline: Technology operations and transformation executive
+target_seniority: [VP, HEAD_OF, SENIOR_DIRECTOR]
+career_direction: >-
+  Lead enterprise technology operations or transformation at VP level, owning the
+  operating model, portfolio governance and AI adoption across engineering and product.
+evidence:
+  - id: E1
+    kind: EXPERIENCE
+    text: Senior Director, Technology Operations at a public SaaS company; ran the engineering operating model for a 1,200-person R&D organization.
+  - id: E2
+    kind: ACHIEVEMENT
+    text: Led an enterprise-wide transformation program across 6 business units that cut release cycle time by 40%.
+  - id: E3
+    kind: SCOPE
+    text: Managed a 9-person leadership team (directors and senior managers) and a $45M annual operating budget.
+  - id: E4
+    kind: CAPABILITY
+    text: Built and chaired the quarterly portfolio governance process, prioritizing a $120M investment portfolio with the CTO and CFO.
+  - id: E5
+    kind: ACHIEVEMENT
+    text: Launched the company's internal developer platform program, raising deployment frequency 3x across 300 services.
+  - id: E6
+    kind: EXPERIENCE
+    text: Drove adoption of generative AI tooling across engineering, including an AI governance council and usage policy.
+  - id: E7
+    kind: CAPABILITY
+    text: Presents quarterly to the executive team and board on technology strategy, risk and delivery.
+  - id: E8
+    kind: EXPERIENCE
+    text: Earlier, Director of Technical Program Management leading 25 TPMs across cloud infrastructure and security programs.
+compensation:
+  currency: USD
+  minimum: 280000
+  preferred: 350000
+  minimum_is_hard_filter: false
