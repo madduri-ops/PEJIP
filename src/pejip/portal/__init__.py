@@ -102,7 +102,8 @@ def router(
         opportunity_id: Annotated[int, Path(ge=1, openapi_examples={"first": {"value": 1}})],
     ) -> HTMLResponse:
         """One opportunity with its full, cited explanation (spec 12.8, 12.9)."""
-        found = next((o for o in data.opportunities() if o.id == opportunity_id), None)
+        items = data.opportunities()
+        found = next((o for o in items if o.id == opportunity_id), None)
         if found is None:
             html = frame(
                 active="opportunities",
@@ -115,7 +116,12 @@ def router(
             active="opportunities",
             heading=found.title,
             subtitle=f"{found.company} · {found.location}",
-            body=render.detail_body(found, now_fn()),
+            body=render.detail_body(
+                found,
+                now_fn(),
+                company=next((c for c in data.companies() if c.name == found.company), None),
+                open_roles=sum(1 for o in items if o.company == found.company),
+            ),
             crumb='<div class="crumb"><a href="/opportunities">Opportunities</a></div>',
         )
         return HTMLResponse(html)

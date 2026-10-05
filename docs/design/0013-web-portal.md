@@ -22,8 +22,9 @@ Out of scope for now:
 - Reading the real database. The persistent store is being added separately
   ([0011: Daily run and storage](0011-daily-run-and-storage.md) on its branch); a
   store-backed reader plugs into the same interface when it lands.
-- Feedback buttons (Interested, Watch, Not interested, Already applied) and "Search
-  now": they need storage and a run trigger. The pages leave them out rather than
+- Feedback buttons (Interested, Watch, Not interested, Already applied), the detail
+  page's Decide actions and "This explanation is wrong", and "Search now": they need
+  storage and a run trigger. The pages leave them out rather than
   show buttons that do nothing.
 - Connections: listed in the navigation as "Soon".
 - The Already applied and Archived views and the role family and job status filters
@@ -72,7 +73,7 @@ flowchart LR
 |---|---|
 | `GET /` | Home: counts, roles needing attention, new matches, changed roles, search health |
 | `GET /opportunities` | Views (`view=attention, new, high-fit, immediate, watched, network, remote, bay-area, changed, all`) and filters (`priority`, `fit`, `confidence`, `company`, `work_model`, `scope=BAY_AREA\|US_REMOTE`, `age=1\|3\|7\|30` days, `network=connected\|none\|unknown`, `pay=published\|unpublished`); unknown values are ignored |
-| `GET /opportunities/{opportunity_id}` | One role: summary, fit bars, concerns, cited reasons, why now, who you know, description, original link; 404 page when unknown |
+| `GET /opportunities/{opportunity_id}` | One role: summary, fit bars, concerns, cited reasons, why now, who you know, company intelligence (industry, open roles you match, watch state, signals), description, source and verification (where it was found and confirmed, requisition, first seen, last verified, original link) and history of meaningful changes; 404 page when unknown |
 | `GET /companies` | Target companies as cards (state, watching, monitoring priority, matching and high-priority roles, connections, cited signals, top match, where jobs come from and any coverage gap) and discovered companies as a list; views `view=all, matching, watching, relevant, no-match, low`, unknown values show all |
 | `GET /watchlist` | Changes first (watched jobs that changed, new roles at watched companies, watched companies with a signal from the last seven days), then every watched job and company |
 | `GET /settings` | The real search configuration, read-only: seniority, role words and excluded titles; locations and whether they are a hard filter; schedule and AI limits; careers-site boards and job-alert companies with PEJIP's alert address; Fit weights and priority bands; retention and sharing |
@@ -96,7 +97,10 @@ class PortalData(Protocol):
 (`fit`, `confidence`, `priority`, `detail` components) and explanation records
 (`pejip.explain` points and citations), so the store-backed reader is a mapping
 from those tables; `location_scope` is the geographic scope `pejip.discovery`
-places the location in. `SearchRun.sources` maps from the `runs.summary["sources"]` list
+places the location in; `verified_on`, `requisition`, `last_verified_at` and
+`history` (`HistoryEvent` records of discovery, verification, material changes and
+scoring) feed the detail page's Source and verification and History sections, and
+its Company intelligence comes from the matching `Company`. `SearchRun.sources` maps from the `runs.summary["sources"]` list
 the pipeline already writes (`pejip.digest.SourceResult`, error text left out).
 A company has "Matching jobs" when it has a role in the Immediate, High or Medium
 band; otherwise the page shows its stored `relevance` (strategically relevant, no
