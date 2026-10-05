@@ -110,7 +110,8 @@ part of the app lands.
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
 | [`src/pejip/`](src/pejip/) | Application code (Python package) |
 | [`tests/`](tests/) | Unit, integration and system tests |
-| [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) |
+| [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) and release tooling |
+| [`CHANGELOG.md`](CHANGELOG.md) | Changes in each release; versions are tagged `vMAJOR.MINOR.PATCH` |
 | [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
 | [`Dockerfile`](Dockerfile) | Production container image, deployed by the Deploy workflow |

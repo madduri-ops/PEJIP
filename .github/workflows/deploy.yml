@@ -15,7 +15,7 @@
 # Redeploying an image already in ECR (rollback): call this workflow, or run it
 # by hand, with `image_tag` set to that image's full commit SHA. Nothing is built;
 # the deploy job and its health gate run as usual. The releases rollback workflow
-# calls it this way (docs/design/0004-releases-and-rollback.md once it lands).
+# calls it this way (docs/design/0006-releases-and-rollback.md).
 name: Deploy
 
 on:
