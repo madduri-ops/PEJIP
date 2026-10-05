@@ -35,7 +35,7 @@ RUN --mount=type=bind,from=build,source=/dist,target=/dist \
     && adduser -S -D -H -u 10001 -s /sbin/nologin pejip
 
 # The search configuration `pejip run` reads. It holds no personal data; the
-# career profile comes from SSM at run time (docs/design/0012-daily-run-and-storage.md).
+# career profile comes from SSM at run time (docs/design/0011-daily-run-and-storage.md).
 COPY config/search.yaml /etc/pejip/search.yaml
 
 USER 10001

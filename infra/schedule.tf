@@ -8,7 +8,7 @@
 #
 # Both target the task family without a revision, so they always run the image
 # the Deploy workflow last shipped. Run outcomes are alarmed from the app's
-# `run_finished` log events (infra/monitoring.tf, design 0011).
+# `run_finished` log events (infra/monitoring.tf, design 0012).
 
 locals {
   scheduled_tasks = {

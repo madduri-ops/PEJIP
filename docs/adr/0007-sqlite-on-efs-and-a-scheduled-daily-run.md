@@ -35,7 +35,7 @@ of it already taken by the load balancer and the API task.
 - **Career profile:** a SecureString SSM parameter (`/pejip/profile`, encrypted
   with `alias/pejip`) that Babu stores by hand, so it never enters Terraform state
   or the public repository. The run reads it with its task role.
-- **Failure alerts:** owned by monitoring (design 0011), which alarms from the
+- **Failure alerts:** owned by monitoring (design 0012), which alarms from the
   run's `run_finished` log events: a FAILED run, and no completed run in 26 hours.
 
 ## Consequences

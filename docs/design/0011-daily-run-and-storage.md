@@ -1,4 +1,4 @@
-# 0012: Daily run and storage on AWS
+# 0011: Daily run and storage on AWS
 
 _Status: accepted. Last updated: 2026-10-05._
 
@@ -12,7 +12,7 @@ the portal will show. Decision record: [ADR-0007](../adr/0007-sqlite-on-efs-and-
 
 In scope: the data file system, the daily `pejip run` and `pejip purge`
 schedules, the digest email, the career profile in SSM and keyless Claude on
-ECS. Out of scope: alarms on run outcomes (monitoring, design 0011), portal
+ECS. Out of scope: alarms on run outcomes (monitoring, design 0012), portal
 screens and API routes over the stored data, HTML email, and running more than once a day.
 
 ## Design
@@ -50,7 +50,7 @@ sequenceDiagram
   permission, a malformed profile) fails the run.
 - **Run outcome for monitoring:** every run logs `run_finished` with its
   `status` (SUCCESS, PARTIAL or FAILED) to `/ecs/pejip-prod`. Monitoring (design
-  0011) turns those log events into metrics in the `PEJIP` namespace and alarms
+  0012) turns those log events into metrics in the `PEJIP` namespace and alarms
   on a FAILED run and on no completed run in 26 hours, which also covers a task
   that crashed or never started. The run exits 1 when it FAILED.
 
@@ -100,8 +100,8 @@ the data file system (root `/pejip`, owner 10001, mode 0700):
 - **Privacy:** retention is unchanged (each run and the daily purge delete data
   past 90 days); no backups. The digest email is listed in `docs/SECURITY.md`.
 - **Reliability:** a failed source or analysis is isolated as before; failed
-  and missing runs alarm through monitoring (design 0011); Scheduler retries a task that fails to launch three
-  times within an hour.
+  and missing runs alarm through monitoring (design 0012); Scheduler retries a
+  task that fails to launch three times within an hour.
 - **Cost:** EFS at about $0.30 per GB-month for megabytes of data; a daily run of
   a few minutes at 0.5 vCPU is cents a month; SNS email is free at this volume.
 - **Tests:** `tests/unit/test_cli.py` (SSM profile, Claude switch, digest email),

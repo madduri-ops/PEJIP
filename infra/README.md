@@ -19,7 +19,7 @@ section 5.1.
 | `alb.tf` | ACM certificate for `job-search.zephyr-mcg.com`, ALB `pejip-alb` (HTTPS with Google sign-in, HTTP redirect), WAF `pejip-alb` with blocked-request logs |
 | `auth.tf` | Google sign-in: reads the OAuth client from SSM, keeps `/healthz` open, lets the ALB reach Google ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md)) |
 | `ecs.tf` | ECS cluster and service `pejip-prod`, task definition (data volume, run settings, Claude switch), roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
-| `efs.tf` | EFS file system `pejip-prod-data` (KMS-encrypted, TLS-only, no backups) holding the SQLite database, spend ledger and digests, with its access point and mount targets ([design](../docs/design/0012-daily-run-and-storage.md)) |
+| `efs.tf` | EFS file system `pejip-prod-data` (KMS-encrypted, TLS-only, no backups) holding the SQLite database, spend ledger and digests, with its access point and mount targets ([design](../docs/design/0011-daily-run-and-storage.md)) |
 | `digest.tf` | SNS topic `pejip-digest` that emails Babu the daily digest |
 | `schedule.tf` | `pejip-run-daily` (06:00 Pacific, `pejip run`) and `pejip-purge-daily` (`pejip purge`) schedules and their `pejip-scheduler` role |
 | `inbox.tf` | Job-alert inbox: SES receiving for `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket `pejip-inbox-275704950192` (90-day expiry) ([design](../docs/design/0010-job-alert-inbox.md)) |
@@ -93,7 +93,7 @@ receiving, and `inbox_receiving_enabled` now defaults to `true`.
 
 ## Daily run and storage (once)
 
-[Design 0012](../docs/design/0012-daily-run-and-storage.md). After the apply that
+[Design 0011](../docs/design/0011-daily-run-and-storage.md). After the apply that
 creates the data file system, schedules and digest topic:
 
 1. Run the Deploy workflow on `main` (or merge any app change). The apply

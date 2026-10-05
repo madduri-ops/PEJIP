@@ -53,7 +53,7 @@ cluster and service `pejip-prod`, the daily `pejip-run-daily` (06:00 Pacific) an
 `pejip-purge-daily` schedules, the EFS file system `pejip-prod-data` that holds the
 SQLite database, the `pejip-digest` email topic
 ([ADR-0007](../adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md),
-[design 0012](../design/0012-daily-run-and-storage.md)), the service alarms, and the job-alert inbox: SES receives
+[design 0011](../design/0011-daily-run-and-storage.md)), the service alarms, and the job-alert inbox: SES receives
 `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket
 `pejip-inbox-275704950192` ([design 0010](../design/0010-job-alert-inbox.md)). Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The ALB signs every request in with Google
