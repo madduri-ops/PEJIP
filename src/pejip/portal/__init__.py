@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import HTMLResponse, Response
 
+from pejip.config import SearchConfig
 from pejip.portal import render
 from pejip.portal.data import PortalData
 from pejip.portal.views import Filters, list_companies, list_opportunities, watchlist
@@ -22,8 +23,10 @@ STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encod
 Clock = Callable[[], datetime]
 
 
-def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
-    """The portal's routes, reading from ``data``."""
+def router(
+    data: PortalData, clock: Clock | None = None, config: SearchConfig | None = None
+) -> APIRouter:
+    """The portal's routes, reading from ``data``; Settings shows ``config``."""
     now_fn = clock or (lambda: datetime.now(UTC))
     routes = APIRouter(tags=["portal"], default_response_class=HTMLResponse)
 
@@ -130,6 +133,16 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
             heading="Watchlist",
             subtitle="What changed in the jobs and companies you are watching.",
             body=render.watchlist_body(listing, now_fn()),
+        )
+
+    @routes.get("/settings")
+    def settings() -> str:
+        """What PEJIP searches for, when, and how it ranks (spec 12.35)."""
+        return frame(
+            active="settings",
+            heading="Settings",
+            subtitle="What PEJIP searches for, when, and how it ranks.",
+            body=render.settings_body(config),
         )
 
     @routes.get("/search-health")

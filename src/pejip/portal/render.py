@@ -13,6 +13,7 @@ from datetime import datetime
 from html import escape
 from urllib.parse import quote
 
+from pejip.config import SearchConfig
 from pejip.portal.data import Citation, Opportunity, Point, SearchRun, Signal, SourceStatus
 from pejip.portal.views import (
     COMPANY_VIEWS,
@@ -70,7 +71,7 @@ NAV = (
     ("watchlist", "Watchlist", "/watchlist"),
     ("connections", "Connections", None),
     ("search-health", "Search Health", "/search-health"),
-    ("settings", "Settings", None),
+    ("settings", "Settings", "/settings"),
 )
 
 
@@ -901,4 +902,154 @@ def watchlist_body(w: Watchlist, now: datetime) -> str:
         + _section(f"Watched companies · {len(w.companies)}", companies)
         + '<p class="note">Watching a company raises how closely PEJIP follows it and may '
         "raise Application Priority. It never changes the Fit of its jobs.</p>"
+    )
+
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+# PEJIP's own alert address (design doc 0010); Babu signs up for job alerts with it.
+ALERT_ADDRESS = "alerts@inbox.job-search.zephyr-mcg.com"
+ADAPTER_LABEL = {"greenhouse": "Public Greenhouse job board", "lever": "Public Lever job board"}
+SCOPE_LABEL = {"BAY_AREA": "San Francisco Bay Area", "US_REMOTE": "United States remote"}
+MONTHLY_AI_CAP = "$100"
+ANY_PLACE = "Any remote role in the US"
+
+
+def _chips(values: Iterable[str]) -> str:
+    return (
+        '<div class="views">'
+        + "".join(f'<span class="chip">{e(v)}</span>' for v in values)
+        + "</div>"
+    )
+
+
+def _settings_card(heading: str, anchor: str, body: str) -> str:
+    return f'<section class="card" id="{anchor}"><h2>{e(heading)}</h2>{body}</section>'
+
+
+def _locations(config: SearchConfig) -> str:
+    rows = "".join(
+        f"<tr><td>{e(SCOPE_LABEL.get(key, words(key)))}</td>"
+        f"<td>{e(words(scope.preference))}</td>"
+        f"<td>{e(', '.join(p.title() for p in scope.places) or ANY_PLACE)}</td></tr>"
+        for key, scope in config.geography.scopes.items()
+    )
+    rule = (
+        "Roles outside every location are hidden."
+        if config.geography.hard_filter
+        else "Roles outside these locations are kept, with lower priority."
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Location</th>'
+        '<th scope="col">Preference</th><th scope="col">Places</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table></div><p class="note">{rule}</p>'
+    )
+
+
+def _sources(config: SearchConfig) -> str:
+    boards = "".join(
+        f'<div class="li"><div class="grow"><h3>{e(s.company)}</h3>'
+        f'<div class="muted">{e(ADAPTER_LABEL.get(s.adapter, s.adapter))}</div></div>'
+        '<span class="pill p-ok">On</span></div>'
+        for s in config.sources
+    )
+    alerts = (
+        "".join(
+            f'<div class="li"><div class="grow"><h3>{e(a.company)}</h3>'
+            f'<div class="muted">{"Job board alerts" if a.job_board else "Careers site alerts"}'
+            "</div></div></div>"
+            for a in config.inbox.companies
+        )
+        if config.inbox
+        else ""
+    )
+    alert_html = (
+        f'<h3>Job-alert emails</h3><p class="note">Sign up for each company\'s job alerts with '
+        f"<strong>{e(ALERT_ADDRESS)}</strong>. PEJIP reads only links to the careers pages "
+        f'listed here.</p><div class="list">{alerts}</div>'
+        if alerts
+        else '<p class="note">Job-alert emails are not set up.</p>'
+    )
+    return (
+        f'<h3>Careers sites · {len(config.sources)}</h3><div class="list">{boards}</div>'
+        f"{alert_html}"
+        '<p class="note">PEJIP reads only sources whose terms allow it, follows each '
+        "site's robots.txt and limits how often it asks. Live status is on "
+        '<a href="/search-health">Search Health</a>.</p>'
+    )
+
+
+def _ranking(config: SearchConfig) -> str:
+    s = config.scoring
+    weights = "".join(
+        f'<div class="kv"><span class="lbl">{e(COMPONENT_LABEL.get(k, words(k)))}</span>'
+        f'<span class="v">{v:.0f}%</span></div>'
+        for k, v in s.fit_weights.items()
+    )
+    bands = "".join(
+        f'<div class="kv"><span class="lbl">{e(words(band))}</span>'
+        f'<span class="v">Priority {threshold:.0f}+'
+        + (f", Fit {s.priority_min_fit[band]:.0f}+" if band in s.priority_min_fit else "")
+        + "</span></div>"
+        for band, threshold in s.priority_thresholds.items()
+    )
+    return (
+        f'<p class="note">Scoring version {e(s.version)}.</p>'
+        f'<h3>What makes up Fit</h3><div class="summary">{weights}</div>'
+        f'<h3>Priority bands</h3><div class="summary">{bands}</div>'
+        '<p class="note">Fit measures qualification only. Freshness, pay and location '
+        "affect priority, never fit.</p>"
+    )
+
+
+def settings_body(config: SearchConfig | None) -> str:
+    """What PEJIP searches for, when, and how it ranks: read-only for now (12.35)."""
+    if config is None:
+        return _empty("The search configuration is not available on this server.")
+    t = config.taxonomy
+    jump = "".join(
+        f'<a class="btn" href="#{anchor}">{label}</a>'
+        for anchor, label in (
+            ("roles", "Roles and titles"),
+            ("locations", "Locations"),
+            ("schedule", "Search schedule"),
+            ("sources", "Sources"),
+            ("ranking", "Ranking"),
+            ("privacy", "Privacy and data"),
+        )
+    )
+    roles = (
+        "<h3>Seniority a title needs</h3>"
+        + _chips(t.seniority_patterns)
+        + "<h3>Role words a title needs</h3>"
+        + _chips(t.role_terms)
+        + "<h3>Titles always left out</h3>"
+        + _chips(t.excluded_title_patterns)
+    )
+    schedule = (
+        '<div class="summary">'
+        + _kv("Search", "Daily at 6:00 AM Pacific")
+        + _kv("Roles analysed per search", str(config.ai.max_jobs_per_run))
+        + _kv("AI spending cap", f"{MONTHLY_AI_CAP} a month")
+        + "</div>"
+    )
+    privacy = (
+        '<div class="summary">'
+        + _kv("Kept", f"{config.retention_days} days, then deleted")
+        + _kv("Storage and transfer", "Encrypted at rest and in transit")
+        + _kv(
+            "Shared with", "Anthropic (Claude), only the job and profile text each analysis needs"
+        )
+        + _kv("Logs", "No personal data")
+        + "</div>"
+    )
+    return (
+        '<p class="note">These settings are read-only here for now; they change through '
+        "the search configuration file.</p>"
+        f'<nav class="views" aria-label="Settings sections">{jump}</nav>'
+        + _settings_card("Roles and titles", "roles", roles)
+        + _settings_card("Locations", "locations", _locations(config))
+        + _settings_card("Search schedule", "schedule", schedule)
+        + _settings_card("Sources", "sources", _sources(config))
+        + _settings_card("Ranking", "ranking", _ranking(config))
+        + _settings_card("Privacy and data", "privacy", privacy)
     )

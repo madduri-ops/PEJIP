@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Iterator
+from pathlib import Path
 
 import httpx
 import pytest
@@ -170,3 +171,14 @@ def test_interactive_docs_are_disabled(signed_in_app: FastAPI, signer: AlbSigner
 
     assert _get(signed_in_app, "/docs", token).status_code == 404
     assert _get(signed_in_app, "/redoc", token).status_code == 404
+
+
+def test_settings_page_reads_the_search_configuration(signer: AlbSigner, tmp_path: Path) -> None:
+    with key_server(signer) as key_url:
+        token = signer.token(ALLOWED_EMAIL)
+        default = _get(api.create_app(env=auth_env(key_url)), "/settings", token).text
+        missing = {**auth_env(key_url), "PEJIP_CONFIG": str(tmp_path / "absent.yaml")}
+        absent = _get(api.create_app(env=missing), "/settings", token).text
+
+    assert "Seniority a title needs" in default
+    assert "The search configuration is not available on this server." in absent

@@ -10,6 +10,7 @@ Every route except ``/healthz`` requires Babu's Google sign-in, checked by
 
 import os
 from collections.abc import Awaitable, Callable, Mapping
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -24,6 +25,7 @@ from pejip.auth import (
     AuthSettings,
     SignInRequiredError,
 )
+from pejip.config import SearchConfig, load_config
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
 
@@ -48,6 +50,12 @@ PAGE_CSP = (
 )
 
 
+def _search_config(env: Mapping[str, str]) -> SearchConfig | None:
+    """The search configuration Settings shows; None where the file is absent."""
+    path = Path(env.get("PEJIP_CONFIG", "config/search.yaml"))
+    return load_config(path) if path.is_file() else None
+
+
 def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = None) -> FastAPI:
     """Build the API. Interactive docs are off; the OpenAPI document stays for DAST.
 
@@ -55,7 +63,8 @@ def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = N
     portal reads ``data``, sample data by default until the database lands.
     """
     app = FastAPI(title="PEJIP", version=__version__, docs_url=None, redoc_url=None)
-    settings = AuthSettings.from_env(os.environ if env is None else env)
+    environment = os.environ if env is None else env
+    settings = AuthSettings.from_env(environment)
     authenticator = Authenticator(settings) if settings else None
 
     # Registered before the security headers middleware, so refusals get them too.
@@ -90,7 +99,9 @@ def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = N
         """Liveness check used by the load balancer and the post-deploy health gate."""
         return {"status": "ok", "version": __version__}
 
-    app.include_router(portal.router(SampleData() if data is None else data))
+    app.include_router(
+        portal.router(SampleData() if data is None else data, config=_search_config(environment))
+    )
     return app
 
 
