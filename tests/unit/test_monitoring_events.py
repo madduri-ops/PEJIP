@@ -30,9 +30,14 @@ def test_every_filtered_event_is_logged_by_the_app() -> None:
     assert filtered <= _logged_events()
 
 
-def test_crashed_runs_are_logged_as_errors() -> None:
+def test_crashed_runs_are_left_to_the_task_failed_alert() -> None:
+    # A crash exits non-zero, which the task-failed rule already emails, so
+    # AppErrors must not count the same crash a second time.
+    text = MONITORING.read_text()
+
     assert "run_crashed" in _logged_events()
-    assert '$.level = \\"ERROR\\"' in MONITORING.read_text()
+    assert '$.level = \\"ERROR\\"' in text
+    assert '$.event != \\"run_crashed\\"' in text
 
 
 def test_filtered_run_statuses_are_the_pipeline_statuses() -> None:

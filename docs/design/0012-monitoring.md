@@ -1,4 +1,4 @@
-# 0011: Monitoring and alerts
+# 0012: Monitoring and alerts
 
 _Status: accepted. Last updated: 2026-10-05._
 
@@ -38,7 +38,9 @@ AWS calls and a run's metrics can't be lost to a CloudWatch API error.
 | `AppErrors` | `level = ERROR` or `CRITICAL` |
 
 `pejip run` now logs `run_crashed` at ERROR (with the exception type, never its
-message) when the run raises, so a crash before `run_finished` still counts.
+message) when the run raises, so the dashboard's Recent errors table shows it.
+`AppErrors` leaves `run_crashed` out: a crashed run exits non-zero and is
+already emailed by the task-failed rule.
 
 ```mermaid
 flowchart LR
@@ -50,13 +52,17 @@ flowchart LR
     lg -- Logs Insights --> dash
 ```
 
+A run that finishes FAILED, crashes or never starts exits non-zero, and the
+daily run's own EventBridge rule `pejip-prod-task-failed`
+([design 0011](0011-daily-run-and-storage.md)) emails that once. Monitoring adds
+no second alert for it; FAILED runs are only charted.
+
 Alarms (all email through `pejip-alerts` on entering ALARM):
 
 | Alarm | Fires when |
 |---|---|
-| `pejip-search-run-failed` | A run finished FAILED (every source failed) |
 | `pejip-source-failures` | Any source failed to fetch in the hour (the run is PARTIAL) |
-| `pejip-app-errors` | Any ERROR line in the hour |
+| `pejip-app-errors` | Any ERROR line in the hour other than `run_crashed` |
 | `pejip-search-stalled` | No run finished SUCCESS or PARTIAL for 26 hours; also emails when it clears |
 
 `pejip-search-stalled` treats missing data as breaching, so it would fire from
@@ -86,7 +92,7 @@ which the redaction layer already allows in logs.
 
 ## Non-functional considerations
 
-- **Cost:** about $2 a month: five filter metrics at $0.30, five alarms at $0.10
+- **Cost:** about $2 a month: five filter metrics at $0.30, four alarms at $0.10
   (the stalled alarm reads two metrics), the dashboard is within the free three,
   and Logs Insights scans only when the dashboard is opened.
 - **Privacy:** no new data leaves the app; metric filters read lines that are
@@ -95,7 +101,7 @@ which the redaction layer already allows in logs.
   once a day, after each daily run, which is the reminder we want.
 - **Testing:** a unit test proves a crashed run logs `run_crashed` at ERROR and
   still exits with the error; another ties every filter to an event the code
-  logs. Terraform lint, checkov and plan run in the Infra workflow.
+  logs and checks crashes stay out of `AppErrors`. Terraform lint, checkov and plan run in the Infra workflow.
 
 ## Alternatives considered
 
