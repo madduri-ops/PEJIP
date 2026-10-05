@@ -6,12 +6,11 @@
 sources:
   # Company boards on public ATS APIs. Only sources listed in docs/sources.md may
   # appear here. `board` is the company's public board token.
+  # Babu's targets are Google, NVIDIA, Meta, Micron, Anthropic, OpenAI and
+  # Microsoft. Only Anthropic publishes its roles through an allowed public API;
+  # the others run their own or Workday career sites with no public API, and
+  # OpenAI's Ashby feed lists only a few of its roles (checked 2026-10-05).
   - {adapter: greenhouse, company: Anthropic, board: anthropic}
-  - {adapter: greenhouse, company: Databricks, board: databricks}
-  - {adapter: greenhouse, company: Stripe, board: stripe}
-  - {adapter: greenhouse, company: Okta, board: okta}
-  - {adapter: lever, company: Palantir, board: palantir}
-  - {adapter: lever, company: Plaid, board: plaid}
 
 fetch:
   user_agent: "PEJIP/0.1 (personal job research; +https://github.com/madduri-ops/PEJIP)"
