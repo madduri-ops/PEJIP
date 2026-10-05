@@ -93,7 +93,7 @@ digest that explains each ranking with cited evidence. Network data, feedback,
 notifications, feature API endpoints and the web UI come next. The build policy, repository
 hygiene, the Python CI pipeline, a health endpoint, the golden evaluation set for
 rankings and foundation AWS infrastructure are in place; the app is not deployed yet.
-See the [design doc](docs/design/0005-find-thin-slice.md) and the
+See the [design doc](docs/design/0008-find-thin-slice.md) and the
 [changelog](CHANGELOG.md).
 
 ## Getting started
@@ -124,7 +124,8 @@ are in [config/search.yaml](config/search.yaml).
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
-| [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) |
+| [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) and release tooling |
+| [`CHANGELOG.md`](CHANGELOG.md) | Changes in each release; versions are tagged `vMAJOR.MINOR.PATCH` |
 | [`docs/sources.md`](docs/sources.md) | Job sources we may fetch, with their terms |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Security posture and third parties that receive personal data |
 | [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |

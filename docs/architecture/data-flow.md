@@ -1,7 +1,7 @@
 # Data flow
 
 How a role moves from a company job board to a ranked, explained entry in the
-digest. Detail is in [design doc 0005](../design/0005-find-thin-slice.md).
+digest. Detail is in [design doc 0008](../design/0008-find-thin-slice.md).
 
 ```mermaid
 flowchart LR

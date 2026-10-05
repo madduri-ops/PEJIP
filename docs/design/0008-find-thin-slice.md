@@ -1,4 +1,4 @@
-# 0005: FIND thin slice (discover, rank, explain)
+# 0008: FIND thin slice (discover, rank, explain)
 
 _Status: implemented. Last updated: 2026-10-05._
 

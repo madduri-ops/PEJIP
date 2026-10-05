@@ -1,0 +1,58 @@
+# Releases (docs/BUILD_POLICY.md section 15, docs/design/0006-releases-and-rollback.md).
+# Run on main after the PR from `python -m ci.release prepare X.Y.Z` merges:
+#
+#     gh workflow run release.yml
+#
+# It checks CHANGELOG.md and pyproject.toml agree, then tags main's head
+# vX.Y.Z and publishes a GitHub Release with that version's notes. Running from
+# main (not on a tag push) means only gated code is released, and is what lets a
+# later step use the main-only deploy role.
+name: Release
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Version from pyproject.toml, checked against CHANGELOG.md
+        id: version
+        run: echo "version=$(python -m ci.release version)" >> "${GITHUB_OUTPUT}"
+      - name: Not released yet
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/v${VERSION}" > /dev/null; then
+            echo "::error::v${VERSION} already exists; cut a new version with ci.release prepare"
+            exit 1
+          fi
+      - name: Release notes
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: python -m ci.release notes "${VERSION}" > release-notes.md
+      # Creates the tag on the commit this run checked out.
+      - name: Tag and publish the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: >-
+          gh release create "v${VERSION}" --target "${GITHUB_SHA}"
+          --title "v${VERSION}" --notes-file release-notes.md
