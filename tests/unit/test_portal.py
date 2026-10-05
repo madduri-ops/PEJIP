@@ -10,7 +10,12 @@ import pytest
 from fastapi import FastAPI
 
 from pejip import portal
-from pejip.config import SearchConfig, load_config
+from pejip.config import (
+    SearchConfig,
+    load_config,
+    parse_private_companies,
+    with_private_companies,
+)
 from pejip.portal import render, views
 from pejip.portal.data import (
     Citation,
@@ -768,7 +773,11 @@ def test_watched_job_without_change_note_in_table() -> None:
 
 
 # ── Settings ─────────────────────────────────────────────────────────────────
-CONFIG = load_config(Path("config/search.yaml"))
+# The shipped setup plus the invented private companies example (ADR-0009).
+CONFIG = with_private_companies(
+    load_config(Path("config/search.yaml")),
+    parse_private_companies(Path("examples/companies.example.yaml").read_text()),
+)
 
 
 def _get_settings(config: SearchConfig | None) -> str:
@@ -795,7 +804,8 @@ def test_settings_shows_the_real_search_setup() -> None:
     assert "San Francisco Bay Area" in html
     assert "Any remote role in the US" in html
     assert "Roles outside every location are hidden." in html
-    assert "<h3>Anthropic</h3>" in html
+    assert "<h3>Northwind Robotics</h3>" in html
+    assert "<h3>Contoso Silicon</h3>" in html
     assert "Public Greenhouse job board" in html
     assert "alerts@inbox.job-search.zephyr-mcg.com" in html
     assert "Job board alerts" in html  # LinkedIn

@@ -25,6 +25,9 @@ two inputs still tell a reader about Babu's job search:
   (`PEJIP_COMPANIES_PARAMETER`, encrypted with `alias/pejip`), stored by Babu like
   the career profile so it never enters Terraform state. A missing parameter is a
   digest note and the run searches the test boards; a malformed one fails the run.
+  The portal's Settings page (behind Google sign-in) shows the same merged list;
+  if it can't read it, the page opens with the test boards alone.
+  `pejip.companies.load_search_config` does the merge for both.
 - **Connections:** Babu uploads `Connections.csv` and his network decisions to
   `network/` in the encrypted, TLS-only job-alert bucket, where they expire 90 days
   after upload. The run's role can list and read that prefix only.

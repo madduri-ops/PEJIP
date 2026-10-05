@@ -267,7 +267,8 @@ locals {
   profile_parameter   = "/pejip/profile"
   companies_parameter = "/pejip/companies"
 
-  # What `pejip run` and `pejip purge` read (design doc 0012). The API ignores them.
+  # What `pejip run` and `pejip purge` read (design doc 0012). The API reads only
+  # the company list, for the Settings page (ADR-0009).
   run_environment = [
     { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
     { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },

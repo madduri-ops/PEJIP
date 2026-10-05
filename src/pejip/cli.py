@@ -14,13 +14,8 @@ from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import ValidationError
 
 from pejip.ai.client import AIClient
-from pejip.config import (
-    SearchConfig,
-    Settings,
-    load_config,
-    parse_private_companies,
-    with_private_companies,
-)
+from pejip.companies import load_search_config
+from pejip.config import SearchConfig, Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import render
@@ -34,7 +29,6 @@ from pejip.profile import (
     load_profile,
     load_profile_parameter,
     make_ssm_client,
-    read_parameter,
 )
 from pejip.retention import purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
@@ -55,24 +49,7 @@ def _load_profile(settings: Settings) -> CareerProfile | None:
 
 
 def _load_config(settings: Settings) -> tuple[SearchConfig, str | None]:
-    """The search configuration with Babu's private companies, and a note if they are missing.
-
-    A malformed company list raises: searching without it would look like a quiet
-    day rather than a broken setup.
-    """
-    config = load_config(settings.config_path)
-    if settings.companies_parameter:
-        text = read_parameter(make_ssm_client(settings.aws_region), settings.companies_parameter)
-        if text is None:
-            return config, (
-                "Your company list is not stored yet (SSM parameter"
-                f" {settings.companies_parameter}), so only the test boards were searched."
-            )
-    elif settings.companies_path:
-        text = settings.companies_path.read_text(encoding="utf-8")
-    else:
-        return config, None
-    return with_private_companies(config, parse_private_companies(text)), None
+    return load_search_config(settings, make_ssm_client)
 
 
 def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:

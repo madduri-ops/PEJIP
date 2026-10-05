@@ -8,13 +8,16 @@ Every route except ``/healthz`` requires Babu's Google sign-in, checked by
 ``pejip.auth`` against the token the load balancer adds (ADR-0006).
 """
 
+import logging
 import os
 from collections.abc import Awaitable, Callable, Mapping
-from pathlib import Path
 
 import uvicorn
+import yaml
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from pejip import __version__, portal
 from pejip.auth import (
@@ -25,9 +28,13 @@ from pejip.auth import (
     AuthSettings,
     SignInRequiredError,
 )
-from pejip.config import SearchConfig, load_config
+from pejip.companies import load_search_config
+from pejip.config import SearchConfig, Settings, load_config
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
+from pejip.profile import make_ssm_client
+
+log = logging.getLogger(__name__)
 
 # Sent on every response. JSON responses get a CSP that denies everything; HTML
 # pages get PAGE_CSP instead.
@@ -51,9 +58,20 @@ PAGE_CSP = (
 
 
 def _search_config(env: Mapping[str, str]) -> SearchConfig | None:
-    """The search configuration Settings shows; None where the file is absent."""
-    path = Path(env.get("PEJIP_CONFIG", "config/search.yaml"))
-    return load_config(path) if path.is_file() else None
+    """The search configuration Settings shows; None where the file is absent.
+
+    Babu's private companies are included (ADR-0009). If they can't be read, the
+    page still opens with the shipped setup; the daily run reports the problem.
+    """
+    settings = Settings.from_env(dict(env))
+    if not settings.config_path.is_file():
+        return None
+    try:
+        config, _ = load_search_config(settings, make_ssm_client)
+    except (OSError, ValidationError, yaml.YAMLError, ClientError, BotoCoreError):
+        log.warning("company_list_unreadable")
+        return load_config(settings.config_path)
+    return config
 
 
 def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = None) -> FastAPI:

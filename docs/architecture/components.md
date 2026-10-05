@@ -166,7 +166,8 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}`, `/companies`, `/watchlist`, `/search-health`, `/settings` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
+  `/opportunities/{id}`, `/companies`, `/watchlist`, `/search-health`, `/settings` and `/portal.css`; the OpenAPI document at `/openapi.json`. Settings
+  shows the search setup with Babu's private companies (ADR-0009). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
   `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and

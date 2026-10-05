@@ -271,6 +271,11 @@ def test_an_invalid_job_id_pattern_is_rejected() -> None:
         AlertCompany(company="Bad", link_patterns=["x.test/"], job_id_pattern="(")
 
 
+def test_an_explicitly_empty_job_id_pattern_is_allowed() -> None:
+    company = AlertCompany(company="Ok", link_patterns=["x.test/"], job_id_pattern=None)
+    assert company.job_id_pattern is None
+
+
 def test_a_confirm_link_to_an_unconfigured_site_is_not_surfaced() -> None:
     body = '<a href="https://bank.test/confirm?t=9">Confirm payment</a>'
     assert parse_alert(email(body), COMPANIES).confirm_links == []
