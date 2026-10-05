@@ -16,3 +16,6 @@ flowchart LR
 | Store | Holds | Owner component | Retention |
 |---|---|---|---|
 | `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |
+
+Personal data, job postings and rankings are each kept for 90 days, using the
+window in `pejip.retention` (see [0004: Data retention](../design/0004-data-retention.md)).
