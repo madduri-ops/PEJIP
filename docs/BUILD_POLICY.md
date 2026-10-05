@@ -4,7 +4,7 @@ This is the binding CI/CD policy for PEJIP. Every change, by a person or by Clau
 must comply with it. When the policy changes, update this file in the same change
 (see [Keeping this policy current](#keeping-this-policy-current)).
 
-_Owner: Babu (@madduri-ops). Last updated: 2026-10-04._
+_Owner: Babu (@madduri-ops). Last updated: 2026-10-05._
 
 ## 1. Code quality and coverage
 
@@ -127,7 +127,15 @@ dashboard. The full decision is [ADR-0001](adr/0001-aws-hosting-isolated-from-kr
   pull request that changes the project's purpose, approach or success measures, or
   adds or moves a canonical doc, updates the README in the same PR. Changes to the
   philosophy sections need Babu's approval, since they are written in their voice.
-- Code review by Claude is **on demand only**, not scheduled.
+- **Code review by Claude** is kept to the pull requests that need it, and kept
+  token-frugal:
+  - Only high-risk PRs are reviewed: IAM/Terraform security, sign-in/auth, handling of
+    Babu's personal data, and ranking/scoring logic. Other PRs get no review.
+  - For a high-risk PR, Claude recommends a review with a one-line reason and runs it
+    only after Babu says yes.
+  - The review covers the diff plus its surrounding code, never the whole repo.
+  - Effort is low by default; high only for security and personal-data changes.
+  - Keep PRs small.
 
 ## 8. Branching and merging
 
@@ -140,7 +148,8 @@ Trunk-based development, since every merge to `main` deploys:
 - **Auto-merge when green:** once a pull request is ready, complies with this policy and
   passes every gate, Claude squash merges it without waiting to be asked. A PR with a
   failing gate, a merge conflict, an unresolved review thread or an open question is
-  not merged. A PR that loosens a gate still waits for Babu's explicit approval.
+  not merged. A PR that loosens a gate still waits for Babu's explicit approval, and a
+  high-risk PR (section 7) waits for Babu's yes or no on the review recommendation.
 - **Branch protection as code:** the `main` protection rules are checked in at
   `.github/rulesets/main.json` (required status checks, PR required, squash only,
   no force pushes or deletions) and applied to the repository from that file.
