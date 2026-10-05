@@ -13,4 +13,5 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0001: CI pipeline and health endpoint](0001-ci-pipeline.md) | Implemented |
 | [0002: AI cost guard](0002-ai-cost-guard.md) | Implemented |
 | [0003: Golden evaluation set](0003-golden-evaluation-set.md) | Implemented |
+| [0004: Data retention](0004-data-retention.md) | Implemented (store hooks with the first FIND slice) |
 | [0006: Releases and rollback](0006-releases-and-rollback.md) | Implemented (production rollback workflow with deploy) |
