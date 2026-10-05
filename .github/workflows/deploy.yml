@@ -11,6 +11,11 @@
 #
 # Deploys only run once the repository variable DEPLOY_ENABLED is "true", which
 # is set after the first `terraform apply` of the hosting stack (infra/README.md).
+#
+# Redeploying an image already in ECR (rollback): call this workflow, or run it
+# by hand, with `image_tag` set to that image's full commit SHA. Nothing is built;
+# the deploy job and its health gate run as usual. The releases rollback workflow
+# calls it this way (docs/design/0004-releases-and-rollback.md once it lands).
 name: Deploy
 
 on:
@@ -24,6 +29,18 @@ on:
       - '.dockerignore'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Full commit SHA of an image already in ECR to redeploy (blank builds and deploys this commit)
+        type: string
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Full commit SHA of an image already in ECR to redeploy
+        type: string
+        required: true
 
 concurrency:
   group: deploy-${{ github.ref }}
@@ -48,6 +65,7 @@ jobs:
   # job would also count as passed even if change detection had failed.
   image:
     name: Container image
+    if: ${{ !inputs.image_tag }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -112,7 +130,13 @@ jobs:
   deploy:
     name: Deploy to production
     needs: image
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
+    # Runs after a successful build, or with no build when redeploying image_tag.
+    if: >-
+      !cancelled()
+      && (needs.image.result == 'success' || (needs.image.result == 'skipped' && inputs.image_tag))
+      && github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-production
@@ -121,32 +145,47 @@ jobs:
       contents: read
       id-token: write
     env:
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+      REDEPLOY: ${{ inputs.image_tag && 'true' || '' }}
       APP_URL: ${{ vars.APP_URL || 'https://job-search.zephyr-mcg.com' }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
+      - if: ${{ !env.REDEPLOY }}
+        uses: actions/download-artifact@v8
         with:
           name: pejip-image
-      - run: gunzip -c pejip-image.tar.gz | docker load
+      - if: ${{ !env.REDEPLOY }}
+        run: gunzip -c pejip-image.tar.gz | docker load
       - uses: aws-actions/configure-aws-credentials@v6
         id: aws
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Tags are immutable, so a re-run of the same commit reuses its image.
+      # Tags are immutable, so a re-run of the same commit reuses its image. A
+      # redeploy must name an image that is already there.
       - name: Push the image to ECR
         run: |
           image="${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "${REGISTRY}"
           if aws ecr describe-images --repository-name "${REPOSITORY}" --image-ids "imageTag=${IMAGE_TAG}" >/dev/null 2>&1; then
             echo "${image} already in ECR"
+          elif [ -n "${REDEPLOY}" ]; then
+            echo "${image} is not in ECR; nothing to redeploy"
+            exit 1
           else
-            aws ecr get-login-password | docker login --username AWS --password-stdin "${REGISTRY}"
             docker tag pejip:ci "${image}"
             docker push "${image}"
           fi
           echo "IMAGE=${image}" >> "${GITHUB_ENV}"
+
+      # The health gate checks that the live app reports this version.
+      - name: Read the image's version
+        run: |
+          if [ -n "${REDEPLOY}" ]; then docker pull -q "${IMAGE}"; fi
+          version=$(docker run --rm "${IMAGE}" python -c 'import pejip; print(pejip.__version__)')
+          echo "EXPECTED_VERSION=${version}" >> "${GITHUB_ENV}"
+          echo "Image ${IMAGE} is version ${version}"
 
       - name: Record the running revision
         id: previous
@@ -194,13 +233,13 @@ jobs:
         run: |
           for attempt in $(seq 1 30); do
             body=$(curl -sS --fail --max-time 5 "${APP_URL}/healthz" || true)
-            if [ "$(jq -r '.status // empty' <<< "${body}" 2>/dev/null)" = "ok" ]; then
+            if jq -e --arg v "${EXPECTED_VERSION}" '.status == "ok" and .version == $v' <<< "${body}" >/dev/null 2>&1; then
               echo "Healthy on attempt ${attempt}: ${body}"
               exit 0
             fi
             sleep 10
           done
-          echo "${APP_URL}/healthz did not report ok within 5 minutes"
+          echo "${APP_URL}/healthz did not report ok with version ${EXPECTED_VERSION} within 5 minutes"
           exit 1
 
       - name: Roll back to the previous revision

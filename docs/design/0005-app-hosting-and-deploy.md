@@ -49,7 +49,7 @@ sequenceDiagram
     GH->>ECS: register revision with new image
     GH->>ECS: update service, wait stable
     GH->>ECS: primary deployment is new revision and COMPLETED?
-    GH->>App: poll /healthz until status ok (5 min)
+    GH->>App: poll /healthz until status ok and version matches the image (5 min)
     alt any step after rollout fails
         GH->>ECS: update service to previous revision, wait stable
     end
@@ -64,7 +64,11 @@ sequenceDiagram
 - **Health:** `GET /healthz` returns `{"status": "ok", ...}`. The ALB target group,
   the container `HEALTHCHECK`, the CI smoke test and the deploy health gate all use it.
 - **Workflow:** `.github/workflows/deploy.yml`. Required check `Container image`;
-  job `Deploy to production` on `main` and on manual dispatch.
+  job `Deploy to production` on `main` and on manual dispatch. With input
+  `image_tag` (a full commit SHA already in ECR), from `workflow_call` or manual
+  dispatch, it skips the build and redeploys that image; this is how rollback
+  redeploys an earlier release. Callers grant `id-token: write` and must not share
+  the `deploy-refs/heads/main` concurrency group.
 - **GitHub settings:** variables `AWS_DEPLOY_ROLE_ARN`, `DEPLOY_ENABLED` and
   optionally `APP_URL` (defaults to the production hostname).
 - **Terraform outputs:** `certificate_validation_records`, `alb_dns_name`, `app_url`.
