@@ -26,6 +26,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- An opportunity's page shows company intelligence (industry, other roles you
+  match, watch state and recent signals), where the role was found and verified,
+  and a history of meaningful changes.
 - Opportunities has a Bay Area view and filters for location, posting age,
   network and whether pay is published.
 - The portal has a read-only Settings page at `/settings` showing the real search
