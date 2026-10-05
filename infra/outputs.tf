@@ -22,3 +22,13 @@ output "ai_spend_alarm_names" {
   description = "CloudWatch alarms that email at 50% to 100% of the monthly AI spend cap."
   value       = sort([for alarm in aws_cloudwatch_metric_alarm.ai_spend : alarm.alarm_name])
 }
+
+output "claude_federation_issuer_url" {
+  description = "Register as the AWS issuer in the Claude Console (Settings > Workload identity)."
+  value       = aws_iam_outbound_web_identity_federation.this.issuer_identifier
+}
+
+output "claude_federation_policy_arn" {
+  description = "Attach to any PEJIP role that calls Claude (the ECS task role)."
+  value       = aws_iam_policy.claude_federation.arn
+}

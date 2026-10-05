@@ -79,13 +79,3 @@ resource "aws_iam_role_policy" "plan_claude_federation" {
   role   = aws_iam_role.github_plan.id
   policy = data.aws_iam_policy_document.plan_claude_federation.json
 }
-
-output "claude_federation_issuer_url" {
-  description = "Register as the AWS issuer in the Claude Console (Settings > Workload identity)."
-  value       = aws_iam_outbound_web_identity_federation.this.issuer_identifier
-}
-
-output "claude_federation_policy_arn" {
-  description = "Attach to any PEJIP role that calls Claude (the ECS task role)."
-  value       = aws_iam_policy.claude_federation.arn
-}
