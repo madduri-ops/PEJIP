@@ -22,7 +22,7 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - PEJIP searches on its own every morning at 6am Pacific on AWS, keeps its results
   in an encrypted SQLite database on EFS, and emails Babu the digest. Data past 90
-  days is purged daily, and a failed run emails an alert.
+  days is purged daily.
 - On AWS the career profile is read from the encrypted SSM parameter
   `/pejip/profile`. Until it exists, or until Claude access is set up for the app,
   roles are still found and emailed, listed as unranked with the reason.

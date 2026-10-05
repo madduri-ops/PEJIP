@@ -1,5 +1,5 @@
 # Alerts topic (ADR-0001, Alerts). Encrypted with the PEJIP key; the key policy
-# lets AWS Budgets, CloudWatch and EventBridge (failed daily tasks) publish to it.
+# lets AWS Budgets and CloudWatch publish to it.
 resource "aws_sns_topic" "alerts" {
   name              = "pejip-alerts"
   kms_master_key_id = aws_kms_key.pejip.arn
@@ -13,7 +13,7 @@ data "aws_iam_policy_document" "alerts_topic" {
 
     principals {
       type        = "Service"
-      identifiers = ["budgets.amazonaws.com", "cloudwatch.amazonaws.com", "events.amazonaws.com"]
+      identifiers = ["budgets.amazonaws.com", "cloudwatch.amazonaws.com"]
     }
 
     condition {

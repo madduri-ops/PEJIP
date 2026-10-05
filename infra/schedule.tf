@@ -7,8 +7,8 @@
 #   a day the run fails.
 #
 # Both target the task family without a revision, so they always run the image
-# the Deploy workflow last shipped. A task that exits with an error emails Babu
-# through pejip-alerts (alarms.tf).
+# the Deploy workflow last shipped. Run outcomes are alarmed from the app's
+# `run_finished` log events (infra/monitoring.tf, design 0011).
 
 locals {
   scheduled_tasks = {

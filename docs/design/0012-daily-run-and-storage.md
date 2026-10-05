@@ -1,4 +1,4 @@
-# 0011: Daily run and storage on AWS
+# 0012: Daily run and storage on AWS
 
 _Status: accepted. Last updated: 2026-10-05._
 
@@ -11,9 +11,9 @@ the portal will show. Decision record: [ADR-0007](../adr/0007-sqlite-on-efs-and-
 ## Scope
 
 In scope: the data file system, the daily `pejip run` and `pejip purge`
-schedules, the digest email, the career profile in SSM, keyless Claude on ECS,
-and an alert when a scheduled task fails. Out of scope: portal screens and API
-routes over the stored data, HTML email, and running more than once a day.
+schedules, the digest email, the career profile in SSM and keyless Claude on
+ECS. Out of scope: alarms on run outcomes (monitoring, design 0011), portal
+screens and API routes over the stored data, HTML email, and running more than once a day.
 
 ## Design
 
@@ -37,8 +37,8 @@ sequenceDiagram
 
 - **Infrastructure:** `infra/efs.tf` (file system, mount targets in both public
   subnets, access point, policy), `infra/digest.tf` (topic and email
-  subscription), `infra/schedule.tf` (both schedules), `infra/alarms.tf`
-  (failed-task rule), and the task definition and role in `infra/ecs.tf`.
+  subscription), `infra/schedule.tf` (both schedules), and the task definition and role in
+  `infra/ecs.tf`.
 - **One task definition:** the API service and the scheduled tasks share the
   `pejip-prod` family. The schedules override the command and give the run
   0.5 vCPU and 1 GB. The Deploy workflow keeps the family on the latest image.
@@ -48,9 +48,11 @@ sequenceDiagram
   set), roles are still fetched, stored and emailed, marked unranked with the
   reason, and the digest carries a note saying why. Any other failure (no
   permission, a malformed profile) fails the run.
-- **Exit codes:** the run exits 1 when every source failed (digest status
-  FAILED) or on an unexpected error; either one, or a task that never starts,
-  emails `pejip-alerts`.
+- **Run outcome for monitoring:** every run logs `run_finished` with its
+  `status` (SUCCESS, PARTIAL or FAILED) to `/ecs/pejip-prod`. Monitoring (design
+  0011) turns those log events into metrics in the `PEJIP` namespace and alarms
+  on a FAILED run and on no completed run in 26 hours, which also covers a task
+  that crashed or never started. The run exits 1 when it FAILED.
 
 ## Interfaces
 
@@ -97,8 +99,8 @@ the data file system (root `/pejip`, owner 10001, mode 0700):
   role (ADR-0004).
 - **Privacy:** retention is unchanged (each run and the daily purge delete data
   past 90 days); no backups. The digest email is listed in `docs/SECURITY.md`.
-- **Reliability:** a failed source or analysis is isolated as before; a failed
-  task emails an alert; Scheduler retries a task that fails to launch three
+- **Reliability:** a failed source or analysis is isolated as before; failed
+  and missing runs alarm through monitoring (design 0011); Scheduler retries a task that fails to launch three
   times within an hour.
 - **Cost:** EFS at about $0.30 per GB-month for megabytes of data; a daily run of
   a few minutes at 0.5 vCPU is cents a month; SNS email is free at this volume.

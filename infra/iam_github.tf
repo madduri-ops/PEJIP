@@ -365,13 +365,6 @@ data "aws_iam_policy_document" "plan" {
     actions   = ["ec2:DescribeNetworkInterfaces"]
     resources = ["*"]
   }
-
-  # The failed-task alert rule (alarms.tf).
-  statement {
-    sid       = "ReadTaskFailedRule"
-    actions   = ["events:DescribeRule", "events:ListTagsForResource", "events:ListTargetsByRule"]
-    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/pejip-*"]
-  }
 }
 
 resource "aws_iam_role_policy" "github_plan" {
