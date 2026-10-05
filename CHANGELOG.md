@@ -19,6 +19,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - Job-alert inbox: `alerts@inbox.job-search.zephyr-mcg.com` receives career-site job
   alerts through Amazon SES into an encrypted bucket kept for 90 days.
+- `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts
+  from Google, NVIDIA, Meta, Micron, OpenAI and Microsoft are ranked with the rest,
+  and alert sign-up checks show up in the digest with their confirm link.
 - First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
   configured Greenhouse and Lever company boards, filters them by the search
   taxonomy and geography, analyses each with Claude, scores Fit, Confidence and

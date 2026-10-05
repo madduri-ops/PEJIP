@@ -10,15 +10,17 @@ import httpx
 import pytest
 
 from pejip.ai.client import AIClient
-from pejip.config import SearchConfig, SourceConfig
+from pejip.config import AlertCompany, InboxConfig, SearchConfig, SourceConfig
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile
+from pejip.sources.email_alerts import INBOX_PREFIX, S3Inbox
 from pejip.sources.http import HTTPStatusError, PoliteClient
 from pejip.store import Store
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages, response
+from tests.mail import FakeS3, email
 
 BODY = "<p>Lead technology operations for the company.</p><p>Own portfolio governance.</p>"
 
@@ -90,6 +92,7 @@ def build(
     guard; any other option overrides AI config.
     """
     clock_days = options.pop("clock_days", 0)
+    inbox = options.pop("inbox", None)
     guard = options.pop("guard", None) or CostGuard(SqliteLedger(":memory:"), clock=lambda: NOW)
     cfg = config.model_copy(
         update={
@@ -112,7 +115,7 @@ def build(
         sleep=lambda _s: None,
     )
     client = AIClient(cfg.ai, guard, messages=fake, clock=lambda: when)
-    return Pipeline(cfg, profile, store, client, http, clock=lambda: when)
+    return Pipeline(cfg, profile, store, client, http, clock=lambda: when, inbox=inbox)
 
 
 def test_run_finds_scores_and_explains(
@@ -238,3 +241,93 @@ def test_run_record_reflects_failed_sources(
     assert digest.sources[0].error == "stub returned HTTP 503"
     runs = json.loads(store.export_all())["runs"]
     assert runs[0]["status"] == "FAILED"
+
+
+ALERT = """
+<a href="https://careers.example.com/jobs/1">VP, Technology Operations</a>
+<div>San Francisco, CA</div>
+<p>Lead technology operations for the company.</p>
+<a href="https://careers.example.com/jobs/2">Software Engineer</a><div>Remote</div>
+"""
+CONFIRM = '<a href="https://careers.example.com/confirm?t=1">Confirm your alert</a>'
+
+
+def with_inbox(config: SearchConfig) -> SearchConfig:
+    companies = [AlertCompany(company="Example", link_patterns=["careers.example.com/"])]
+    return config.model_copy(update={"inbox": InboxConfig(companies=companies)})
+
+
+def test_inbox_alerts_are_ranked_and_deleted(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    s3 = FakeS3(
+        {
+            f"{INBOX_PREFIX}a": email(ALERT),
+            f"{INBOX_PREFIX}b": email(CONFIRM, subject="Confirm your alert"),
+        }
+    )
+    fake = FakeMessages()
+    fake.responder = model_responder()
+    pipeline = build(
+        with_inbox(config), profile, store, Boards(()), fake, inbox=S3Inbox(s3, "bucket")
+    )
+    digest = pipeline.run()
+
+    assert digest.status == "SUCCESS"
+    inbox_row = digest.sources[-1]
+    assert (inbox_row.name, inbox_row.fetched, inbox_row.candidates) == (
+        "Job-alert inbox (email)",
+        2,
+        1,
+    )
+    [item] = digest.items
+    assert item.job["title"] == "VP, Technology Operations"
+    assert item.job["source"] == "email_alert"
+    assert item.recommendation is not None
+    assert digest.notes == [
+        "Job-alert inbox: an email from alerts@careers.example.com "
+        '("Confirm your alert") listed no roles. '
+        "To confirm the alert, open: https://careers.example.com/confirm?t=1"
+    ]
+    assert s3.objects == {}
+
+
+def test_inbox_email_with_no_roles_or_links_is_noted(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    s3 = FakeS3({f"{INBOX_PREFIX}a": email("<p>Welcome</p>", subject="")})
+    pipeline = build(
+        with_inbox(config), profile, store, Boards(()), FakeMessages(), inbox=S3Inbox(s3, "b")
+    )
+    digest = pipeline.run()
+
+    assert digest.notes == [
+        'Job-alert inbox: an email from alerts@careers.example.com ("no subject") listed no roles.'
+    ]
+
+
+def test_a_failing_inbox_does_not_stop_the_boards(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    s3 = FakeS3({f"{INBOX_PREFIX}a": email(ALERT)}, fail="get_object")
+    fake = FakeMessages()
+    fake.responder = model_responder()
+    pipeline = build(with_inbox(config), profile, store, Boards(), fake, inbox=S3Inbox(s3, "b"))
+    digest = pipeline.run()
+
+    assert digest.status == "PARTIAL"
+    assert digest.sources[-1].status == "FAILED"
+    assert digest.sources[-1].error == "job-alert inbox read failed: ClientError"
+    assert digest.sources[0].candidates == 2
+    assert f"{INBOX_PREFIX}a" in s3.objects
+
+
+def test_an_inbox_without_configured_companies_is_not_read(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    s3 = FakeS3({f"{INBOX_PREFIX}a": email(ALERT)})
+    cfg = config.model_copy(update={"inbox": None})
+    digest = build(cfg, profile, store, Boards(()), FakeMessages(), inbox=S3Inbox(s3, "b")).run()
+
+    assert digest.sources == []
+    assert s3.calls == []

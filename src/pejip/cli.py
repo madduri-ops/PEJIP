@@ -17,6 +17,7 @@ from pejip.logs import configure_logging
 from pejip.pipeline import Pipeline
 from pejip.profile import load_profile
 from pejip.retention import purge_files
+from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
 from pejip.store import Store
 
@@ -29,9 +30,12 @@ def _cmd_run(settings: Settings) -> int:
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
+    inbox = None
+    if settings.inbox_bucket:
+        inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
     try:
         ai = AIClient(config.ai, CostGuard(ledger))
-        digest = Pipeline(config, profile, store, ai, http).run()
+        digest = Pipeline(config, profile, store, ai, http, inbox=inbox).run()
     finally:
         http.close()
         ledger.close()

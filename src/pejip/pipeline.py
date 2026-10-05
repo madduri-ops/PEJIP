@@ -15,7 +15,7 @@ from typing import Any
 
 from pejip.ai.client import AIClient, AIError
 from pejip.analysis import EvidenceMatching, JobAnalysis, PostingText, analyze_job
-from pejip.config import SearchConfig, SourceConfig
+from pejip.config import AlertCompany, SearchConfig, SourceConfig
 from pejip.cost import BudgetExceededError
 from pejip.digest import Digest, DigestItem, SourceResult
 from pejip.discovery import classify_location, is_candidate
@@ -24,6 +24,7 @@ from pejip.logs import run_id_var
 from pejip.models import Posting
 from pejip.profile import CareerProfile
 from pejip.scoring import JobFacts, score_job
+from pejip.sources.email_alerts import S3Inbox, parse_alert
 from pejip.sources.greenhouse import fetch_greenhouse
 from pejip.sources.http import FetchError, PoliteClient
 from pejip.sources.lever import fetch_lever
@@ -43,6 +44,7 @@ class Pipeline:
     ai: AIClient
     http: PoliteClient
     clock: Callable[[], datetime] = lambda: datetime.now(UTC)
+    inbox: S3Inbox | None = None
     _analysed: int = 0
     _budget_error: str | None = None
 
@@ -86,6 +88,11 @@ class Pipeline:
                 },
             )
 
+        notes: list[str] = []
+        if self.inbox is not None and self.config.inbox is not None:
+            companies = self.config.inbox.companies
+            sources.append(self._read_inbox(self.inbox, companies, now, seen, notes))
+
         items: list[DigestItem] = []
         self._analysed = 0
         self._budget_error = None
@@ -101,7 +108,6 @@ class Pipeline:
             status = "PARTIAL"
         else:
             status = "SUCCESS"
-        notes = []
         if budget_hit:
             notes.append("The monthly AI spend cap was reached; remaining roles are unranked.")
         summary = {
@@ -116,6 +122,42 @@ class Pipeline:
             extra={"status": status, **{k: v for k, v in summary.items() if k != "sources"}},
         )
         return Digest(run_id, now, status, sources, items, notes)
+
+    def _read_inbox(
+        self,
+        inbox: S3Inbox,
+        companies: list[AlertCompany],
+        now: datetime,
+        seen: list[tuple[int, str]],
+        notes: list[str],
+    ) -> SourceResult:
+        """Turn new job-alert emails into roles, then delete them (design doc 0010)."""
+        result = SourceResult("Job-alert inbox (email)", "OK")
+        try:
+            for key in inbox.message_keys():
+                alert = parse_alert(inbox.read(key), companies)
+                result.fetched += len(alert.postings)
+                for posting in alert.postings:
+                    if is_candidate(posting, self.config.taxonomy, self.config.geography):
+                        result.candidates += 1
+                        upsert = self.store.upsert_job(posting, now)
+                        seen.append((upsert.job_id, upsert.discovery))
+                if not alert.postings:
+                    notes.append(_unread_note(alert.sender, alert.subject, alert.confirm_links))
+                inbox.delete(key)
+        except FetchError as exc:
+            result.status, result.error = "FAILED", str(exc)
+            log.warning("source_failed", extra={"source": result.name})
+            return result
+        log.info(
+            "source_fetched",
+            extra={
+                "source": result.name,
+                "fetched": result.fetched,
+                "candidates": result.candidates,
+            },
+        )
+        return result
 
     def _rank(self, job: dict[str, Any], discovery: str, now: datetime) -> DigestItem:
         latest = self.store.latest_analysis(job["id"])
@@ -195,3 +237,12 @@ class Pipeline:
             "priority": rec.priority,
             "detail": detail,
         }
+
+
+def _unread_note(sender: str, subject: str, confirm_links: list[str]) -> str:
+    """A digest line for an inbox email that listed no roles, such as a sign-up check."""
+    note = f"Job-alert inbox: an email from {sender or 'an unknown sender'} "
+    note += f'("{subject or "no subject"}") listed no roles.'
+    if confirm_links:
+        note += " To confirm the alert, open: " + ", ".join(confirm_links)
+    return note

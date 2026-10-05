@@ -9,7 +9,7 @@ flowchart TB
     api[api: GET /healthz]
     cli[cli: pejip run, purge, export, delete-all]
     pipe[pipeline: one search run]
-    src[sources: greenhouse, lever adapters]
+    src[sources: greenhouse, lever adapters, email_alerts]
     http[sources.http: PoliteClient + RateLimiter]
     disc[discovery: title taxonomy + geography]
     store[(store: SQLAlchemy Core)]
@@ -59,8 +59,13 @@ flowchart TB
 
 - **Responsibility:** adapters turn Greenhouse and Lever board payloads into
   `Posting` records. `PoliteClient` is the only HTTP path: per-host rate limit,
-  `robots.txt`, user agent, backoff on 429 and 5xx.
-- **Interfaces:** `fetch_greenhouse(client, source)`, `fetch_lever(client, source)`.
+  `robots.txt`, user agent, backoff on 429 and 5xx. `email_alerts` reads job-alert
+  emails from PEJIP's own S3 inbox (boto3, task role credentials) and turns each
+  link to a configured careers page into a `Posting`; it fetches no web page
+  ([design 0010](../design/0010-job-alert-inbox.md)).
+- **Interfaces:** `fetch_greenhouse(client, source)`, `fetch_lever(client, source)`,
+  `S3Inbox(client, bucket)` with `message_keys`, `read` and `delete`, and
+  `parse_alert(raw, companies) -> AlertMessage`.
 - **Data:** none stored; allowed sources are listed in [docs/sources.md](../sources.md).
 
 ## discovery

@@ -12,6 +12,7 @@ license = "LicenseRef-Proprietary"
 # Runtime dependencies, pinned exactly. Dependabot (pip) keeps them current.
 dependencies = [
     "anthropic==1.11.0",
+    "boto3==1.43.108",
     "cryptography==50.0.2",
     "fastapi==0.142.2",
     "httpx==0.28.1",
@@ -98,6 +99,12 @@ mypy_path = ["src", "."]
 packages = ["pejip", "ci", "tests"]
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
+
+# boto3 and botocore ship no type information; PEJIP reaches S3 only through the
+# typed S3Client protocol in pejip.sources.email_alerts.
+[[tool.mypy.overrides]]
+module = ["boto3", "boto3.*", "botocore", "botocore.*"]
+ignore_missing_imports = true
 
 [tool.bandit]
 exclude_dirs = ["tests"]

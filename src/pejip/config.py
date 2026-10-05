@@ -71,6 +71,21 @@ class ScoringConfig(_Strict):
     strong_match_fit: float
 
 
+class AlertCompany(_Strict):
+    """A company whose job-alert emails PEJIP reads (design doc 0010).
+
+    ``link_patterns`` are ``host/path-prefix`` strings; a link in an alert becomes a
+    role only when it points at one of them (subdomains of the host match too).
+    """
+
+    company: str
+    link_patterns: list[str] = Field(min_length=1)
+
+
+class InboxConfig(_Strict):
+    companies: list[AlertCompany]
+
+
 class SearchConfig(_Strict):
     sources: list[SourceConfig]
     fetch: FetchConfig
@@ -79,6 +94,7 @@ class SearchConfig(_Strict):
     ai: AIConfig
     scoring: ScoringConfig
     retention_days: int = Field(ge=1, le=RETENTION_DAYS)
+    inbox: InboxConfig | None = None
 
 
 def load_config(path: Path) -> SearchConfig:
@@ -96,6 +112,8 @@ class Settings:
     database_url: str
     output_dir: Path
     ai_ledger_path: Path
+    inbox_bucket: str | None = None
+    aws_region: str | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -106,4 +124,7 @@ class Settings:
             database_url=e.get("PEJIP_DATABASE_URL", "sqlite:///pejip.db"),
             output_dir=Path(e.get("PEJIP_OUTPUT_DIR", "output")),
             ai_ledger_path=Path(e.get("PEJIP_AI_LEDGER", "pejip-ai-spend.db")),
+            # The job-alert inbox is read only where a bucket is named (in AWS).
+            inbox_bucket=e.get("PEJIP_INBOX_BUCKET") or None,
+            aws_region=e.get("AWS_REGION") or None,
         )
