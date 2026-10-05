@@ -1,0 +1,39 @@
+id = "G09"
+name = "Transformation role requiring deep clinical domain"
+categories = ["industry_specific", "transformation", "borderline_match"]
+notes = "Spec 9.15 INDUSTRY_GAP: the transformation scope fits, but ten years of clinical informatics is a hard requirement the profile has no evidence for."
+
+[job]
+title = "Vice President, Clinical Systems Transformation"
+company = "Redwood Valley Health System"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 72
+base_min_usd = 300_000
+base_max_usd = 340_000
+description = """
+Redwood Valley Health System, a twelve-hospital network, seeks a Vice President of
+Clinical Systems Transformation reporting to the Chief Medical Information Officer.
+You will lead the multi-year transformation of clinical systems, including the Epic
+electronic health record consolidation, across all hospitals, with a 90-person
+organization and an $80M program budget.
+
+Required: 10+ years of clinical informatics leadership in a hospital or health
+system, deep Epic implementation experience, and working knowledge of clinical
+workflows and regulatory reporting (CMS, Joint Commission).
+
+Hybrid in Sacramento and Walnut Creek. Base $300,000 to $340,000.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Technology Transformation"
+inferred_level = "VP_EQUIVALENT"
+fit = [40, 65]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["MEDIUM", "LOW"]
+positive_reasons = ["STRONG_TRANSFORMATION_MATCH"]
+concerns = ["INDUSTRY_GAP"]

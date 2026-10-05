@@ -1,0 +1,44 @@
+id = "G02"
+name = "Head of Technology Operations, strong fit, no network"
+categories = ["strong_fit_no_network", "technology_operations", "excellent_match"]
+notes = "Spec 9.28 Example B. Same strength of fit as G01 with zero connections: Fit must not drop, priority lands one step lower."
+invariance_probe = true
+
+[job]
+title = "Head of Technology Operations"
+company = "Orchard Peak Software"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 6
+base_min_usd = 300_000
+base_max_usd = 350_000
+travel_percent = 10
+description = """
+Orchard Peak Software is hiring a Head of Technology Operations, reporting to the
+CTO, to run the operating backbone of a 900-person engineering organization.
+
+You will own incident management, release governance, change management, vendor
+management and engineering budget planning ($60M annual spend). You will lead a
+150-person organization through five directors, set operating metrics reviewed by
+the executive leadership team, and run quarterly business reviews with the CTO and
+CFO.
+
+We are looking for an operations leader who has run technology operations at
+enterprise scale, built teams of managers, and partnered with executive
+stakeholders across engineering, finance and product.
+
+Fully remote within the United States. Base salary $300,000 to $350,000 plus equity.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Technology Operations"
+inferred_level = "VP_EQUIVALENT"
+fit = [85, 100]
+confidence = ["HIGH"]
+priority = ["HIGH"]
+positive_reasons = ["OPERATIONS_LEADERSHIP_MATCH", "EXECUTIVE_SCOPE_MATCH"]
+concerns = []

@@ -1,0 +1,87 @@
+# Synthetic career profile used only by the golden evaluation set.
+#
+# This is NOT Babu's profile. It is an invented executive whose shape follows the
+# target described in docs/spec/FIND-build-specification.md (sections 3, 4 and 8):
+# a technology operations / transformation / portfolio leader looking for VP,
+# Head-of and Senior Director roles in the Bay Area or U.S. remote. Every company
+# and number below is fictional. Policy section 10 forbids real personal data in
+# test fixtures.
+
+profile_version = "synthetic-1"
+headline = "Technology operations and enterprise transformation executive"
+target_levels = ["EXECUTIVE", "VP_EQUIVALENT", "SENIOR_DIRECTOR_EQUIVALENT"]
+
+target_role_families = [
+  "Technology Operations",
+  "Product Operations",
+  "Engineering Operations",
+  "Enterprise Transformation",
+  "Technology Transformation",
+  "Transformation Management Office / Value Management Office",
+  "Technical Program Management",
+  "Program / Portfolio Leadership",
+  "Platform Operations",
+  "Developer Platforms / Developer Productivity",
+  "Cloud / Enterprise Technology",
+  "AI / ML Transformation and Operations",
+  "AI Governance / Enablement",
+]
+
+# Career direction (spec 8.7, 9.11): what the person wants to do next, separate
+# from what they have done.
+wants_next = [
+  "enterprise-wide technology or AI transformation",
+  "technology and product operations at executive scope",
+  "portfolio and strategic program leadership",
+  "platform and developer productivity organizations",
+]
+moving_away_from = [
+  "hands-on security operations management",
+  "single-team delivery management",
+  "quota-carrying or revenue-owning sales roles",
+]
+
+[experience]
+years_leadership = 18
+largest_org_people = 320
+manager_of_managers = true
+largest_budget_usd = 140_000_000
+largest_portfolio_programs = 60
+executive_exposure = ["CIO", "CTO", "COO", "board audit committee"]
+industries = ["enterprise software", "cloud infrastructure", "fintech"]
+
+[[achievements]]
+id = "ACH-1"
+text = "Led a three-year enterprise technology transformation across 14 business units at a fictional cloud software company (Altair Cloud), consolidating 9 delivery organizations."
+
+[[achievements]]
+id = "ACH-2"
+text = "Built and ran a Transformation Management Office tracking a 60-program, $140M portfolio with quarterly value reporting to the executive team."
+
+[[achievements]]
+id = "ACH-3"
+text = "Owned technology operations (incident management, release governance, vendor management) for a 320-person engineering organization."
+
+[[achievements]]
+id = "ACH-4"
+text = "Launched an internal developer platform that cut median lead time for changes from 9 days to 2 days for 1,100 engineers."
+
+[[achievements]]
+id = "ACH-5"
+text = "Stood up an AI enablement program: model risk review, usage policy and 25 production use cases across finance and support."
+
+[[achievements]]
+id = "ACH-6"
+text = "Earlier career: managed a security operations center and compliance program (SOC 2, ISO 27001) for six years."
+
+[search_preferences]
+geographies = ["San Francisco Bay Area", "United States (remote)"]
+allowed_work_models = ["REMOTE", "HYBRID", "ONSITE"]
+preferred_work_models = ["REMOTE", "HYBRID"]
+relocation_allowed = false
+max_travel_percent_preferred = 25
+min_base_usd = 250_000
+preferred_base_usd = 300_000
+
+# Only explicit hard filters may exclude a role (spec 8.10, 9.14).
+hard_filters = ["US_BASED_EMPLOYMENT_ONLY", "NO_RELOCATION"]

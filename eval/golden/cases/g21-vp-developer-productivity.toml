@@ -1,0 +1,40 @@
+id = "G21"
+name = "VP Developer Productivity, fresh, with connections"
+categories = ["platform_devprod", "excellent_match"]
+notes = "Matches ACH-4 at larger scope, posted three hours ago with two connections."
+
+[job]
+title = "Vice President, Developer Productivity"
+company = "Polaris Commerce Cloud"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 3
+base_min_usd = 320_000
+base_max_usd = 370_000
+description = """
+Polaris Commerce Cloud is hiring a Vice President of Developer Productivity
+reporting to the CTO. You will lead the internal developer platform, build and CI
+systems, developer experience and engineering metrics for 2,000 engineers.
+
+You will lead a 200-person organization through seven directors, own a $70M budget
+and set the multi-year platform strategy with the executive team.
+
+You have led developer platform or engineering productivity organizations at
+enterprise scale, managed managers, and delivered measurable gains in delivery
+speed and reliability.
+
+Hybrid in Sunnyvale. Base $320,000 to $370,000 plus equity.
+"""
+
+[context]
+connections = 2
+strong_relationships = 1
+
+[expected]
+role_family = "Developer Platforms / Developer Productivity"
+inferred_level = "VP_EQUIVALENT"
+fit = [85, 100]
+confidence = ["HIGH"]
+priority = ["IMMEDIATE", "HIGH"]
+positive_reasons = ["STRONG_PLATFORM_MATCH", "EXECUTIVE_SCOPE_MATCH"]
+concerns = []

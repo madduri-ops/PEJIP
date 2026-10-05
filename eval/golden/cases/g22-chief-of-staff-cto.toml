@@ -1,0 +1,37 @@
+id = "G22"
+name = "Chief of Staff to the CTO"
+categories = ["borderline_match", "misleading_title"]
+notes = "Senior exposure and some operating cadence work, but no organization or budget of its own. Plausible stepping-stone, not a target role."
+
+[job]
+title = "Chief of Staff to the CTO"
+company = "Elmstone AI"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 36
+base_min_usd = 240_000
+base_max_usd = 280_000
+description = """
+Elmstone AI is hiring a Chief of Staff to the CTO. You will run the CTO's operating
+cadence, prepare executive and board materials, drive cross-functional initiatives
+on the CTO's behalf, and manage the engineering offsite and planning calendar.
+
+This role has one direct report (an executive business partner) and no budget
+ownership. You have worked closely with senior executives and can drive initiatives
+through influence.
+
+Hybrid in San Francisco. Base $240,000 to $280,000.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Strategic Programs"
+inferred_level = "DIRECTOR_EQUIVALENT"
+fit = [40, 68]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["MEDIUM", "LOW"]
+positive_reasons = []
+concerns = ["SCOPE_CONCERN"]

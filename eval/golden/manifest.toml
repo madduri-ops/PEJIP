@@ -1,0 +1,78 @@
+# Golden Evaluation Set manifest (spec 9.42, 17.31-17.34, policy section 12).
+# Bump golden_set_version whenever a case, a label or the profile changes, and
+# note why in eval/README.md's changelog.
+
+golden_set_version = "1.0.0"
+profile = "profile.toml"
+cases_dir = "cases"
+labelled_by = "Claude (synthetic draft), pending Babu's review"
+labelled_on = "2026-10-05"
+
+# Controlled vocabularies. The loader rejects anything outside these lists so a
+# typo in a label cannot silently pass or fail a case.
+confidence_levels = ["HIGH", "MEDIUM", "LOW"]
+priority_levels = ["IMMEDIATE", "HIGH", "MEDIUM", "LOW", "EXCLUDED"]
+inferred_levels = [
+  "EXECUTIVE",
+  "VP_EQUIVALENT",
+  "SENIOR_DIRECTOR_EQUIVALENT",
+  "DIRECTOR_EQUIVALENT",
+  "INDIVIDUAL_CONTRIBUTOR",
+  "UNKNOWN",
+]
+work_models = ["REMOTE", "HYBRID", "ONSITE", "UNKNOWN"]
+
+# Spec 9.42 and 17.31 categories. Every category must be covered by at least one case.
+categories = [
+  "excellent_match",
+  "good_match",
+  "borderline_match",
+  "poor_match",
+  "misleading_title",
+  "strong_title_weak_scope",
+  "weak_title_strong_scope",
+  "too_junior",
+  "hands_on",
+  "sales_heavy",
+  "industry_specific",
+  "high_network_low_fit",
+  "strong_fit_no_network",
+  "ambiguous",
+  "transformation",
+  "product_operations",
+  "technology_operations",
+  "tpm_portfolio",
+  "platform_devprod",
+  "ai_transformation",
+  "security_adjacent",
+  "career_direction_conflict",
+  "hard_filter",
+  "missing_information",
+]
+
+# Spec 9.30 reason codes plus the concern codes the gap analysis (9.13, 9.15) needs.
+positive_reasons = [
+  "STRONG_TRANSFORMATION_MATCH",
+  "STRONG_PLATFORM_MATCH",
+  "EXECUTIVE_SCOPE_MATCH",
+  "PORTFOLIO_LEADERSHIP_MATCH",
+  "AI_TRANSFORMATION_MATCH",
+  "OPERATIONS_LEADERSHIP_MATCH",
+  "CAREER_DIRECTION_MATCH",
+  "FRESH_POSTING",
+  "STRONG_NETWORK",
+  "RELEVANT_CONNECTION",
+]
+concerns = [
+  "INDUSTRY_GAP",
+  "TECHNICAL_DEPTH_GAP",
+  "SCOPE_CONCERN",
+  "COMPENSATION_CONCERN",
+  "LOCATION_CONCERN",
+  "TRAVEL_CONCERN",
+  "QUOTA_CARRYING",
+  "HANDS_ON_CONCERN",
+  "CAREER_DIRECTION_CONCERN",
+  "MISSING_INFORMATION",
+  "HARD_FILTER_TRIGGERED",
+]

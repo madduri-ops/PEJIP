@@ -1,0 +1,174 @@
+from __future__ import annotations
+
+import json
+import runpy
+import sys
+import types
+from pathlib import Path
+
+import pytest
+
+from pejip_eval import cli
+from pejip_eval.baseline import DEFAULT_BASELINE, Regression, read_baseline
+from pejip_eval.evaluate import METRICS
+from pejip_eval.golden import load_golden_set
+from pejip_eval.scorer import EvalInput, Prediction, ScorerLoadError, load_scorer
+
+from .conftest import oracle_for
+
+
+@pytest.fixture
+def scorers(monkeypatch: pytest.MonkeyPatch) -> str:
+    golden = load_golden_set()
+    module = types.ModuleType("fake_scorers")
+    module.oracle = oracle_for(golden)  # type: ignore[attr-defined]
+    module.bad = lambda item: Prediction(fit=50, confidence="LOW", priority="LOW")  # type: ignore[attr-defined]
+    module.not_callable = 3  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fake_scorers", module)
+    return "fake_scorers"
+
+
+@pytest.fixture
+def baseline(tmp_path: Path) -> Path:
+    path = tmp_path / "baseline.json"
+    path.write_text(DEFAULT_BASELINE.read_text(encoding="utf-8"), encoding="utf-8")
+    return path
+
+
+def test_committed_baseline_is_valid() -> None:
+    data = read_baseline(DEFAULT_BASELINE)
+    # Spec invariants start at their ceiling: network never moves Fit, every
+    # explanation cites the posting.
+    assert data["metrics"]["network_invariance"] == 1.0
+    assert data["metrics"]["citation_validity"] == 1.0
+
+
+def test_read_baseline_rejects_wrong_metrics(tmp_path: Path) -> None:
+    path = tmp_path / "b.json"
+    path.write_text(json.dumps({"metrics": {"fit_in_range": 1}}), encoding="utf-8")
+    with pytest.raises(ValueError, match="must list exactly"):
+        read_baseline(path)
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "no_colon",
+        ":attr",
+        "mod:",
+        "does.not.exist:x",
+        "fake_scorers:not_callable",
+        "fake_scorers:missing",
+    ],
+)
+def test_load_scorer_errors(scorers: str, spec: str) -> None:
+    with pytest.raises(ScorerLoadError):
+        load_scorer(spec)
+
+
+def test_load_scorer_ok(scorers: str) -> None:
+    scorer = load_scorer("fake_scorers:oracle")
+    golden = load_golden_set()
+    case = golden.cases[0]
+    assert scorer(EvalInput(case.id, case.job, case.context, golden.profile)).fit > 0
+
+
+def test_validate(capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["validate"]) == 0
+    assert "cases OK" in capsys.readouterr().out
+
+
+def test_invalid_golden_set(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["--golden", str(tmp_path), "validate"]) == 2
+    assert "manifest.toml: file not found" in capsys.readouterr().err
+
+
+def test_run_passes_and_writes_report(
+    scorers: str, baseline: Path, tmp_path: Path
+) -> None:
+    report = tmp_path / "report.json"
+    code = cli.main(
+        [
+            "run",
+            "--scorer",
+            "fake_scorers:oracle",
+            "--baseline",
+            str(baseline),
+            "--report",
+            str(report),
+        ]
+    )
+    assert code == 0
+    assert json.loads(report.read_text())["metrics"]["fit_in_range"] == 1.0
+
+
+def test_run_fails_below_baseline(
+    scorers: str, baseline: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert (
+        cli.main(["run", "--scorer", "fake_scorers:bad", "--baseline", str(baseline)])
+        == 1
+    )
+    captured = capsys.readouterr()
+    assert (
+        "REGRESSION citation_validity: 0.0000 is below the baseline 1.0000"
+        in captured.err
+    )
+    assert "G01:" in captured.out
+
+
+def test_run_bad_scorer_or_baseline(
+    scorers: str, baseline: Path, tmp_path: Path
+) -> None:
+    assert cli.main(["run", "--scorer", "nope", "--baseline", str(baseline)]) == 2
+    assert (
+        cli.main(
+            [
+                "run",
+                "--scorer",
+                "fake_scorers:oracle",
+                "--baseline",
+                str(tmp_path / "missing.json"),
+            ]
+        )
+        == 2
+    )
+
+
+def test_ratchet_only_raises(
+    scorers: str, baseline: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert (
+        cli.main(
+            ["ratchet", "--scorer", "fake_scorers:oracle", "--baseline", str(baseline)]
+        )
+        == 0
+    )
+    raised = read_baseline(baseline)
+    assert raised["scorer"] == "fake_scorers:oracle"
+    assert all(raised["metrics"][name] == 1.0 for name in METRICS)
+    assert "baseline raised" in capsys.readouterr().out
+
+    # A worse scorer never lowers it.
+    assert (
+        cli.main(
+            ["ratchet", "--scorer", "fake_scorers:bad", "--baseline", str(baseline)]
+        )
+        == 0
+    )
+    assert read_baseline(baseline)["metrics"] == raised["metrics"]
+    assert "baseline unchanged" in capsys.readouterr().out
+
+
+def test_regression_str() -> None:
+    assert (
+        str(Regression("fit_in_range", 0.5, 0.25))
+        == "fit_in_range: 0.2500 is below the baseline 0.5000"
+    )
+
+
+def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["pejip_eval", "validate"])
+    with pytest.raises(SystemExit) as info:
+        runpy.run_module("pejip_eval", run_name="__main__")
+    assert info.value.code == 0

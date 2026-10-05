@@ -10,3 +10,7 @@ updates:
     directory: /infra
     schedule:
       interval: weekly
+  - package-ecosystem: pip
+    directory: /eval
+    schedule:
+      interval: weekly

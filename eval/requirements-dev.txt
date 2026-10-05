@@ -1,0 +1,6 @@
+# Pinned tools for the golden evaluation harness (src/pejip_eval). The harness itself
+# uses only the standard library. Dependabot keeps these current.
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.10
+pip-audit==2.9.0

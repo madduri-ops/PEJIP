@@ -1,0 +1,15 @@
+{
+  "golden_set_version": "1.0.0",
+  "scorer": null,
+  "metrics": {
+    "scored_rate": 0.0,
+    "fit_in_range": 0.0,
+    "confidence_match": 0.0,
+    "priority_match": 0.0,
+    "positive_reason_recall": 0.0,
+    "concern_recall": 0.0,
+    "pairwise_order": 0.0,
+    "citation_validity": 1.0,
+    "network_invariance": 1.0
+  }
+}

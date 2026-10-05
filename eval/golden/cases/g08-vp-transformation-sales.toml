@@ -1,0 +1,37 @@
+id = "G08"
+name = "Transformation title on a quota-carrying sales role"
+categories = ["sales_heavy", "misleading_title", "poor_match"]
+notes = "Spec 3.7 and 9.13: quota, pipeline and commission. The keyword 'transformation' must not pull this up."
+
+[job]
+title = "VP, Digital Transformation Solutions"
+company = "Quarry Point Consulting"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 4
+base_min_usd = 220_000
+base_max_usd = 250_000
+travel_percent = 40
+description = """
+Quarry Point Consulting is hiring a VP of Digital Transformation Solutions to grow
+our West Coast enterprise accounts. You will carry a $25M annual sales quota, own
+the sales pipeline from prospecting to close, and lead a team of four account
+executives.
+
+Compensation is $220,000 to $250,000 base with uncapped commission. You have a
+record of exceeding quota selling transformation services to Fortune 500 buyers.
+Travel up to 40% to client sites.
+"""
+
+[context]
+connections = 3
+strong_relationships = 1
+
+[expected]
+role_family = "Digital Transformation"
+inferred_level = "DIRECTOR_EQUIVALENT"
+fit = [5, 35]
+confidence = ["HIGH"]
+priority = ["LOW"]
+positive_reasons = []
+concerns = ["QUOTA_CARRYING", "CAREER_DIRECTION_CONCERN"]
