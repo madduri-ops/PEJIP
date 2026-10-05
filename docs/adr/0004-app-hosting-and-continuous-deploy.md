@@ -37,7 +37,9 @@ DNS for `zephyr-mcg.com` is at Babu's registrar, not Route 53.
   the image, so the service ignores `task_definition` and `desired_count` drift
   and Terraform creates it at zero tasks.
 - **Image:** one `Dockerfile` builds the wheel and installs only it on a
-  digest-pinned `python:3.12-slim`. The default command serves the API
+  digest-pinned `python:3.12-alpine`, with pip removed. Alpine was chosen over
+  Debian slim because slim carried 56 high-severity OS package findings (util-linux,
+  gcc runtime, pcre2, acl) that the image scan blocks on. The default command serves the API
   (`python -m pejip.api`); batch commands run from the same image with a command
   override.
 - **Deploy:** `.github/workflows/deploy.yml`. Every pull request that can change

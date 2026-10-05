@@ -4,8 +4,10 @@
 # The default command serves the API. Batch commands run as one-off tasks from
 # the same image with a command override, for example `pejip purge`.
 
-# Base image pinned by digest; Dependabot (docker) keeps it current.
-FROM python:3.12-slim@sha256:02108f5d322dd89f1c9e552442c25acb0543dfdbc455693a5599624f20d9155d AS build
+# Base image pinned by digest; Dependabot (docker) keeps it current. Alpine,
+# because the Debian slim image carries dozens of high-severity OS package
+# findings (util-linux, gcc runtime, pcre2, acl) that the image scan blocks on.
+FROM python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4 AS build
 
 WORKDIR /src
 RUN pip install --no-cache-dir build==1.6.1
@@ -14,7 +16,7 @@ COPY src ./src
 RUN python -m build --wheel --outdir /dist
 
 
-FROM python:3.12-slim@sha256:02108f5d322dd89f1c9e552442c25acb0543dfdbc455693a5599624f20d9155d
+FROM python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -22,9 +24,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PEJIP_PORT=8000
 
 # Only the built wheel is installed: no tests, CI scripts or dev tools ship.
+# pip is removed afterwards; nothing installs packages at runtime.
 RUN --mount=type=bind,from=build,source=/dist,target=/dist \
     pip install --no-cache-dir /dist/*.whl \
-    && useradd --system --uid 10001 --no-create-home --shell /usr/sbin/nologin pejip
+    && pip uninstall --yes pip \
+    && adduser -S -D -H -u 10001 -s /sbin/nologin pejip
 
 USER 10001
 EXPOSE 8000
