@@ -1,4 +1,4 @@
-"""Command line entry point: ``pejip run|purge|export|delete-all``."""
+"""Command line entry point: ``pejip run|digest|purge|export|delete-all``."""
 
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from pejip.ai.client import AIClient
-from pejip.config import Settings, load_config
+from pejip.config import SearchConfig, Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.delivery import make_sns_client, send_digest
-from pejip.digest import render
+from pejip.digest import Digest, render
 from pejip.logs import configure_logging
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile, load_profile, load_profile_parameter, make_ssm_client
@@ -32,6 +32,9 @@ def _load_profile(settings: Settings) -> CareerProfile | None:
     return load_profile(settings.profile_path)
 
 
+ROUTINE_PENDING = "the ranking routine has not analysed it yet"
+
+
 def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
     """Why roles can't be ranked, naming every missing piece at once."""
     missing = []
@@ -39,9 +42,19 @@ def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
         missing.append(
             f"no career profile is stored yet (SSM parameter {settings.profile_parameter})"
         )
-    if not settings.ai_enabled:
+    if settings.ranker == "routine":
+        if profile is not None:
+            missing.append(ROUTINE_PENDING)
+    elif not settings.ai_enabled:
         missing.append("Claude access is not set up for this workload yet")
     return " and ".join(missing) or "ranking is not set up"
+
+
+def _ai_client(settings: Settings, config: SearchConfig, ledger: SqliteLedger) -> AIClient | None:
+    # The routine does the model step itself, so the run never calls the API then.
+    if settings.ranker == "routine" or not settings.ai_enabled:
+        return None
+    return AIClient(config.ai, CostGuard(ledger))
 
 
 def _cmd_run(settings: Settings) -> int:
@@ -54,19 +67,64 @@ def _cmd_run(settings: Settings) -> int:
     if settings.inbox_bucket:
         inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
     try:
-        ai = AIClient(config.ai, CostGuard(ledger)) if settings.ai_enabled else None
         digest = Pipeline(
             config,
             profile,
             store,
-            ai,
+            _ai_client(settings, config, ledger),
             http,
             inbox=inbox,
             unranked_reason=_unranked_reason(settings, profile),
+            routine=settings.ranker == "routine",
         ).run()
     finally:
         http.close()
         ledger.close()
+    if settings.ranker == "routine":
+        # `pejip digest` emails it once the routine has analysed the new roles.
+        log.info("digest_deferred", extra={"status": digest.status})
+        _purge_output(settings, config.retention_days)
+    else:
+        _deliver(settings, config, digest)
+    return 1 if digest.status == "FAILED" else 0
+
+
+def _cmd_digest(settings: Settings) -> int:
+    """Score the latest run's roles with the analyses stored since, and email the digest."""
+    config = load_config(settings.config_path)
+    store = Store(settings.database_url)
+    run = store.latest_run()
+    if run is None:
+        log.error("digest_without_run")
+        return 1
+    profile = _load_profile(settings)
+    pipeline = Pipeline(
+        config,
+        profile,
+        store,
+        None,
+        PoliteClient(config.fetch),
+        unranked_reason=_unranked_reason(settings, profile),
+        routine=settings.ranker == "routine",
+    )
+    try:
+        digest = pipeline.digest_from(run)
+    finally:
+        pipeline.http.close()
+    waiting = any(item.recommendation is None for item in digest.items)
+    if profile is not None and waiting and not store.analyses_since(run["started_at"], "routine"):
+        # The pejip-app-errors alarm emails Babu about this ERROR line.
+        log.error("routine_results_missing", extra={"run_id": run["id"]})
+        digest.notes.append(
+            "The ranking routine did not report after this morning's search, so new and "
+            "changed roles are unranked. They will be offered to it again tomorrow."
+        )
+    _deliver(settings, config, digest)
+    return 1 if digest.status == "FAILED" else 0
+
+
+def _deliver(settings: Settings, config: SearchConfig, digest: Digest) -> None:
+    """Write the digest, email it when a topic is set, and purge old digests."""
     settings.output_dir.mkdir(parents=True, exist_ok=True)
     path = settings.output_dir / f"digest-{digest.generated_at:%Y%m%d-%H%M%S}.md"
     text = render(digest, config.scoring.strong_match_fit)
@@ -80,7 +138,6 @@ def _cmd_run(settings: Settings) -> int:
     finally:
         # Retention holds even when the email fails (policy section 10).
         _purge_output(settings, config.retention_days)
-    return 1 if digest.status == "FAILED" else 0
 
 
 def _cmd_purge(settings: Settings) -> int:
@@ -116,6 +173,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="pejip", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("run", help="run one search and write the digest")
+    sub.add_parser("digest", help="email the latest run's digest, ranked again")
     sub.add_parser("purge", help="delete data past the retention window")
     export = sub.add_parser("export", help="export all stored data as JSON")
     export.add_argument("out", type=Path)
@@ -136,6 +194,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             # never logs run_finished, so say so before the traceback.
             log.exception("run_crashed")
             raise
+    if args.command == "digest":
+        return _cmd_digest(settings)
     if args.command == "purge":
         return _cmd_purge(settings)
     if args.command == "export":

@@ -13,6 +13,7 @@ import pytest
 from pejip import cli
 from pejip.config import Settings
 from pejip.digest import Digest
+from pejip.models import Posting
 from pejip.store import Store
 from tests.conftest import NOW, ROOT
 from tests.unit.test_delivery import FakeSns
@@ -250,3 +251,93 @@ def test_a_failed_digest_email_still_purges_old_digests(
     with pytest.raises(SendFailedError):
         cli.main(["run"])
     assert not old.exists()
+
+
+@pytest.mark.usefixtures("env")
+def test_with_the_routine_the_run_defers_the_email(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    RecordingPipeline.built.clear()
+    sns = FakeSns()
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_sns_client", lambda _r: sns)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["run"]) == 0
+    args, kwargs = RecordingPipeline.built[-1]
+    assert args[3] is None  # the routine does the model step, not the API
+    assert kwargs["routine"] is True
+    assert kwargs["unranked_reason"] == cli.ROUTINE_PENDING
+    assert sns.calls == []
+    assert "digest_deferred" in [r.getMessage() for r in caplog.records]
+
+
+def test_routine_reason_without_a_profile() -> None:
+    settings = Settings.from_env({"PEJIP_RANKER": "routine", "PEJIP_PROFILE_PARAMETER": "/p"})
+    assert cli._unranked_reason(settings, None) == (
+        "no career profile is stored yet (SSM parameter /p)"
+    )
+
+
+@pytest.mark.usefixtures("env")
+def test_digest_needs_a_finished_run(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    with caplog.at_level("ERROR", logger="pejip"):
+        assert cli.main(["digest"]) == 1
+    assert "digest_without_run" in [r.getMessage() for r in caplog.records]
+
+
+def _finished_run(env: Path, seen: list[list[Any]]) -> Store:
+    store = Store(f"sqlite:///{env / 'cli.db'}")
+    store.start_run("r1", NOW)
+    summary = {"sources": [{"name": "A", "status": "OK"}], "seen": seen, "notes": ["n"]}
+    store.finish_run("r1", "PARTIAL", summary, NOW)
+    return store
+
+
+def test_digest_emails_the_latest_run_ranked_again(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _finished_run(env, [])
+    sns = FakeSns()
+    monkeypatch.setattr(cli, "make_sns_client", lambda _r: sns)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    [call] = sns.calls
+    assert "finished **SUCCESS**" in call["Message"]
+    assert "routine_results_missing" not in [r.getMessage() for r in caplog.records]
+    assert len(list((env / "out").glob("digest-*.md"))) == 1
+
+
+def test_digest_says_when_the_routine_did_not_report(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = _finished_run(env, [])
+    posting = Posting(
+        source="greenhouse",
+        source_job_id="1",
+        company="Example Co",
+        title="VP Technology Operations",
+        location="Remote",
+        description="Lead technology operations.",
+        url="https://example.test/1",
+    )
+    job_id = store.upsert_job(posting, NOW).job_id
+    store.finish_run(
+        "r1", "PARTIAL", {"sources": [], "seen": [[job_id, "NEW_POSTING"]], "notes": []}, NOW
+    )
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    missing = [r for r in caplog.records if r.getMessage() == "routine_results_missing"]
+    assert missing[0].levelname == "ERROR"
+    [written] = (env / "out").glob("digest-*.md")
+    assert "The ranking routine did not report" in written.read_text()
