@@ -140,7 +140,7 @@ monthly cost, policy section 13).
   ledger file holds no response text.
 - **Cost of the guard:** six alarms ($0.60/month) and a handful of custom metrics
   (about $0.30 each per month), inside the $50 AWS budget.
-- Tests: `tests/cost/`, 100% line and branch coverage.
+- Tests: `tests/unit/test_cost_*.py` and `tests/integration/test_cost_ledger.py`, 100% line and branch coverage.
 
 ## Alternatives considered
 
