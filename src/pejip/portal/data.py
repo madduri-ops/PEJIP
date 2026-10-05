@@ -38,11 +38,16 @@ class Point:
 
 @dataclass(frozen=True)
 class Connection:
-    """Someone Babu knows at the hiring company. ``strength`` may be UNKNOWN."""
+    """Someone Babu knows at the hiring company. ``strength`` may be UNKNOWN.
+
+    ``status`` is how they compare with this role (``pejip.network.matching``):
+    MATURED, NOT_MATURED or YOUR_CALL; None when not judged.
+    """
 
     name: str
     role: str
     strength: str
+    status: str | None = None
 
 
 @dataclass(frozen=True)
@@ -160,6 +165,43 @@ class Company:
     low_reason: str | None = None
 
 
+@dataclass(frozen=True)
+class Person:
+    """One connection from the last LinkedIn import, as imported (spec 8.20).
+
+    ``matched_company`` is the tracked company the employer resolved to, or None
+    when it is unmatched or waiting for Babu's decision.
+    """
+
+    name: str
+    position: str
+    employer: str
+    matched_company: str | None
+    connected_on: datetime | None
+    strength: str = "UNKNOWN"
+
+
+@dataclass(frozen=True)
+class UnresolvedEmployer:
+    """An employer name PEJIP would not link to a company without Babu's decision."""
+
+    name: str
+    connections: int
+    note: str
+
+
+@dataclass(frozen=True)
+class Network:
+    """The last LinkedIn connections import: a snapshot, not a live sync."""
+
+    imported_at: datetime
+    total: int
+    companies_represented: int
+    at_targets: int
+    people: tuple[Person, ...] = ()
+    unresolved: tuple[UnresolvedEmployer, ...] = ()
+
+
 class PortalData(Protocol):
     """Read-only source of everything the portal shows."""
 
@@ -178,3 +220,6 @@ class PortalData(Protocol):
 
     def companies(self) -> list[Company]:
         """Target companies and companies discovered in searches, in any order."""
+
+    def network(self) -> Network | None:
+        """The last LinkedIn connections import, or None before the first one."""

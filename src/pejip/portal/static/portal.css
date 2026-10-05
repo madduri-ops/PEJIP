@@ -138,9 +138,6 @@ details.ev[open] summary .more{color:#4A5466}
 .track rect.bg{fill:#E8EBF0}.track rect.v{fill:#0E5A64}.track rect.v.lo{fill:#9A4A00}
 .cites{display:flex;flex-direction:column;gap:6px;padding:0 0 14px 26px;font-size:14px}
 .nav span.nl{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;font-weight:500}
-.nav .nl.off{color:#7D879A;cursor:default}
-.nav .nl.off:hover{background:none;color:#7D879A}
-.nav .soon{margin-left:auto;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
 .empty{background:#fff;border:1px dashed #C5CBD5;border-radius:12px;padding:20px 22px;color:#4A5466}
 .filters .go{display:flex;gap:8px}
 .big .fitl{margin-top:6px}

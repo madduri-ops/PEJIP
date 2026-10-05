@@ -7,7 +7,7 @@ batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is
 ```mermaid
 flowchart TB
     api[api: GET /healthz]
-    portal[portal: Home, Opportunities, detail, Companies, Watchlist, Search Health, Settings pages]
+    portal[portal: Home, Opportunities, detail, Companies, Watchlist, Connections, Search Health, Settings pages]
     rapi[ranking_api: /api/ranking/queue, /analyses]
     api --> portal
     api --> rapi
@@ -210,11 +210,11 @@ flowchart TB
 ## Portal (`pejip.portal`)
 
 - **Responsibility:** server-rendered Home, Opportunities, Opportunity detail,
-  Companies, Watchlist, Search Health and Settings pages built from the portal mocks; ranking, saved views, filters and Pacific time
+  Companies, Watchlist, Connections, Search Health and Settings pages built from the portal mocks; ranking, saved views, filters and Pacific time
   display.
 - **Interfaces:** `portal.router(data, clock, config)` mounted by `create_app`, which passes the
   search configuration from `PEJIP_CONFIG` for Settings; reads a
-  `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`). Pages get their own
+  `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`, `network()`). Pages get their own
   content security policy (`PAGE_CSP`), with no script.
 - **Data:** none stored. `SampleData` (synthetic) until a store-backed reader lands.
 - **Design doc:** [0013: Web portal](../design/0013-web-portal.md).

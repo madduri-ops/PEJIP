@@ -18,7 +18,9 @@ from pejip.portal.data import (
     Citation,
     Company,
     HistoryEvent,
+    Network,
     Opportunity,
+    Person,
     Point,
     SearchRun,
     Signal,
@@ -34,12 +36,14 @@ from pejip.portal.views import (
     PRIORITY_CHOICES,
     SCOPE_CHOICES,
     SHOWN_BANDS,
+    UNMATCHED,
     VIEWS,
     WORK_MODEL_CHOICES,
     CompanyListing,
     CompanyRow,
     Filters,
     Listing,
+    PeopleFilters,
     Watchlist,
     age,
     latest_signal,
@@ -90,7 +94,7 @@ NAV = (
     ("opportunities", "Opportunities", "/opportunities"),
     ("companies", "Companies", "/companies"),
     ("watchlist", "Watchlist", "/watchlist"),
-    ("connections", "Connections", None),
+    ("connections", "Connections", "/connections"),
     ("search-health", "Search Health", "/search-health"),
     ("settings", "Settings", "/settings"),
 )
@@ -112,9 +116,7 @@ def opportunity_url(o: Opportunity) -> str:
 
 # ── Page frame ───────────────────────────────────────────────────────────────
 def _nav(active: str, attention: int) -> str:
-    def link(key: str, label: str, href: str | None) -> str:
-        if href is None:
-            return f'<span class="nl off">{label}<span class="soon">Soon</span></span>'
+    def link(key: str, label: str, href: str) -> str:
         on = " on" if key == active else ""
         current = ' aria-current="page"' if key == active else ""
         count = attention if key == "opportunities" else 0
@@ -1147,4 +1149,171 @@ def settings_body(config: SearchConfig | None) -> str:
         + _settings_card("Sources", "sources", _sources(config))
         + _settings_card("Ranking", "ranking", _ranking(config))
         + _settings_card("Privacy and data", "privacy", privacy)
+    )
+
+
+# ── Connections ──────────────────────────────────────────────────────────────
+CONNECTION_STATUS = {
+    "MATURED": ("p-ok", "Matured"),
+    "NOT_MATURED": ("p-med", "Below the role's level"),
+    "YOUR_CALL": ("p-warn", "Your call"),
+}
+
+
+def _who_you_know(o: Opportunity) -> str:
+    people = o.connections or ()
+    matured = [c for c in people if c.status == "MATURED"]
+    calls = [c for c in people if c.status == "YOUR_CALL"]
+    others = len(people) - len(matured) - len(calls)
+    fit = "Unknown" if o.fit is None else f"{o.fit:.0f}"
+    head = (
+        f'<div class="row spread"><div><a class="tl" href="{opportunity_url(o)}">'
+        f"{e(o.title)}</a> · {e(o.company)} · Fit {fit}</div>{priority_pill(o.priority)}</div>"
+    )
+    if not people:
+        return (
+            f'<div class="card">{head}<p class="verdict">No connections there.</p>'
+            '<p class="note">Having no network does not lower Fit; apply directly.</p></div>'
+        )
+    lines = "".join(
+        f'<div class="li netli"><strong>{e(c.name)}</strong><span class="meta">{e(c.role)}</span>'
+        f'<span class="chip">{e(words(c.strength))}</span></div>'
+        for c in matured
+    )
+    lines += "".join(
+        f'<div class="li netli"><strong>{e(c.name)}</strong><span class="meta">{e(c.role)}</span>'
+        '<span class="pill p-warn">Your call</span></div>'
+        for c in calls
+    )
+    rest = f'<p class="note">{others} more below the role\'s level.</p>' if others else ""
+    verdict = (
+        f"{len(matured)} matured" if matured else "No matured connection yet"
+    ) + f" of {len(people)} first-degree"
+    return (
+        f'<div class="card">{head}<p class="verdict">{verdict}</p>'
+        f'<div class="list bare">{lines}</div>{rest}</div>'
+    )
+
+
+def _unresolved(network: Network) -> str:
+    if not network.unresolved:
+        return ""
+    rows = "".join(
+        f"<li><div><strong>{e(u.name)}</strong>"
+        f'<div class="src">{u.connections} connection{"s" if u.connections != 1 else ""}'
+        f" · {e(u.note)}</div></div></li>"
+        for u in network.unresolved
+    )
+    return _section(
+        f"Employers waiting for your decision · {len(network.unresolved)}",
+        f'<ul class="plus-list">{rows}</ul><p class="note">PEJIP links nobody to a company '
+        "by a guess. Until you decide in the network decisions file, these connections "
+        "stay unmatched.</p>",
+    )
+
+
+def _people_form(f: PeopleFilters, companies: list[str]) -> str:
+    return (
+        '<form class="filters" method="get" action="/connections">'
+        '<div><label for="f-q">Search connections</label>'
+        '<input id="f-q" name="q" type="text" maxlength="100" '
+        f'placeholder="Name, company or position" value="{e(f.query)}"></div>'
+        + _options(
+            "company",
+            "Matched company",
+            [("", "All companies"), *((c, c) for c in companies), (UNMATCHED, "Unmatched")],
+            f.company or "",
+        )
+        + _options(
+            "matured",
+            "Matured",
+            [("", "Everyone"), ("1", "Matured only")],
+            "1" if f.matured else "",
+        )
+        + '<div class="go"><button class="btn primary" type="submit">Apply</button>'
+        '<a class="btn" href="/connections">Clear</a></div></form>'
+    )
+
+
+def _people_table(people: list[Person], now: datetime) -> str:
+    if not people:
+        return _empty("No connections match these filters.")
+    rows = "".join(
+        f"<tr><td>{e(p.name)}"
+        + (
+            f'<div class="muted">Connected {when(p.connected_on, now)}</div>'
+            if p.connected_on
+            else ""
+        )
+        + f"</td><td>{e(p.position)}</td><td>{e(p.employer)}</td>"
+        + (
+            f"<td>{e(p.matched_company)}</td>"
+            if p.matched_company
+            else '<td class="unk">Unmatched</td>'
+        )
+        + f"<td>{e(words(p.strength))}</td></tr>"
+        for p in people
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Name</th>'
+        '<th scope="col">Position (as imported)</th><th scope="col">Company (as imported)</th>'
+        '<th scope="col">Matched company</th><th scope="col">Strength</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>"
+    )
+
+
+def connections_body(  # noqa: PLR0913 - one argument per part of the page
+    network: Network | None,
+    *,
+    paths: list[Opportunity],
+    matured_roles: int,
+    people: list[Person],
+    filters: PeopleFilters,
+    now: datetime,
+) -> str:
+    """Who Babu knows at the companies that matter, from the last LinkedIn import."""
+    if network is None:
+        return _empty(
+            "Your LinkedIn connections have not been imported yet. Until they are, "
+            "Who you know shows Unknown on every role."
+        ) + (
+            '<p class="note">On LinkedIn, open Settings, Data privacy, Get a copy of your data, '
+            "and choose Connections. Your LinkedIn password is never needed.</p>"
+        )
+    tiles = "".join(
+        f'<div class="tile"><div class="n">{n}</div><div class="l">{label}</div></div>'
+        for n, label in (
+            (f"{network.total:,}", "Connections imported"),
+            (f"{network.companies_represented:,}", "Companies represented"),
+            (f"{network.at_targets:,}", "At target companies"),
+            (matured_roles, "Open roles with a matured connection"),
+        )
+    )
+    snapshot = (
+        f'<p class="note">LinkedIn connections last refreshed {when(network.imported_at, now)}. '
+        "This is a snapshot, not a live sync: someone who changed jobs since then still "
+        "shows their old employer until you import again.</p>"
+    )
+    roles = (
+        '<div class="stackl">' + "".join(_who_you_know(o) for o in paths) + "</div>"
+        if paths
+        else _empty("No open role has a connection yet.")
+    )
+    companies = sorted({p.matched_company for p in network.people if p.matched_company})
+    return (
+        snapshot
+        + f'<section aria-label="Summary"><div class="tiles">{tiles}</div></section>'
+        + _section(
+            "Who you know where it matters",
+            '<p class="note">A matured connection is a first-degree connection at the hiring '
+            "company whose current title is at the role's level or more senior. When a title "
+            "has no clear level, it is flagged for your call instead of guessed.</p>" + roles,
+        )
+        + _unresolved(network)
+        + _section(
+            f"All connections · {len(people)} shown",
+            _people_form(filters, companies) + _people_table(people, now),
+        )
+        + '<p class="note">Network affects Application Priority only. It is never part of '
+        "the Fit score. PEJIP never contacts anyone for you.</p>"
     )
