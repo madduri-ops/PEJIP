@@ -80,6 +80,9 @@ class Opportunity:
     connections: tuple[Connection, ...] | None = None
     watched: bool = False
     change_note: str | None = None
+    # The configured geographic scope the location falls in (``discovery.place``),
+    # such as BAY_AREA or US_REMOTE; None when it is in none.
+    location_scope: str | None = None
 
 
 @dataclass(frozen=True)

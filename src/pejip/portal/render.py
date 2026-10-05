@@ -16,10 +16,14 @@ from urllib.parse import quote
 from pejip.config import SearchConfig
 from pejip.portal.data import Citation, Opportunity, Point, SearchRun, Signal, SourceStatus
 from pejip.portal.views import (
+    AGE_CHOICES,
     COMPANY_VIEWS,
     CONFIDENCE_CHOICES,
     FIT_CHOICES,
+    NETWORK_CHOICES,
+    PAY_CHOICES,
     PRIORITY_CHOICES,
+    SCOPE_CHOICES,
     SHOWN_BANDS,
     VIEWS,
     WORK_MODEL_CHOICES,
@@ -62,6 +66,14 @@ CONCERN_KIND = (
     ("Not enough profile evidence", "k-unk", "Unknown"),
 )
 LOW_COMPONENT = 0.85
+SCOPE_LABEL = {"BAY_AREA": "San Francisco Bay Area", "US_REMOTE": "United States remote"}
+AGE_LABEL = {1: "Last 24 hours", 3: "Last 3 days", 7: "Last week", 30: "Last 30 days"}
+NETWORK_LABEL = {
+    "connected": "Has connections",
+    "none": "No connections",
+    "unknown": "Not imported yet",
+}
+PAY_LABEL = {"published": "Pay published", "unpublished": "Pay not published"}
 # Navigation in spec order (12.1): (key, label, link), with no link while a page is
 # still to come.
 NAV = (
@@ -369,6 +381,30 @@ def _filters_form(f: Filters) -> str:
             "Work model",
             [("", "Any work model"), *((w, w) for w in WORK_MODEL_CHOICES)],
             f.work_model,
+        )
+        + _options(
+            "scope",
+            "Location",
+            [("", "Any location"), *((s, SCOPE_LABEL.get(s, words(s))) for s in SCOPE_CHOICES)],
+            f.scope,
+        )
+        + _options(
+            "age",
+            "Posting age",
+            [("", "Any age"), *((str(d), AGE_LABEL[d]) for d in AGE_CHOICES)],
+            str(f.max_age_days) if f.max_age_days else "",
+        )
+        + _options(
+            "network",
+            "Network",
+            [("", "Any network"), *((n, NETWORK_LABEL[n]) for n in NETWORK_CHOICES)],
+            f.network,
+        )
+        + _options(
+            "pay",
+            "Compensation",
+            [("", "Any compensation"), *((p, PAY_LABEL[p]) for p in PAY_CHOICES)],
+            f.pay,
         )
         + '<div><label for="f-company">Company</label>'
         f'<input id="f-company" name="company" type="text" maxlength="100" '
@@ -909,7 +945,6 @@ def watchlist_body(w: Watchlist, now: datetime) -> str:
 # PEJIP's own alert address (design doc 0010); Babu signs up for job alerts with it.
 ALERT_ADDRESS = "alerts@inbox.job-search.zephyr-mcg.com"
 ADAPTER_LABEL = {"greenhouse": "Public Greenhouse job board", "lever": "Public Lever job board"}
-SCOPE_LABEL = {"BAY_AREA": "San Francisco Bay Area", "US_REMOTE": "United States remote"}
 MONTHLY_AI_CAP = "$100"
 ANY_PLACE = "Any remote role in the US"
 

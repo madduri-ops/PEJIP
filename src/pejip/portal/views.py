@@ -36,6 +36,7 @@ VIEWS = (
     View("watched", "Watched", lambda o: o.watched),
     View("network", "Strong network", _has_strong_connection),
     View("remote", "Remote", lambda o: o.work_model == "Remote"),
+    View("bay-area", "Bay Area", lambda o: o.location_scope == "BAY_AREA"),
     View("changed", "Recently changed", lambda o: o.discovery == "MATERIALLY_CHANGED"),
     View("all", "All active", lambda _o: True),
 )
@@ -46,6 +47,10 @@ PRIORITY_CHOICES = ("IMMEDIATE", "HIGH", "MEDIUM", "LOW")
 CONFIDENCE_CHOICES = ("HIGH", "MEDIUM", "LOW")
 FIT_CHOICES = (90, 80, 70)
 WORK_MODEL_CHOICES = ("Remote", "Hybrid", "Onsite")
+SCOPE_CHOICES = ("BAY_AREA", "US_REMOTE")
+AGE_CHOICES = (1, 3, 7, 30)
+NETWORK_CHOICES = ("connected", "none", "unknown")
+PAY_CHOICES = ("published", "unpublished")
 MAX_COMPANY_FILTER = 100
 
 
@@ -59,6 +64,10 @@ class Filters:
     confidence: str = ""
     company: str = ""
     work_model: str = ""
+    scope: str = ""
+    max_age_days: int = 0
+    network: str = ""
+    pay: str = ""
 
     @classmethod
     def from_query(cls, query: Mapping[str, str]) -> Filters:
@@ -67,6 +76,7 @@ class Filters:
             return value if value in allowed else ""
 
         fit = query.get("fit", "")
+        days = query.get("age", "")
         return cls(
             view=query.get("view", "") if query.get("view", "") in VIEW_BY_KEY else DEFAULT_VIEW,
             priority=pick("priority", PRIORITY_CHOICES),
@@ -74,22 +84,49 @@ class Filters:
             confidence=pick("confidence", CONFIDENCE_CHOICES),
             company=query.get("company", "").strip()[:MAX_COMPANY_FILTER],
             work_model=pick("work_model", WORK_MODEL_CHOICES),
+            scope=pick("scope", SCOPE_CHOICES),
+            max_age_days=int(days) if days in {str(d) for d in AGE_CHOICES} else 0,
+            network=pick("network", NETWORK_CHOICES),
+            pay=pick("pay", PAY_CHOICES),
         )
 
     @property
     def any_set(self) -> bool:
         """True when a filter beyond the view is applied."""
-        return any((self.priority, self.min_fit, self.confidence, self.company, self.work_model))
+        return any(
+            (
+                self.priority,
+                self.min_fit,
+                self.confidence,
+                self.company,
+                self.work_model,
+                self.scope,
+                self.max_age_days,
+                self.network,
+                self.pay,
+            )
+        )
 
-    def keep(self, o: Opportunity) -> bool:
+    def keep(self, o: Opportunity, now: datetime) -> bool:
         """True when ``o`` passes every filter (the view is applied separately)."""
+        fresh = not self.max_age_days or now - _seen(o) <= timedelta(days=self.max_age_days)
         return (
-            (not self.priority or o.priority == self.priority)
+            fresh
+            and _network(o) == (self.network or _network(o))
+            and (not self.pay or (o.compensation is not None) == (self.pay == "published"))
+            and (not self.scope or o.location_scope == self.scope)
+            and (not self.priority or o.priority == self.priority)
             and (o.fit or 0) >= self.min_fit
             and (not self.confidence or o.confidence == self.confidence)
             and (not self.company or self.company.lower() in o.company.lower())
             and (not self.work_model or o.work_model == self.work_model)
         )
+
+
+def _network(o: Opportunity) -> str:
+    if o.connections is None:
+        return "unknown"
+    return "connected" if o.connections else "none"
 
 
 def _seen(o: Opportunity) -> datetime:
@@ -120,10 +157,10 @@ class Listing:
     counts: dict[str, int]
 
 
-def list_opportunities(items: list[Opportunity], filters: Filters) -> Listing:
+def list_opportunities(items: list[Opportunity], filters: Filters, now: datetime) -> Listing:
     """Split the ranked, filtered roles into the chosen view and the rest."""
     view = VIEW_BY_KEY[filters.view]
-    kept = [o for o in rank(items) if filters.keep(o)]
+    kept = [o for o in rank(items) if filters.keep(o, now)]
     shown = kept if view.key == "all" else [o for o in kept if o.priority in SHOWN_BANDS]
     in_view = [o for o in kept if view.matches(o)]
     others = [o for o in shown if o not in in_view]

@@ -26,6 +26,8 @@ Out of scope for now:
   now": they need storage and a run trigger. The pages leave them out rather than
   show buttons that do nothing.
 - Connections: listed in the navigation as "Soon".
+- The Already applied and Archived views and the role family and job status filters
+  from the Opportunities mock: they need stored feedback and job status.
 - Editing settings, and the Settings sections that need stored data (career profile,
   compensation, notifications, LinkedIn import, learned preferences): Settings is a
   read-only view of `config/search.yaml` until settings are stored.
@@ -69,7 +71,7 @@ flowchart LR
 | Route | Shows |
 |---|---|
 | `GET /` | Home: counts, roles needing attention, new matches, changed roles, search health |
-| `GET /opportunities` | Views (`view=attention, new, high-fit, immediate, watched, network, remote, changed, all`) and filters (`priority`, `fit`, `confidence`, `company`, `work_model`); unknown values are ignored |
+| `GET /opportunities` | Views (`view=attention, new, high-fit, immediate, watched, network, remote, bay-area, changed, all`) and filters (`priority`, `fit`, `confidence`, `company`, `work_model`, `scope=BAY_AREA\|US_REMOTE`, `age=1\|3\|7\|30` days, `network=connected\|none\|unknown`, `pay=published\|unpublished`); unknown values are ignored |
 | `GET /opportunities/{opportunity_id}` | One role: summary, fit bars, concerns, cited reasons, why now, who you know, description, original link; 404 page when unknown |
 | `GET /companies` | Target companies as cards (state, watching, monitoring priority, matching and high-priority roles, connections, cited signals, top match, where jobs come from and any coverage gap) and discovered companies as a list; views `view=all, matching, watching, relevant, no-match, low`, unknown values show all |
 | `GET /watchlist` | Changes first (watched jobs that changed, new roles at watched companies, watched companies with a signal from the last seven days), then every watched job and company |
@@ -93,7 +95,8 @@ class PortalData(Protocol):
 `Opportunity` carries what the pages need from the `jobs`, `recommendations`
 (`fit`, `confidence`, `priority`, `detail` components) and explanation records
 (`pejip.explain` points and citations), so the store-backed reader is a mapping
-from those tables. `SearchRun.sources` maps from the `runs.summary["sources"]` list
+from those tables; `location_scope` is the geographic scope `pejip.discovery`
+places the location in. `SearchRun.sources` maps from the `runs.summary["sources"]` list
 the pipeline already writes (`pejip.digest.SourceResult`, error text left out).
 A company has "Matching jobs" when it has a role in the Immediate, High or Medium
 band; otherwise the page shows its stored `relevance` (strategically relevant, no

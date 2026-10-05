@@ -68,6 +68,10 @@ def router(
         confidence: Annotated[str, Query(max_length=16)] = "",
         company: Annotated[str, Query(max_length=100)] = "",
         work_model: Annotated[str, Query(max_length=16)] = "",
+        scope: Annotated[str, Query(max_length=16)] = "",
+        age: Annotated[str, Query(max_length=4)] = "",
+        network: Annotated[str, Query(max_length=16)] = "",
+        pay: Annotated[str, Query(max_length=16)] = "",
     ) -> str:
         """Every active opportunity, by view and filters (spec 12.6, 12.7)."""
         filters = Filters.from_query(
@@ -78,9 +82,13 @@ def router(
                 "confidence": confidence,
                 "company": company,
                 "work_model": work_model,
+                "scope": scope,
+                "age": age,
+                "network": network,
+                "pay": pay,
             }
         )
-        listing = list_opportunities(data.opportunities(), filters)
+        listing = list_opportunities(data.opportunities(), filters, now_fn())
         body = render.opportunities_body(listing, filters, now_fn())
         return frame(
             active="opportunities",
