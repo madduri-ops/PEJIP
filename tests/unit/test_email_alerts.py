@@ -202,6 +202,8 @@ BOARD = AlertCompany(
     job_id_pattern=r"view/\d+",
 )
 
+BOARD_SENDER = "Board Alerts <alerts@board.test>"
+
 BOARD_ALERT = f"""
 <p>Your job alert for vice president</p>
 <a href="https://jobs.board.test/view/111/?trackingId=abc&refId=x">VP, Platform Engineering</a>
@@ -216,7 +218,7 @@ BOARD_ALERT = f"""
 
 
 def test_a_job_board_alert_names_each_employer() -> None:
-    alert = parse_alert(email(BOARD_ALERT), [BOARD])
+    alert = parse_alert(email(BOARD_ALERT, sender=BOARD_SENDER), [BOARD])
 
     by_title = {p.title: p for p in alert.postings}
     assert set(by_title) == {
@@ -244,7 +246,7 @@ def test_a_job_board_alert_names_each_employer() -> None:
 
 def test_a_job_board_role_with_no_employer_text_is_skipped() -> None:
     body = '<a href="https://jobs.board.test/view/9">VP, Operations</a><p> · Remote</p>'
-    assert parse_alert(email(body), [BOARD]).postings == []
+    assert parse_alert(email(body, sender=BOARD_SENDER), [BOARD]).postings == []
 
 
 def test_an_alert_forwarded_as_an_attachment_is_read() -> None:
@@ -272,3 +274,37 @@ def test_an_invalid_job_id_pattern_is_rejected() -> None:
 def test_a_confirm_link_to_an_unconfigured_site_is_not_surfaced() -> None:
     body = '<a href="https://bank.test/confirm?t=9">Confirm payment</a>'
     assert parse_alert(email(body), COMPANIES).confirm_links == []
+
+
+def test_a_job_board_link_in_someone_elses_email_is_not_a_role() -> None:
+    body = '<p>Saw this for you</p><a href="https://jobs.board.test/view/5">VP, Eng</a><p>A · B</p>'
+    for sender in ("Friend <friend@mail.test>", ""):
+        assert parse_alert(email(body, sender=sender), [BOARD]).postings == []
+
+
+def test_a_role_is_kept_when_only_a_later_link_names_the_employer() -> None:
+    body = (
+        '<a href="https://jobs.board.test/view/1">VP, Operations</a>'
+        '<a href="https://jobs.board.test/view/1?trk=x">VP, Operations</a><p>Acme · Austin, TX</p>'
+    )
+    [role] = parse_alert(email(body, sender=BOARD_SENDER), [BOARD]).postings
+    assert (role.company, role.location) == ("Acme", "Austin, TX")
+
+
+def test_a_role_has_one_id_with_or_without_www() -> None:
+    board = BOARD.model_copy(update={"link_patterns": ["board.test/view"]})
+    body = (
+        '<a href="https://www.board.test/view/1">VP, Operations</a><p>Acme · Austin, TX</p>'
+        '<a href="https://board.test/view/1">VP, Operations</a><p>Acme · Austin, TX</p>'
+    )
+    [role] = parse_alert(email(body, sender=BOARD_SENDER), [board]).postings
+    assert role.url == "https://board.test/view/1"
+
+
+def test_an_email_in_an_unknown_charset_yields_nothing() -> None:
+    raw = (
+        b"From: someone@mail.test\r\nSubject: Hi\r\n"
+        b"Content-Type: text/plain; charset=unknown-8bit\r\n\r\n\xff\xfe hello\r\n"
+    )
+    alert = parse_alert(raw, COMPANIES)
+    assert (alert.postings, alert.confirm_links) == ([], [])

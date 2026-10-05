@@ -151,10 +151,14 @@ class Pipeline:
         except FetchError as exc:
             result.status, result.error = "FAILED", str(exc)
             log.warning("source_failed", extra={"source": result.name})
-            return result
         if ignored:
             # A count only: these may be Babu's personal emails (policy section 10).
-            notes.append(f"Job-alert inbox: {ignored} other emails had no roles and were deleted.")
+            counted = "1 other email had no roles and was deleted"
+            if ignored > 1:
+                counted = f"{ignored} other emails had no roles and were deleted"
+            notes.append(f"Job-alert inbox: {counted}.")
+        if result.status == "FAILED":
+            return result
         log.info(
             "source_fetched",
             extra={

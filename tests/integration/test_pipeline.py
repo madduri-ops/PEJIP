@@ -327,6 +327,24 @@ def test_a_failing_inbox_does_not_stop_the_boards(
     assert f"{INBOX_PREFIX}a" in s3.objects
 
 
+def test_emails_deleted_before_an_inbox_failure_are_still_counted(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    s3 = FakeS3(
+        {f"{INBOX_PREFIX}a": email("<p>Hi</p>"), f"{INBOX_PREFIX}b": email(ALERT)},
+        fail="get_object",
+        fail_after=1,
+    )
+    pipeline = build(
+        with_inbox(config), profile, store, Boards(()), FakeMessages(), inbox=S3Inbox(s3, "b")
+    )
+    digest = pipeline.run()
+
+    assert digest.sources[-1].status == "FAILED"
+    assert digest.notes == ["Job-alert inbox: 1 other email had no roles and was deleted."]
+    assert list(s3.objects) == [f"{INBOX_PREFIX}b"]
+
+
 def test_an_inbox_without_configured_companies_is_not_read(
     config: SearchConfig, profile: CareerProfile, store: Store
 ) -> None:

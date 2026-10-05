@@ -225,7 +225,7 @@ def _role_key(url: str, company: AlertCompany) -> str:
     if company.job_id_pattern:
         match = re.search(company.job_id_pattern, url)
         if match:
-            host = urlsplit(url).netloc.lower()
+            host = urlsplit(url).netloc.lower().removeprefix("www.")
             return f"https://{host}/{match.group(0).lstrip('/')}"
     return _canonical(url)
 
@@ -246,8 +246,9 @@ def _clean_lines(lines: list[str]) -> list[str]:
     return kept[:MAX_CONTEXT_LINES]
 
 
-def _postings(links: list[_Link], companies: list[AlertCompany]) -> Iterator[Posting]:
-    seen: set[str] = set()
+def _postings(
+    links: list[_Link], companies: list[AlertCompany], seen: set[str]
+) -> Iterator[Posting]:
     for link in links:
         url = _unwrap(link.url)
         company = _company_for(url, companies)
@@ -257,7 +258,6 @@ def _postings(links: list[_Link], companies: list[AlertCompany]) -> Iterator[Pos
         key = _role_key(url, company)
         if key in seen:
             continue
-        seen.add(key)
         context = _clean_lines(link.after)
         extra = {"origin": "job_alert_email"}
         if company.job_board:
@@ -272,6 +272,7 @@ def _postings(links: list[_Link], companies: list[AlertCompany]) -> Iterator[Pos
             employer = company.company
             location = context[0] if context else ""
             lines = [f"{title} at {employer}, from a job-alert email.", *context]
+        seen.add(key)
         yield Posting(
             source=SOURCE,
             source_job_id=key[-255:],
@@ -288,8 +289,28 @@ def _body(message: EmailMessage) -> tuple[str, bool]:
     part = message.get_body(preferencelist=("html", "plain"))
     if part is None:
         return "", False
-    content = cast(EmailMessage, part).get_content()
+    try:
+        content = cast(EmailMessage, part).get_content()
+    except (LookupError, ValueError):
+        # An unknown charset or broken encoding: forwarded personal mail can carry
+        # anything, and one unreadable email must not stop the run.
+        return "", False
     return str(content), part.get_content_subtype() == "html"
+
+
+def _sender(message: EmailMessage) -> str:
+    return parseaddr(str(message.get("From", "")))[1]
+
+
+def _sent_by(sender: str, company: AlertCompany) -> bool:
+    """Whether an email came from the job board itself (not a person sharing a link)."""
+    domain = sender.rpartition("@")[2].lower()
+    hosts = {pattern.lower().partition("/")[0] for pattern in company.link_patterns}
+    # Either may be the subdomain: alerts@linkedin.com and jobs.board.test/... both match.
+    return "." in domain and any(
+        domain == host or domain.endswith(f".{host}") or host.endswith(f".{domain}")
+        for host in hosts
+    )
 
 
 def _messages(message: EmailMessage) -> Iterator[EmailMessage]:
@@ -304,9 +325,17 @@ def parse_alert(raw: bytes, companies: list[AlertCompany]) -> AlertMessage:
     """Turn one raw email into the roles it lists."""
     message = message_from_bytes(raw, policy=policy.default)
     links: list[_Link] = []
+    postings: list[Posting] = []
+    seen: set[str] = set()
     for part in _messages(message):
         body, is_html = _body(part)
-        links += _html_links(body) if is_html else _text_links(body)
+        part_links = _html_links(body) if is_html else _text_links(body)
+        links += part_links
+        # A job board's links count only in the board's own alerts, so a friend's
+        # email sharing a LinkedIn job never turns their message into a posting.
+        sender = _sender(part)
+        allowed = [c for c in companies if not c.job_board or _sent_by(sender, c)]
+        postings += _postings(part_links, allowed, seen)
     # Only a configured site's sign-up check counts; the inbox may also receive
     # Babu's other mail (forwarded from Yahoo), which is never surfaced.
     confirm = [
@@ -315,8 +344,8 @@ def parse_alert(raw: bytes, companies: list[AlertCompany]) -> AlertMessage:
         if _company_for(url, companies) is not None
     ]
     return AlertMessage(
-        sender=parseaddr(str(message.get("From", "")))[1],
+        sender=_sender(message),
         subject=" ".join(str(message.get("Subject", "")).split()),
-        postings=list(_postings(links, companies)),
+        postings=postings,
         confirm_links=list(dict.fromkeys(confirm)),
     )

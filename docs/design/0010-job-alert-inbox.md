@@ -70,8 +70,10 @@ flowchart LR
 - A job board's alerts (LinkedIn) list many employers' roles. For a company
   marked `job_board`, the employer and location come from the line under each
   link ("Acme · San Jose, CA", or the next line), and `job_id_pattern` cuts the
-  role id out of the link so tracking variants stay one role. PEJIP never opens
-  LinkedIn links.
+  role id out of the link (dropping `www.`) so tracking variants stay one role.
+  A job board's links count only in an email sent from the board's own domain,
+  so a person's email sharing a LinkedIn job never becomes a posting and its
+  text is never stored or sent to Claude. PEJIP never opens LinkedIn links.
 - Alerts Babu forwards by hand are read too, whether forwarded inline or as an
   attached message (`message/rfc822`).
 - The roles then go through the same title and geography filter, analysis and
@@ -80,10 +82,12 @@ flowchart LR
 - A configured site's sign-up check becomes a digest note with its sender,
   subject and confirm link, so Babu can finish the sign-up from the digest. PEJIP
   never opens those links itself. Any other email without roles is deleted and
-  only counted (see the LinkedIn section below).
+  only counted (see the LinkedIn section below). An email whose text cannot be
+  decoded (an unknown charset) is treated the same way rather than stopping the run.
 - Messages are never logged, only counts. A failure to list, read or delete marks
-  the inbox FAILED in the digest's search health; the boards still run, and an
-  unread message stays in the bucket for the next run.
+  the inbox FAILED in the digest's search health; the boards still run, an
+  unread message stays in the bucket for the next run, and emails already
+  deleted in that run are still counted.
 - S3 access uses `boto3`, Amazon's SDK (approved by Babu on 2026-10-05), behind a
   small typed protocol so tests use an in-memory fake.
 
