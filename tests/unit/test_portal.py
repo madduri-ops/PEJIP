@@ -18,7 +18,9 @@ from pejip.portal.data import (
     Connection,
     FitComponent,
     HistoryEvent,
+    Network,
     Opportunity,
+    Person,
     Point,
     SearchRun,
     Signal,
@@ -46,19 +48,21 @@ NOW = datetime(2026, 10, 5, 19, 0, tzinfo=UTC)  # 12:00 PM PDT
 class FakeData:
     """A PortalData with whatever roles and run a test needs."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913, PLR0917 - one argument per PortalData method
         self,
         items: list[Opportunity],
         run: SearchRun | None,
         sample: bool = False,
         runs: list[SearchRun] | None = None,
         companies: list[Company] | None = None,
+        network: Network | None = None,
     ) -> None:
         self.items = items
         self.run = run
         self.is_sample = sample
         self.runs = runs if runs is not None else ([run] if run else [])
         self.company_list = companies or []
+        self.people = network
 
     def latest_run(self) -> SearchRun | None:
         return self.run
@@ -71,6 +75,9 @@ class FakeData:
 
     def opportunities(self) -> list[Opportunity]:
         return list(self.items)
+
+    def network(self) -> Network | None:
+        return self.people
 
 
 def _role(number: int = 1, **changes: object) -> Opportunity:
@@ -115,6 +122,7 @@ def _sample() -> FakeData:
         True,
         data.recent_runs(),
         data.companies(),
+        data.network(),
     )
 
 
@@ -574,7 +582,7 @@ def test_search_health_pills_for_unexpected_statuses() -> None:
     assert render._run_pill("FAILED") == '<span class="pill p-fail">FAILED</span>'
 
 
-def test_navigation_links_live_pages_and_marks_the_rest_soon() -> None:
+def test_navigation_links_every_page() -> None:
     html = _get(_sample(), "/").text
 
     assert '<a class="nl" href="/search-health">Search Health</a>' in html
@@ -582,8 +590,8 @@ def test_navigation_links_live_pages_and_marks_the_rest_soon() -> None:
     assert '<a class="nl" href="/companies">Companies</a>' in html
     assert '<a class="nl" href="/watchlist">Watchlist</a>' in html
     assert '<a class="nl" href="/settings">Settings</a>' in html
-    for label in ("Connections",):
-        assert f'<span class="nl off">{label}<span class="soon">Soon</span></span>' in html
+    assert '<a class="nl" href="/connections">Connections</a>' in html
+    assert "Soon" not in html
 
 
 def test_sample_runs_have_one_partial_run_with_a_failed_source() -> None:
@@ -854,3 +862,69 @@ def test_opportunities_page_bay_area_view_and_new_filters_in_the_form() -> None:
     assert '<option value="3" selected>Last 3 days</option>' in html
     assert '<option value="connected" selected>Has connections</option>' in html
     assert '<option value="published" selected>Pay published</option>' in html
+
+
+def test_connections_page_shows_referral_paths_and_the_import() -> None:
+    html = _get(_sample(), "/connections").text
+
+    assert '<a class="nl on" href="/connections" aria-current="page">Connections</a>' in html
+    assert "This is a snapshot, not a live sync" in html
+    assert '<div class="n">2,486</div><div class="l">Connections imported</div>' in html
+    assert '<div class="n">4</div><div class="l">Open roles with a matured connection</div>' in html
+    assert "1 matured of 3 first-degree" in html
+    assert "2 more below the role's level." in html
+    assert "Person G</strong>" in html
+    assert '<span class="pill p-warn">Your call</span>' in html
+    assert "No connections there." in html
+    assert "Employers waiting for your decision · 2" in html
+    assert "Company X Cloud" in html
+    assert '<td class="unk">Unmatched</td>' in html
+    assert "All connections · 13 shown" in html
+
+
+def test_connections_filters_people() -> None:
+    def shown(query: str) -> str:
+        return _get(_sample(), f"/connections?{query}").text
+
+    assert "All connections · 1 shown" in shown("q=person+k")
+    assert "All connections · 2 shown" in shown("company=unmatched")
+    assert "All connections · 3 shown" in shown("company=Company+A")
+    matured = shown("matured=1")
+    assert "All connections · 4 shown" in matured
+    assert '<option value="1" selected>Matured only</option>' in matured
+    assert "No connections match these filters." in shown("q=nobody")
+
+
+def test_connections_before_any_import() -> None:
+    html = _get(FakeData([_role()], None), "/connections").text
+
+    assert "have not been imported yet" in html
+    assert "Your LinkedIn password is never needed." in html
+
+
+def test_connections_without_paths_or_unresolved_employers() -> None:
+    network = Network(
+        imported_at=NOW - timedelta(days=2),
+        total=1,
+        companies_represented=1,
+        at_targets=0,
+        people=(Person("<b>Ann</b>", "Director", "Company Z", None, NOW - timedelta(days=3)),),
+    )
+    role = _role(connections=None, priority="MEDIUM")
+    html = _get(FakeData([role], None, network=network), "/connections").text
+
+    assert "No open role has a connection yet." in html
+    assert "Employers waiting" not in html
+    assert "&lt;b&gt;Ann&lt;/b&gt;" in html
+    assert "Connected " in html
+    assert "<b>Ann</b>" not in html
+
+
+def test_connections_role_with_only_unclear_titles() -> None:
+    role = _role(connections=(Connection("Person P", "Partner", "UNKNOWN", "YOUR_CALL"),))
+    network = Network(imported_at=NOW, total=1, companies_represented=1, at_targets=1)
+    html = _get(FakeData([role], None, network=network), "/connections").text
+
+    assert "No matured connection yet of 1 first-degree" in html
+    assert "below the role" not in html
+    assert "All connections · 0 shown" in html

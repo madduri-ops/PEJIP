@@ -17,11 +17,14 @@ from pejip.portal.data import (
     Connection,
     FitComponent,
     HistoryEvent,
+    Network,
     Opportunity,
+    Person,
     Point,
     SearchRun,
     Signal,
     SourceStatus,
+    UnresolvedEmployer,
 )
 
 
@@ -177,9 +180,11 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
                 Point("Stated pay meets your preference", (_field("comp_max"),)),
             ),
             connections=(
-                Connection("Person A", "Technology organization · Director", "STRONG"),
-                Connection("Person B", "Executive leadership · SVP", "MEDIUM"),
-                Connection("Person C", "Talent / recruiting · Recruiter", "UNKNOWN"),
+                Connection(
+                    "Person A", "Technology organization · Director", "STRONG", "NOT_MATURED"
+                ),
+                Connection("Person B", "Executive leadership · SVP", "MEDIUM", "MATURED"),
+                Connection("Person C", "Talent / recruiting · Recruiter", "UNKNOWN", "NOT_MATURED"),
             ),
         ),
         _opportunity(
@@ -208,10 +213,10 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
                 Point("Preferred location: San Jose, CA", (_field("location"),)),
             ),
             connections=(
-                Connection("Person D", "Operations · VP", "STRONG"),
-                Connection("Person E", "Engineering · Senior Director", "MEDIUM"),
-                Connection("Person F", "Finance · Director", "UNKNOWN"),
-                Connection("Person G", "Product · Partner", "UNKNOWN"),
+                Connection("Person D", "Operations · VP", "STRONG", "MATURED"),
+                Connection("Person E", "Engineering · Senior Director", "MEDIUM", "NOT_MATURED"),
+                Connection("Person F", "Finance · Director", "UNKNOWN", "NOT_MATURED"),
+                Connection("Person G", "Product · Partner", "UNKNOWN", "YOUR_CALL"),
             ),
         ),
         _opportunity(
@@ -258,8 +263,8 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
             concerns=(Point("Possible negative fit (onsite five days a week)"),),
             why_now=(Point("Posted 1 day ago", (_field("posted_at"),)),),
             connections=(
-                Connection("Person H", "Program office · Director", "MEDIUM"),
-                Connection("Person I", "Engineering · VP", "UNKNOWN"),
+                Connection("Person H", "Program office · Director", "MEDIUM", "NOT_MATURED"),
+                Connection("Person I", "Engineering · VP", "UNKNOWN", "MATURED"),
             ),
         ),
         _opportunity(
@@ -278,7 +283,7 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
             components=_components(0.85, 0.9, 0.7, 0.85, 0.75, None),
             concerns=(Point("Possible negative fit (hands_on_coding)"),),
             why_now=(Point("Posted 2 days ago", (_field("posted_at"),)),),
-            connections=(Connection("Person J", "Engineering · SVP", "UNKNOWN"),),
+            connections=(Connection("Person J", "Engineering · SVP", "UNKNOWN", "MATURED"),),
             watched=True,
         ),
         _opportunity(
@@ -539,6 +544,32 @@ def sample_runs(now: datetime) -> list[SearchRun]:
     ]
 
 
+def sample_network(now: datetime) -> Network:
+    """A small LinkedIn import, matching the Connections mock."""
+    imported = now - timedelta(days=7)
+    people = [
+        Person(c.name, c.role, o.company, o.company, imported - timedelta(days=400), c.strength)
+        for o in sample_opportunities(now)
+        for c in o.connections or ()
+    ]
+    people += [
+        Person("Person K", "Director, Platform", "Company C", "Company C", None),
+        Person("Person L", "VP Engineering", "Company X Cloud", None, None),
+        Person("Person M", "Principal Architect", "Northstar", None, None),
+    ]
+    return Network(
+        imported_at=imported,
+        total=2486,
+        companies_represented=614,
+        at_targets=137,
+        people=tuple(people),
+        unresolved=(
+            UnresolvedEmployer("Company X Cloud", 5, "Close to Company X (alias match 82%)"),
+            UnresolvedEmployer("Northstar", 3, "Matches Company E and Company F"),
+        ),
+    )
+
+
 class SampleData:
     """A :class:`pejip.portal.data.PortalData` serving the sample roles."""
 
@@ -558,3 +589,6 @@ class SampleData:
 
     def companies(self) -> list[Company]:
         return sample_companies(self._clock())
+
+    def network(self) -> Network | None:
+        return sample_network(self._clock())

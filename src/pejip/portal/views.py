@@ -10,11 +10,12 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 
-from pejip.portal.data import PRIORITY_ORDER, Company, Opportunity, Signal
+from pejip.portal.data import PRIORITY_ORDER, Company, Network, Opportunity, Person, Signal
 
 HIGH_FIT = 85
 # Bands the default views show; LOW and below appear only in "All active".
 SHOWN_BANDS = frozenset({"IMMEDIATE", "HIGH", "MEDIUM"})
+URGENT = frozenset({"IMMEDIATE", "HIGH"})
 
 
 def _has_strong_connection(o: Opportunity) -> bool:
@@ -301,6 +302,56 @@ def watchlist(companies: list[Company], items: list[Opportunity], now: datetime)
 # Babu is in Pacific time. The container image has no time zone database, so US
 # daylight saving rules (second Sunday of March to first Sunday of November, at
 # 2 AM local) are applied here.
+# ── Connections ───────────────────────────────────────────────────────────────
+UNMATCHED = "unmatched"
+MAX_PEOPLE_QUERY = 100
+
+
+def referral_paths(items: list[Opportunity]) -> list[Opportunity]:
+    """Roles where who Babu knows matters: any with connections, and urgent ones without.
+
+    An urgent role with nobody there is shown too, to say plainly that having no
+    network does not lower its Fit (spec 8.26).
+    """
+    return rank(
+        [o for o in items if o.connections or (o.connections == () and o.priority in URGENT)]
+    )
+
+
+def matured_roles(items: list[Opportunity]) -> int:
+    return sum(1 for o in items if any(c.status == "MATURED" for c in o.connections or ()))
+
+
+@dataclass(frozen=True)
+class PeopleFilters:
+    query: str = ""
+    company: str | None = None  # a matched company, or UNMATCHED
+    matured: bool = False
+
+
+def _matured_people(items: list[Opportunity]) -> set[tuple[str, str]]:
+    return {
+        (c.name, o.company) for o in items for c in o.connections or () if c.status == "MATURED"
+    }
+
+
+def find_people(network: Network, items: list[Opportunity], filters: PeopleFilters) -> list[Person]:
+    """The imported connections matching a search, by name, position or employer."""
+    needle = filters.query.strip().casefold()
+    matured = _matured_people(items)
+
+    def keep(p: Person) -> bool:
+        if needle and not any(needle in v.casefold() for v in (p.name, p.position, p.employer)):
+            return False
+        if filters.company == UNMATCHED and p.matched_company is not None:
+            return False
+        if filters.company not in (None, UNMATCHED) and p.matched_company != filters.company:
+            return False
+        return not filters.matured or (p.name, p.matched_company or "") in matured
+
+    return sorted((p for p in network.people if keep(p)), key=lambda p: p.name.casefold())
+
+
 PACIFIC_STANDARD = timedelta(hours=-8)
 MARCH, NOVEMBER, SUNDAY = 3, 11, 6
 

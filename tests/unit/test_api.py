@@ -74,6 +74,9 @@ def test_portal_reads_the_data_it_is_given(signer: AlbSigner) -> None:
         def opportunities(self) -> list[Opportunity]:
             return []
 
+        def network(self) -> None:
+            return None
+
     with key_server(signer) as key_url:
         app = api.create_app(env=auth_env(key_url), data=NoData())
         html = _get(app, "/", signer.token(ALLOWED_EMAIL)).text
