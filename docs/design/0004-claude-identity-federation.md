@@ -66,8 +66,8 @@ Environment variables (all non-secret):
 `PEJIP_CLAUDE_IDENTITY` is set; `federation_credentials` raises `ClaudeAuthError`
 otherwise.
 
-GitHub repository variables: `ANTHROPIC_ORGANIZATION_ID`,
-`ANTHROPIC_CI_FEDERATION_RULE_ID`, `ANTHROPIC_CI_SERVICE_ACCOUNT_ID`. Terraform
+The CI IDs (rule `pejip-ci-pull-requests`, service account `pejip-ci`) are written
+into the workflows that federate, since they are not secrets. Terraform
 outputs: `claude_federation_issuer_url`, `claude_federation_policy_arn`.
 
 ### Anthropic resources (Claude Console, Settings > Workload identity)

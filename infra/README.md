@@ -46,6 +46,3 @@ set) `terraform plan` in the `Infra` workflow.
 
 - Variables: `AWS_DEPLOY_ROLE_ARN`, `AWS_PLAN_ROLE_ARN` (from `terraform output`).
 - Secret: `ALERT_EMAIL`, used by `terraform plan` in CI.
-- Variables for keyless Claude access in CI: `ANTHROPIC_ORGANIZATION_ID`,
-  `ANTHROPIC_CI_FEDERATION_RULE_ID`, `ANTHROPIC_CI_SERVICE_ACCOUNT_ID` (from the Claude
-  Console; see [design 0004](../docs/design/0004-claude-identity-federation.md)).
