@@ -16,9 +16,6 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   previous (or a named) release through the deploy health gate.
 - Each release's container image is tagged with its version and kept, so it stays
   available to roll back to.
-
-### Added
-
 - Hosting for `https://job-search.zephyr-mcg.com` in Terraform: VPC, load balancer
   with WAF and HTTPS certificate, ECS Fargate service, service alarms and a daily
   retention purge schedule (off until the app has a database).
@@ -29,6 +26,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - Keyless Claude access: CI and the app authenticate to the Claude API through
   Workload Identity Federation (GitHub Actions OIDC, AWS STS) instead of an API key.
+
+### Fixed
+
+- The Terraform plan check can read the load balancer's WAF association again
+  (`wafv2:GetWebACLForResource` is checked against every regional web ACL).
 
 ## 0.1.0 - 2026-10-05
 
