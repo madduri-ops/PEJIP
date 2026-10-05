@@ -218,6 +218,18 @@ data "aws_iam_policy_document" "plan" {
   }
 
   statement {
+    sid       = "ReadDashboards"
+    actions   = ["cloudwatch:GetDashboard"]
+    resources = ["arn:aws:cloudwatch::${local.account_id}:dashboard/pejip*"]
+  }
+
+  statement {
+    sid       = "ReadMetricFilters"
+    actions   = ["logs:DescribeMetricFilters"]
+    resources = ["arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:*pejip*"]
+  }
+
+  statement {
     sid       = "ReadBudget"
     actions   = ["budgets:ListTagsForResource", "budgets:ViewBudget"]
     resources = ["arn:aws:budgets::${local.account_id}:budget/pejip-*"]

@@ -22,6 +22,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Monitoring: email alerts when a search run fails, a job source can't be
+  fetched, the app logs an error, or (once the daily search runs) no search has
+  finished in 26 hours, plus a `pejip` CloudWatch dashboard for search runs,
+  source failures, errors, Claude spend and every alarm.
 - Web portal at `job-search.zephyr-mcg.com`: Home, Opportunities (saved views and
   filters) and Opportunity detail pages with cited explanations, built from the
   portal mocks. They show illustrative sample data until the database is connected.

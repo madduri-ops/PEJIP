@@ -119,3 +119,24 @@ def test_old_digests_are_deleted_and_recent_ones_kept(
     assert cli.main([command]) == 0
     assert not old.exists()
     assert recent.exists()
+
+
+@pytest.mark.usefixtures("env")
+def test_a_crashed_run_logs_an_error_and_reraises(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    class CrashingPipeline:
+        def __init__(self, *_args: Any, **_kwargs: Any) -> None:
+            pass
+
+        def run(self) -> Digest:
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(cli, "Pipeline", CrashingPipeline)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    with caplog.at_level("ERROR", logger="pejip"), pytest.raises(RuntimeError):
+        cli.main(["run"])
+    crashed = [r for r in caplog.records if r.getMessage() == "run_crashed"]
+    assert len(crashed) == 1
+    assert crashed[0].levelname == "ERROR"
+    assert crashed[0].exc_info is not None
