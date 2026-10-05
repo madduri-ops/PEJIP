@@ -57,3 +57,14 @@ variable "monthly_budget_usd" {
   type        = number
   default     = 50
 }
+
+variable "ai_monthly_cap_usd" {
+  description = "Monthly Claude API spend cap in US dollars (policy section 13). Must match CostGuard's cap_usd in the app."
+  type        = number
+  default     = 100
+
+  validation {
+    condition     = var.ai_monthly_cap_usd > 0
+    error_message = "The AI spend cap must be positive."
+  }
+}
