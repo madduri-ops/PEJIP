@@ -47,6 +47,7 @@ analyses and recommendations as personal data.
 | Service | What is sent | Why | Not sent |
 |---|---|---|---|
 | Anthropic API (Claude) | Job posting text, and from the profile only the headline, target seniority, career direction and evidence items (`CareerProfile.ai_view`) | Job analysis and requirement-to-evidence matching | Name, e-mail, compensation preferences, anything else in the profile |
+| Claude Code on claude.ai (the ranking routine, Babu's plan) | The roles waiting for analysis (posting text) and from the profile only the headline, target seniority, career direction and evidence items, served by `GET /api/ranking/queue` ([design 0015](design/0015-ranking-routine.md), [ADR-0008](adr/0008-ranking-through-a-claude-code-routine.md)) | Job analysis and evidence matching without paid API calls. The routine's session transcripts stay in Babu's claude.ai history until Babu deletes them, outside PEJIP's 90-day purge, an exception to policy section 10 that comes with Babu's choice of the routine on 2026-10-05. Nothing is committed: the routine works in scratch space | Name, e-mail, compensation preferences, anything else in the profile |
 | Google (Gmail), through Amazon SNS email | The daily digest: roles, rankings and explanations that cite profile evidence IDs and posting quotes, sent from the encrypted `pejip-digest` topic to Babu's own address | Babu reads the digest in their own mailbox ([ADR-0007](adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md)). Emailed copies are outside PEJIP's 90-day purge: they stay until Babu deletes them. Babu accepted this exception to policy section 10 on 2026-10-05, choosing the full digest over a summary-only email | The profile itself, contact details, compensation preferences |
 | Google (sign-in) | Nothing from PEJIP: Babu signs in to their own Google account, and the load balancer receives their e-mail address and Google ID back ([ADR-0006](adr/0006-google-sign-in-at-the-load-balancer.md)) | Only Babu can use `job-search.zephyr-mcg.com` | Any career data |
 
@@ -57,12 +58,19 @@ agent; no personal data is sent to them.
 
 ## Access to the hosted app
 
-Every route except `/healthz` needs Google sign-in at the load balancer, and the
+Every route except `/healthz` and `/api/ranking/*` needs Google sign-in at the load balancer, and the
 app admits only the configured address (`pejip.auth`, ADR-0006). Portal pages run
 no script and send a strict content security policy; every value they show is
 HTML-escaped ([design 0013](design/0013-web-portal.md)). The OAuth client
 ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted with
 `alias/pejip`), never in the repository.
+
+The ranking routine runs on claude.ai and can't sign in with Google, so its two
+endpoints, `/api/ranking/queue` and `/api/ranking/analyses`, skip sign-in and
+need `Authorization: Bearer <key>` instead (`pejip.ranking_api`). The app
+compares the key's SHA-256 with `/pejip/ranking-key-sha256` (SSM SecureString,
+`alias/pejip`) in constant time; a wrong or missing key gets 401 and no response
+is cached. Every answer is validated and grounded before it is stored.
 
 ## Secrets
 
@@ -70,6 +78,11 @@ ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted wit
   tokens through Workload Identity Federation (ADR-0004). Locally, `ANTHROPIC_API_KEY`
   or `ant auth login` is read by the Anthropic SDK; a key is never logged or
   committed and lives only in your shell environment.
+- The ranking routine's key is PEJIP's one long-lived secret, an exception to
+  policy section 5 that Babu approved on 2026-10-05. It exists only as a secret
+  in the routine's claude.ai cloud environment; AWS holds just its SHA-256. It
+  opens only the two ranking endpoints and is rotated every 90 days (steps in
+  `infra/README.md`).
 - Gitleaks runs in pre-commit and CI and blocks on any finding.
 
 ## Automated gates

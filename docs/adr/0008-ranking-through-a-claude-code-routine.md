@@ -1,6 +1,6 @@
 # ADR-0008: Rank roles through a Claude Code routine on Babu's plan
 
-**Status:** Proposed (2026-10-05)
+**Status:** Accepted (2026-10-05)
 
 ## Context
 

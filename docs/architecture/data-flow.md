@@ -24,8 +24,15 @@ flowchart LR
     match -. spend .-> guard
 ```
 
+With `PEJIP_RANKER=routine` (the default on AWS, [design 0015](../design/0015-ranking-routine.md)),
+the two analysis steps run in a Claude Code routine on claude.ai at 07:00 PT
+instead of inside `pejip run`: it fetches new and changed roles from
+`GET /api/ranking/queue`, and its answers are grounded and validated by
+`POST /api/ranking/analyses` before they reach `analyses`. `pejip digest` scores
+and emails them at 08:00.
+
 Only the profile's headline, target seniority, career direction and evidence items
-leave the machine, sent to the Anthropic API for matching (see
+leave the machine, sent to the Anthropic API or the ranking routine for matching (see
 [docs/SECURITY.md](../SECURITY.md)).
 
 ## Data stores

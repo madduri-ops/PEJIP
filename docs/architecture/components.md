@@ -8,8 +8,15 @@ batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is
 flowchart TB
     api[api: GET /healthz]
     portal[portal: Home, Opportunities, detail pages]
+    rapi[ranking_api: /api/ranking/queue, /analyses]
     api --> portal
-    cli[cli: pejip run, purge, export, delete-all]
+    api --> rapi
+    rapi --> ana
+    rapi --> store
+    routine[routine: the Claude Code routine's command line] -.HTTPS, key.-> rapi
+    routine --> work[workbench: steps and answer checks]
+    work --> ana
+    cli[cli: pejip run, digest, purge, export, delete-all]
     pipe[pipeline: one search run]
     src[sources: greenhouse, lever adapters, email_alerts]
     http[sources.http: PoliteClient + RateLimiter]
@@ -43,14 +50,38 @@ flowchart TB
 
 - **Responsibility:** command line entry point; wires configuration, profile,
   store, HTTP and AI clients together.
-- **Interfaces:** `pejip run | purge | export <file> | delete-all --yes`;
+- **Interfaces:** `pejip run | digest | purge | export <file> | delete-all --yes`;
   environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
   `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
   `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM instead of a
-  file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest), `PEJIP_AI_ENABLED`, and Claude
+  file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest), `PEJIP_AI_ENABLED`, `PEJIP_RANKER`
+  (`routine`: `run` makes no Claude calls and sends nothing, and `digest` emails
+  the latest run ranked by the routine's stored analyses), and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
   emails it through `pejip.delivery`.
+
+## ranking_api
+
+- **Responsibility:** the ranking routine's two endpoints
+  ([design 0015](../design/0015-ranking-routine.md)): serve the latest run's roles
+  that need analysis with the profile's matching fields, and validate, ground and
+  store the routine's answers. They skip Google sign-in and check a bearer key
+  against its SHA-256 in SSM.
+- **Interfaces:** `GET /api/ranking/queue`, `POST /api/ranking/analyses`;
+  `PEJIP_RANKING_KEY_PARAMETER` (or `PEJIP_RANKING_KEY_SHA256` in tests and DAST).
+- **Data:** reads jobs and runs, writes `analyses` rows with provenance
+  `ranker: routine`.
+
+## routine and workbench
+
+- **Responsibility:** the command line the Claude Code routine runs
+  (`python -m pejip.routine`): fetch the queue, lay out one folder per role, name
+  each next step with the API path's prompt, input and schema, check each answer
+  the way the API path does, and submit; also runs the golden set the same way.
+- **Interfaces:** `fetch | next | skip | submit | eval-prepare | eval-record`;
+  `PEJIP_RANKING_URL`, `PEJIP_RANKING_KEY`.
+- **Data:** scratch files in the routine's work folder only; nothing committed.
 
 ## delivery
 

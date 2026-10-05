@@ -15,6 +15,7 @@ flowchart LR
     boards[(Greenhouse and Lever job boards)] -- public APIs --> pejip
     sites[(Career sites)] -- job-alert emails via SES and S3 --> pejip
     pejip -- posting text, profile evidence --> claude[Anthropic API]
+    pejip -- posting text, profile evidence --> routine[Claude Code routine on claude.ai]
     pejip -- ranked, explained digest --> user
 ```
 
@@ -31,10 +32,12 @@ and Priority with deterministic rules, and writes a Markdown digest. See
   the digest's search health and unranked sections. Tested in
   `tests/integration/test_pipeline.py`.
 - **Security and privacy:** personal data stays local except the minimum sent to the
-  Anthropic API; logs are redacted; 90-day retention. See
+  Anthropic API or the ranking routine; logs are redacted; 90-day retention. See
   [docs/SECURITY.md](../SECURITY.md).
 - **Cost:** every AI call reserves its worst-case cost with the AI cost guard,
-  which enforces the $100 monthly cap before the call is made.
+  which enforces the $100 monthly cap before the call is made. On AWS the
+  ranking routine on Babu's plan does the analysis instead, with no API spend
+  ([ADR-0008](../adr/0008-ranking-through-a-claude-code-routine.md)).
 - **Quality:** deterministic scoring gated by the golden evaluation set.
 - **Performance and accessibility:** the web portal is server-rendered with no
   script, uses real links and labelled controls, and stacks at phone width
@@ -81,15 +84,17 @@ flowchart LR
     role --> svc
     user([Babu]) -- HTTPS job-search.zephyr-mcg.com --> waf[WAF] --> alb[ALB: pejip-alb]
     alb -- sign-in --> google([Google OAuth])
+    routine([Claude Code routine on claude.ai]) -- HTTPS /api/ranking/*, bearer key --> waf
     subgraph vpc[VPC pejip-vpc 10.20.0.0/16, public subnets]
         alb --> svc[ECS Fargate: pejip-prod]
-        sched[Scheduler: pejip-run-daily, pejip-purge-daily] --> run[One-off tasks: pejip run, pejip purge]
+        sched[Scheduler: pejip-run-daily, pejip-digest-daily, pejip-purge-daily] --> run[One-off tasks: pejip run, digest, purge]
         run --> efs[(EFS: pejip-prod-data<br/>SQLite, spend ledger, digests)]
         svc --> efs
     end
     run --> ssm[SSM: /pejip/profile]
     run --> digestsns[SNS: pejip-digest] --> digestmail([Digest email to Babu])
     ecr --> svc
+    svc --> keyhash[SSM: /pejip/ranking-key-sha256]
     svc --> kms[KMS: alias/pejip]
     svc --> logs[CloudWatch /ecs/pejip-prod]
     logs -- metric filters --> alarms[Alarms] --> sns[SNS: pejip-alerts] --> mail([Email to Babu])

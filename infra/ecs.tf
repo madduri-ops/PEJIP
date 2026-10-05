@@ -158,6 +158,13 @@ data "aws_iam_policy_document" "ecs_task" {
     resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}"]
   }
 
+  # The hash of the ranking routine's key, which the API checks it against.
+  statement {
+    sid       = "RankingKeyHash"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.ranking_key_parameter}"]
+  }
+
   statement {
     sid       = "CareerProfileDecrypt"
     actions   = ["kms:Decrypt"]
@@ -241,8 +248,12 @@ data "aws_ecs_container_definition" "live" {
 locals {
   data_dir          = "/data"
   profile_parameter = "/pejip/profile"
+  # SHA-256 of the ranking routine's key (design doc 0015). Babu stores it by hand;
+  # the key itself lives only in the routine's cloud environment.
+  ranking_key_parameter = "/pejip/ranking-key-sha256"
 
-  # What `pejip run` and `pejip purge` read (design doc 0012). The API ignores them.
+  # What `pejip run`, `digest` and `purge` read (design doc 0012), and the ranking
+  # routine's endpoints in the API (design doc 0015).
   run_environment = [
     { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
     { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },
@@ -250,6 +261,8 @@ locals {
     { name = "PEJIP_INBOX_BUCKET", value = aws_s3_bucket.inbox.id },
     { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
     { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
+    { name = "PEJIP_RANKER", value = var.ranker },
+    { name = "PEJIP_RANKING_KEY_PARAMETER", value = local.ranking_key_parameter },
   ]
 
   # Keyless Claude access (ADR-0004). Until the app's federation rule exists in

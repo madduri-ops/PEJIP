@@ -139,6 +139,23 @@ variable "run_schedule" {
   default     = "cron(0 6 * * ? *)"
 }
 
+variable "ranker" {
+  description = "Who does the model step of ranking: \"routine\" (a Claude Code routine on Babu's plan, design doc 0015) or \"api\" (paid API calls from the run)."
+  type        = string
+  default     = "routine"
+
+  validation {
+    condition     = contains(["routine", "api"], var.ranker)
+    error_message = "ranker must be \"routine\" or \"api\"."
+  }
+}
+
+variable "digest_schedule" {
+  description = "When the digest is emailed with the routine's rankings, in run_schedule_timezone (two hours after the run, one after the routine)."
+  type        = string
+  default     = "cron(0 8 * * ? *)"
+}
+
 variable "run_schedule_timezone" {
   description = "Time zone for run_schedule. Babu is in the Bay Area."
   type        = string

@@ -1,6 +1,6 @@
 # 0015: Ranking through a Claude Code routine
 
-_Status: draft. Last updated: 2026-10-05._
+_Status: implemented. Last updated: 2026-10-05._
 
 ## Purpose
 
@@ -100,9 +100,20 @@ CLI, `python -m pejip.routine --work DIR`:
 - `eval-prepare` and `eval-record` lay out the golden set and turn the answers into
   recordings; `PEJIP_EVAL_RECORDINGS` points the replay scorer at them.
 - `fetch` and `submit` exchange roles and answers with the endpoints above,
-  reading `PEJIP_RANKING_URL` and `PEJIP_RANKING_KEY` from the environment
-  (second change). Scheduled tasks: `pejip-run-daily`
-(06:00 PT, unchanged) and a new `pejip-digest-daily` (08:00 PT).
+  reading `PEJIP_RANKING_URL` and `PEJIP_RANKING_KEY` from the environment.
+
+`pejip digest` scores the latest finished run's roles from stored analyses and
+emails the digest. It logs `routine_results_missing` (ERROR, so the
+`pejip-app-errors` alarm fires) when roles were waiting and the routine stored
+nothing since the run began.
+
+Infrastructure (`infra/`): `ranker` (default `routine`) sets `PEJIP_RANKER`;
+a listener rule at priority 2 forwards `/api/ranking/*` without Google sign-in;
+the task role may read `/pejip/ranking-key-sha256`; scheduled tasks are
+`pejip-run-daily` (06:00 PT, unchanged) and a new `pejip-digest-daily`
+(`digest_schedule`, 08:00 PT). The WAF common rule set's 8 KB body limit is
+counted rather than blocked for `POST /api/ranking/analyses` only, by a
+`body-size` rule that blocks it everywhere else.
 
 ## Data model
 
@@ -119,8 +130,9 @@ read by the API task role only. The key itself is never stored on AWS.
   policy section 5 that needs Babu's approval. It reaches only the two
   endpoints. It is stored only as the cloud environment's secret on claude.ai,
   and on AWS only as its hash. It is rotated every 90 days, prompted by a
-  scheduled reminder. WAF rate-limits the paths. Tests cover the 401s, the
-  constant-time compare and the stale-hash refusal.
+  scheduled reminder. The key is 48 random characters, so guessing it is not
+  feasible; there is no WAF rate-limit rule, which would cost money for no real
+  gain. Tests cover the 401s, the length checks and the stale-hash refusal.
 - **Privacy.** The career profile and the day's postings enter the routine's
   session, so Claude Code's cloud joins the Anthropic API in `docs/SECURITY.md`.
   Session transcripts stay in Babu's claude.ai history until Babu deletes them,
