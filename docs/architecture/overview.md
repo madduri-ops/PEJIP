@@ -34,7 +34,9 @@ public subnets, ALB and WAF `pejip-alb` with the certificate for
 `job-search.zephyr-mcg.com` (DNS records added by hand at the registrar), ECS
 cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule and the
 service alarms. Tasks sit in the public subnets without a NAT gateway; their
-security group admits only the ALB. The Deploy workflow builds and scans the image
+security group admits only the ALB. The ALB signs every request in with Google
+except `/healthz`, and the app admits only Babu's address
+([ADR-0006](../adr/0006-google-sign-in-at-the-load-balancer.md)). The Deploy workflow builds and scans the image
 on every pull request and ships `main` with a health gate and automatic rollback
 ([design 0005](../design/0005-app-hosting-and-deploy.md)). Releases are tagged
 `vX.Y.Z` by the Release workflow, which also tags the release's image so ECR keeps
@@ -52,6 +54,7 @@ flowchart LR
     role --> ecr[(ECR: pejip)]
     role --> svc
     user([Babu]) -- HTTPS job-search.zephyr-mcg.com --> waf[WAF] --> alb[ALB: pejip-alb]
+    alb -- sign-in --> google([Google OAuth])
     subgraph vpc[VPC pejip-vpc 10.20.0.0/16, public subnets]
         alb --> svc[ECS Fargate: pejip-prod]
         sched[Scheduler: pejip-purge-daily] --> purge[One-off task: pejip purge]

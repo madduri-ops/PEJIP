@@ -10,6 +10,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
+### Security
+
+- Google sign-in on `https://job-search.zephyr-mcg.com`: the load balancer signs
+  every request in with Google and the app admits only Babu's account. Only
+  `/healthz` stays open, for the deploy health gate.
+
 ### Added
 
 - One-command production rollback: `gh workflow run rollback.yml` redeploys the

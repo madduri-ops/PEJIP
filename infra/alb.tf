@@ -116,8 +116,28 @@ resource "aws_lb_listener" "https" {
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   certificate_arn   = aws_acm_certificate_validation.app.certificate_arn
 
+  # Sign in with Google first (auth.tf), then forward. /healthz skips sign-in
+  # through aws_lb_listener_rule.healthz.
+  default_action {
+    type  = "authenticate-oidc"
+    order = 1
+
+    authenticate_oidc {
+      issuer                     = local.google_oidc.issuer
+      authorization_endpoint     = local.google_oidc.authorization_endpoint
+      token_endpoint             = local.google_oidc.token_endpoint
+      user_info_endpoint         = local.google_oidc.user_info_endpoint
+      client_id                  = data.aws_ssm_parameter.google_client_id.value
+      client_secret              = data.aws_ssm_parameter.google_client_secret.value
+      scope                      = "openid email"
+      session_timeout            = var.sign_in_session_seconds
+      on_unauthenticated_request = "authenticate"
+    }
+  }
+
   default_action {
     type             = "forward"
+    order            = 2
     target_group_arn = aws_lb_target_group.app.arn
   }
 }

@@ -17,3 +17,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0005: App hosting and continuous deploy](0005-app-hosting-and-deploy.md) | Implemented |
 | [0006: Releases and rollback](0006-releases-and-rollback.md) | Implemented |
 | [0007: Keyless Claude access](0007-claude-identity-federation.md) | Accepted |
+| [0009: Google sign-in](0009-google-sign-in.md) | Implemented |

@@ -168,6 +168,10 @@ resource "aws_ecs_task_definition" "app" {
       { name = "PEJIP_HOST", value = "0.0.0.0" },
       { name = "PEJIP_PORT", value = tostring(var.container_port) },
       { name = "PEJIP_ENVIRONMENT", value = var.environment },
+      # Google sign-in check (ADR-0006): who may sign in, and which load
+      # balancer's tokens to trust.
+      { name = "PEJIP_AUTH_ALLOWED_EMAIL", value = local.sign_in_email },
+      { name = "PEJIP_AUTH_ALB_ARN", value = aws_lb.app.arn },
     ]
     readonlyRootFilesystem = true
     user                   = "10001"

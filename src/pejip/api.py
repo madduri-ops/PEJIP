@@ -3,15 +3,27 @@
 Today it serves only the health endpoint that the post-deploy gate and the load
 balancer poll. Feature endpoints are added here as they land; the system smoke test
 and DAST exercise every route in the OpenAPI document automatically.
+
+Every route except ``/healthz`` requires Babu's Google sign-in, checked by
+``pejip.auth`` against the token the load balancer adds (ADR-0006).
 """
 
 import os
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 
 from pejip import __version__
+from pejip.auth import (
+    OIDC_DATA_HEADER,
+    PUBLIC_PATHS,
+    AccountNotAllowedError,
+    Authenticator,
+    AuthSettings,
+    SignInRequiredError,
+)
 
 # Sent on every response. The API serves JSON only, so the CSP denies everything.
 SECURITY_HEADERS = {
@@ -25,9 +37,31 @@ SECURITY_HEADERS = {
 }
 
 
-def create_app() -> FastAPI:
-    """Build the API. Interactive docs are off; the OpenAPI document stays for DAST."""
+def create_app(env: Mapping[str, str] | None = None) -> FastAPI:
+    """Build the API. Interactive docs are off; the OpenAPI document stays for DAST.
+
+    Sign-in settings come from ``env`` (the process environment by default).
+    """
     app = FastAPI(title="PEJIP", version=__version__, docs_url=None, redoc_url=None)
+    settings = AuthSettings.from_env(os.environ if env is None else env)
+    authenticator = Authenticator(settings) if settings else None
+
+    # Registered before the security headers middleware, so refusals get them too.
+    @app.middleware("http")
+    async def require_sign_in(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if request.url.path in PUBLIC_PATHS:
+            return await call_next(request)
+        if authenticator is None:
+            return JSONResponse({"detail": "sign-in is not configured"}, status_code=503)
+        try:
+            await authenticator.verify(request.headers.get(OIDC_DATA_HEADER))
+        except SignInRequiredError:
+            return JSONResponse({"detail": "sign-in required"}, status_code=401)
+        except AccountNotAllowedError:
+            return JSONResponse({"detail": "this account is not allowed"}, status_code=403)
+        return await call_next(request)
 
     @app.middleware("http")
     async def add_security_headers(
