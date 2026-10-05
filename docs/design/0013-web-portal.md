@@ -1,4 +1,4 @@
-# 0013: Web portal (Home, Opportunities, Opportunity detail, Search Health)
+# 0013: Web portal (Home, Opportunities, Opportunity detail, Companies, Search Health)
 
 _Status: implemented (sample data). Last updated: 2026-10-05._
 
@@ -11,8 +11,9 @@ opportunity with saved views and filters, and one role's full, cited explanation
 
 ## Scope
 
-In scope: the Home, Opportunities, Opportunity detail and Search Health pages from the
-portal mocks (`Main`, `Opportunities`, `Opportunity` and `SearchHealth` boards on the shared mock canvas, style
+In scope: the Home, Opportunities, Opportunity detail, Companies and Search Health
+pages from the portal mocks (`Main`, `Opportunities`, `Opportunity`, `Companies` and
+`SearchHealth` boards on the shared mock canvas, style
 guide in the project files), served by the existing FastAPI app behind Google
 sign-in, reading from a data interface with synthetic sample data behind it.
 
@@ -24,8 +25,9 @@ Out of scope for now:
 - Feedback buttons (Interested, Watch, Not interested, Already applied) and "Search
   now": they need storage and a run trigger. The pages leave them out rather than
   show buttons that do nothing.
-- Companies, Watchlist, Connections and Settings: listed in the navigation as
-  "Soon".
+- Watchlist, Connections and Settings: listed in the navigation as "Soon".
+- The company detail screen (spec 12.20), "Watch company" and the sort menu on
+  Companies: "See roles" opens Opportunities filtered to the company instead.
 - On Search Health, search coverage by geographic scope and role family (spec 12.32)
   and run details beyond the history table: runs do not record scopes yet.
 
@@ -63,10 +65,11 @@ flowchart LR
 | `GET /` | Home: counts, roles needing attention, new matches, changed roles, search health |
 | `GET /opportunities` | Views (`view=attention, new, high-fit, immediate, watched, network, remote, changed, all`) and filters (`priority`, `fit`, `confidence`, `company`, `work_model`); unknown values are ignored |
 | `GET /opportunities/{opportunity_id}` | One role: summary, fit bars, concerns, cited reasons, why now, who you know, description, original link; 404 page when unknown |
+| `GET /companies` | Target companies as cards (state, watching, monitoring priority, matching and high-priority roles, connections, cited signals, top match, where jobs come from and any coverage gap) and discovered companies as a list; views `view=all, matching, watching, relevant, no-match, low`, unknown values show all |
 | `GET /search-health` | Latest run, failed sources with their impact and last success (no raw errors, spec 12.31), every source in the latest run, recent run history |
 | `GET /portal.css` | Styles |
 
-All five require sign-in like every route except `/healthz`. `create_app(data=...)`
+All six require sign-in like every route except `/healthz`. `create_app(data=...)`
 takes any `pejip.portal.data.PortalData`:
 
 ```python
@@ -76,6 +79,7 @@ class PortalData(Protocol):
     def latest_run(self) -> SearchRun | None: ...
     def recent_runs(self) -> list[SearchRun]: ...  # newest first, with per-source results
     def opportunities(self) -> list[Opportunity]: ...
+    def companies(self) -> list[Company]: ...  # targets and discovered companies
 ```
 
 `Opportunity` carries what the pages need from the `jobs`, `recommendations`
@@ -83,6 +87,11 @@ class PortalData(Protocol):
 (`pejip.explain` points and citations), so the store-backed reader is a mapping
 from those tables. `SearchRun.sources` maps from the `runs.summary["sources"]` list
 the pipeline already writes (`pejip.digest.SourceResult`, error text left out).
+A company has "Matching jobs" when it has a role in the Immediate, High or Medium
+band; otherwise the page shows its stored `relevance` (strategically relevant, no
+current match, low relevance). Signals carry their source and date (spec 12.42);
+target companies come from `config/search.yaml` once the store-backed reader lands,
+and signals from the company-intelligence source when it exists.
 
 ## Data model
 
