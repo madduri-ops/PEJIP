@@ -82,8 +82,12 @@ outputs: `claude_federation_issuer_url`, `claude_federation_policy_arn`.
 | Workspace | Default | Default |
 
 The CI rule matches pull request runs only, because the live evaluation runs on pull
-requests. The repository is private with one contributor, so pull request runs are
-trusted; GitHub does not give OIDC tokens to fork pull requests.
+requests. The repository is public, but only pull requests from branches in this
+repository can authenticate: GitHub never grants `id-token: write` to `pull_request`
+runs from forks, so a fork cannot obtain a token for this rule. The rule matches
+GitHub's subject format with immutable IDs
+(`repo:madduri-ops@289717107/PEJIP@1404604379:pull_request`); the plain
+`repo:madduri-ops/PEJIP:...` form never matches this repository's tokens.
 
 ## Data model
 
