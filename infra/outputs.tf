@@ -51,3 +51,8 @@ output "app_url" {
   description = "Public URL the Deploy workflow's health gate polls."
   value       = "https://${var.domain_name}"
 }
+
+output "google_redirect_uri" {
+  description = "Add as an authorized redirect URI on the Google OAuth client."
+  value       = "https://${var.domain_name}/oauth2/idpresponse"
+}

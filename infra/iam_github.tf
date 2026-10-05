@@ -294,6 +294,14 @@ data "aws_iam_policy_document" "plan" {
     resources = ["arn:aws:wafv2:${var.aws_region}:${local.account_id}:regional/webacl/*/*", "arn:aws:elasticloadbalancing:${var.aws_region}:${local.account_id}:loadbalancer/app/pejip-*/*"]
   }
 
+  # Plan reads the Google OAuth client the listener signs in with (auth.tf).
+  # The values are already in the state this role can read.
+  statement {
+    sid       = "ReadGoogleOauthClient"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/pejip/google-oauth/*"]
+  }
+
   statement {
     sid       = "ReadSchedules"
     actions   = ["scheduler:GetSchedule", "scheduler:ListTagsForResource"]

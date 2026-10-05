@@ -12,6 +12,7 @@ license = "LicenseRef-Proprietary"
 # Runtime dependencies, pinned exactly. Dependabot (pip) keeps them current.
 dependencies = [
     "anthropic==1.11.0",
+    "cryptography==50.0.2",
     "fastapi==0.142.2",
     "httpx==0.28.1",
     "pydantic==2.13.5",

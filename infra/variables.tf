@@ -126,3 +126,21 @@ variable "purge_schedule_enabled" {
   type        = bool
   default     = false
 }
+
+variable "sign_in_email" {
+  description = "The one Google account allowed to sign in (ADR-0006). Not committed; pass with TF_VAR_sign_in_email. Defaults to alert_email."
+  type        = string
+  sensitive   = true
+  default     = null
+}
+
+variable "sign_in_session_seconds" {
+  description = "How long a Google sign-in lasts before the load balancer asks again."
+  type        = number
+  default     = 43200
+
+  validation {
+    condition     = var.sign_in_session_seconds >= 300 && var.sign_in_session_seconds <= 604800
+    error_message = "The sign-in session must be between 5 minutes and 7 days."
+  }
+}

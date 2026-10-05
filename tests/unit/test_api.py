@@ -1,11 +1,16 @@
 """Unit tests for the HTTP surface."""
 
 import asyncio
+from collections.abc import Iterator
 
 import httpx
 import pytest
+from fastapi import FastAPI
 
+from ci.alb_token import AlbSigner
 from pejip import __version__, api
+from pejip.auth import OIDC_DATA_HEADER
+from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 
 
 class Client:
@@ -39,11 +44,6 @@ def test_every_response_carries_security_headers(client: Client) -> None:
             assert headers[name] == value
 
 
-def test_interactive_docs_are_disabled(client: Client) -> None:
-    assert client.get("/docs").status_code == 404
-    assert client.get("/redoc").status_code == 404
-
-
 def test_main_binds_to_localhost_by_default(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -66,3 +66,70 @@ def test_main_reads_host_and_port_from_environment(monkeypatch: pytest.MonkeyPat
     api.main()
 
     assert calls == [{"host": "0.0.0.0", "port": 9000, "server_header": False}]  # noqa: S104
+
+
+# ── Sign-in (ADR-0006) ───────────────────────────────────────────────────────
+def _get(app: FastAPI, path: str, token: str | None = None) -> httpx.Response:
+    async def call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        headers = {OIDC_DATA_HEADER: token} if token else {}
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get(path, headers=headers)
+
+    return asyncio.run(call())
+
+
+def test_protected_routes_fail_closed_without_sign_in_settings() -> None:
+    app = api.create_app(env={})
+
+    assert _get(app, "/healthz").status_code == 200
+    response = _get(app, "/openapi.json")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "sign-in is not configured"}
+
+
+@pytest.fixture
+def signer() -> AlbSigner:
+    return AlbSigner(ALB_ARN)
+
+
+@pytest.fixture
+def signed_in_app(signer: AlbSigner) -> Iterator[FastAPI]:
+    with key_server(signer) as key_url:
+        yield api.create_app(env=auth_env(key_url))
+
+
+def test_healthz_needs_no_sign_in(signed_in_app: FastAPI) -> None:
+    assert _get(signed_in_app, "/healthz").status_code == 200
+
+
+def test_protected_route_needs_a_token(signed_in_app: FastAPI) -> None:
+    response = _get(signed_in_app, "/openapi.json")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "sign-in required"}
+    for name, value in api.SECURITY_HEADERS.items():
+        assert response.headers[name] == value
+
+
+def test_protected_route_refuses_another_account(signed_in_app: FastAPI, signer: AlbSigner) -> None:
+    response = _get(signed_in_app, "/openapi.json", signer.token("someone@example.com"))
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "this account is not allowed"}
+
+
+def test_protected_route_serves_the_allowed_account(
+    signed_in_app: FastAPI, signer: AlbSigner
+) -> None:
+    response = _get(signed_in_app, "/openapi.json", signer.token(ALLOWED_EMAIL))
+
+    assert response.status_code == 200
+    assert "/healthz" in response.json()["paths"]
+
+
+def test_interactive_docs_are_disabled(signed_in_app: FastAPI, signer: AlbSigner) -> None:
+    token = signer.token(ALLOWED_EMAIL)
+
+    assert _get(signed_in_app, "/docs", token).status_code == 404
+    assert _get(signed_in_app, "/redoc", token).status_code == 404

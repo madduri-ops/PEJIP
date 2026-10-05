@@ -329,11 +329,18 @@ jobs:
           if-no-files-found: ignore
 
   # Baseline scan plus active API scan of every route in the OpenAPI document,
-  # against the installed app served the way production serves it.
+  # against the installed app served the way production serves it: with Google
+  # sign-in on (ADR-0006). A throwaway key stands in for the load balancer's, and
+  # ZAP sends a token signed with it on every request, so it scans the routes
+  # rather than the sign-in refusal.
   dast:
     name: DAST
     needs: [integration, system, sast, dependency-audit]
     runs-on: ubuntu-latest
+    env:
+      PEJIP_AUTH_ALLOWED_EMAIL: dast@example.com
+      PEJIP_AUTH_ALB_ARN: arn:aws:elasticloadbalancing:us-west-2:000000000000:loadbalancer/app/dast/0
+      PEJIP_AUTH_KEY_URL: http://127.0.0.1:8090/{kid}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -346,6 +353,8 @@ jobs:
       - run: pip install dist/*.whl
       - name: Start the app
         run: |
+          python -m ci.alb_token keys "${PEJIP_AUTH_ALLOWED_EMAIL}" "${PEJIP_AUTH_ALB_ARN}" > token.txt
+          nohup python -m http.server 8090 --bind 127.0.0.1 --directory keys > keys.log 2>&1 &
           nohup python -m pejip.api > server.log 2>&1 &
           for _ in $(seq 1 30); do
             curl -sSf http://127.0.0.1:8000/healthz && exit 0
@@ -358,9 +367,25 @@ jobs:
       - name: ZAP API scan
         run: |
           mkdir -p zap && chmod 777 zap
+          token=$(cat token.txt)
+          curl -sSf -H "x-amzn-oidc-data: ${token}" http://127.0.0.1:8000/openapi.json -o zap/openapi.json
           docker run --rm --network host -v "${PWD}/zap:/zap/wrk:rw" "${ZAP_IMAGE}" \
-            zap-api-scan.py -t http://127.0.0.1:8000/openapi.json -f openapi \
+            zap-api-scan.py -t /zap/wrk/openapi.json -f openapi -O http://127.0.0.1:8000 \
+            -z "-config replacer.full_list(0).description=alb-sign-in
+                -config replacer.full_list(0).enabled=true
+                -config replacer.full_list(0).matchtype=REQ_HEADER
+                -config replacer.full_list(0).matchstr=x-amzn-oidc-data
+                -config replacer.full_list(0).regex=false
+                -config replacer.full_list(0).replacement=${token}" \
             -J zap-report.json -r zap-report.html -I
+      # A 401 means ZAP's requests went out without the token and it scanned only
+      # the sign-in refusal.
+      - name: Check ZAP was signed in
+        run: |
+          if grep -E 'HTTP/1\.1" 401' server.log; then
+            echo "ZAP requests were refused sign-in; the scan did not reach the routes"
+            exit 1
+          fi
       - run: python -m ci.severity_gate zap zap/zap-report.json
       - if: always()
         uses: actions/upload-artifact@v7

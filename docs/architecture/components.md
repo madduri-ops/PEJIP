@@ -121,7 +121,10 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP. Today it serves only the health
   endpoint; feature endpoints are added here.
 - **Interfaces:** `GET /healthz`; the OpenAPI document at `/openapi.json`. Run with
-  `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`).
+  `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
+  `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
+  `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and
+  `PEJIP_AUTH_ALB_ARN` ([0009: Google sign-in](../design/0009-google-sign-in.md)).
 - **Data:** none.
 - **Deployment:** the image's default command; runs as ECS service `pejip-prod`
   behind `pejip-alb` ([0005: App hosting and deploy](../design/0005-app-hosting-and-deploy.md)).

@@ -35,9 +35,17 @@ analyses and recommendations as personal data.
 | Service | What is sent | Why | Not sent |
 |---|---|---|---|
 | Anthropic API (Claude) | Job posting text, and from the profile only the headline, target seniority, career direction and evidence items (`CareerProfile.ai_view`) | Job analysis and requirement-to-evidence matching | Name, e-mail, compensation preferences, anything else in the profile |
+| Google (sign-in) | Nothing from PEJIP: Babu signs in to their own Google account, and the load balancer receives their e-mail address and Google ID back ([ADR-0006](adr/0006-google-sign-in-at-the-load-balancer.md)) | Only Babu can use `job-search.zephyr-mcg.com` | Any career data |
 
 Job sources (docs/sources.md) receive only anonymous GET requests with our user
 agent; no personal data is sent to them.
+
+## Access to the hosted app
+
+Every route except `/healthz` needs Google sign-in at the load balancer, and the
+app admits only the configured address (`pejip.auth`, ADR-0006). The OAuth client
+ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted with
+`alias/pejip`), never in the repository.
 
 ## Secrets
 
