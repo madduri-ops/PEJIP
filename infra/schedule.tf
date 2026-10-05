@@ -2,7 +2,9 @@
 # the PEJIP image as one-off Fargate tasks with a command override:
 #
 # - `pejip run` every morning: find roles, rank them, store them on the data
-#   file system (efs.tf) and email the digest (digest.tf).
+#   file system (efs.tf) and email the digest (digest.tf). With ranker =
+#   "routine" (design doc 0015) it leaves new roles for the Claude Code routine
+#   at 07:00 and `pejip digest` emails the ranked digest at 08:00 instead.
 # - `pejip purge` once a day, so data past its 90-day window is deleted even on
 #   a day the run fails.
 #
@@ -21,6 +23,16 @@ locals {
       command     = ["pejip", "run"]
       cpu         = var.run_task_cpu
       memory      = var.run_task_memory
+    }
+    digest = {
+      name        = "pejip-digest-daily"
+      description = "Emails Babu the PEJIP digest, ranked by the Claude Code routine"
+      expression  = var.digest_schedule
+      timezone    = var.run_schedule_timezone
+      enabled     = var.run_schedule_enabled && var.ranker == "routine"
+      command     = ["pejip", "digest"]
+      cpu         = var.task_cpu
+      memory      = var.task_memory
     }
     purge = {
       name        = "pejip-purge-daily"

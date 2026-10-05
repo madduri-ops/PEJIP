@@ -196,11 +196,26 @@ class PostingText:
         return cls(job["title"], job["company"], job["location"], job["description"])
 
 
+def analysis_input(posting: PostingText) -> str:
+    """What the job analysis step reads: the posting, marked up as the prompt expects."""
+    return _posting_message(posting.title, posting.company, posting.location, posting.description)
+
+
+def matching_input(profile: CareerProfile, analysis: JobAnalysis) -> str:
+    """What the evidence matching step reads: the profile and the grounded requirements."""
+    requirements = "\n".join(
+        f"- {r.id} [{r.category}, {r.classification}, {r.importance}]: {r.text}"
+        for r in analysis.requirements
+    )
+    return (
+        f"<career_profile>\n{profile.ai_view()}</career_profile>\n\n"
+        f"<job>\nTitle: {analysis.normalized_title}\nRequirements:\n{requirements}\n</job>"
+    )
+
+
 def analyze_job(ai: AIClient, profile: CareerProfile, posting: PostingText) -> AnalysisOutcome:
     """Run job analysis then evidence matching, validating each step."""
-    posting_text = _posting_message(
-        posting.title, posting.company, posting.location, posting.description
-    )
+    posting_text = analysis_input(posting)
     analysed = ai.structured(
         feature="job_analysis",
         prompt=load_prompt("JOB_ANALYSIS"),
@@ -209,17 +224,10 @@ def analyze_job(ai: AIClient, profile: CareerProfile, posting: PostingText) -> A
         schema_version=ANALYSIS_SCHEMA_VERSION,
     )
     analysis, dropped = ground_analysis(analysed.output, posting_text)
-    requirements = "\n".join(
-        f"- {r.id} [{r.category}, {r.classification}, {r.importance}]: {r.text}"
-        for r in analysis.requirements
-    )
     matched = ai.structured(
         feature="evidence_matching",
         prompt=load_prompt("EVIDENCE_MATCHING"),
-        content=(
-            f"<career_profile>\n{profile.ai_view()}</career_profile>\n\n"
-            f"<job>\nTitle: {analysis.normalized_title}\nRequirements:\n{requirements}\n</job>"
-        ),
+        content=matching_input(profile, analysis),
         schema=EvidenceMatching,
         schema_version=MATCHING_SCHEMA_VERSION,
     )

@@ -164,6 +164,15 @@ resource "aws_wafv2_web_acl" "app" {
       managed_rule_group_statement {
         vendor_name = "AWS"
         name        = "AWSManagedRulesCommonRuleSet"
+
+        # Counted here and blocked by "body-size" below everywhere except the
+        # ranking routine's answers, which run well past the 8 KB limit.
+        rule_action_override {
+          name = "SizeRestrictions_BODY"
+          action_to_use {
+            count {}
+          }
+        }
       }
     }
 
@@ -192,6 +201,54 @@ resource "aws_wafv2_web_acl" "app" {
     visibility_config {
       cloudwatch_metrics_enabled = true
       metric_name                = "pejip-aws-known-bad-inputs"
+      sampled_requests_enabled   = true
+    }
+  }
+
+  # The common rule set's 8 KB body limit, except for POST /api/ranking/analyses
+  # (design doc 0015), whose answers are checked by the routine's key and by the
+  # app's own validation instead.
+  rule {
+    name     = "body-size"
+    priority = 3
+
+    action {
+      block {}
+    }
+
+    statement {
+      and_statement {
+        statement {
+          label_match_statement {
+            scope = "LABEL"
+            key   = "awswaf:managed:aws:core-rule-set:SizeRestrictions_Body"
+          }
+        }
+        statement {
+          not_statement {
+            statement {
+              byte_match_statement {
+                search_string         = "/api/ranking/analyses"
+                positional_constraint = "EXACTLY"
+
+                field_to_match {
+                  uri_path {}
+                }
+
+                text_transformation {
+                  priority = 0
+                  type     = "NONE"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    visibility_config {
+      cloudwatch_metrics_enabled = true
+      metric_name                = "pejip-body-size"
       sampled_requests_enabled   = true
     }
   }
