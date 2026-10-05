@@ -3,12 +3,14 @@
 import asyncio
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import httpx
 import pytest
 from fastapi import FastAPI
 
 from pejip import portal
+from pejip.config import SearchConfig, load_config
 from pejip.portal import render, views
 from pejip.portal.data import (
     Citation,
@@ -511,7 +513,8 @@ def test_navigation_links_live_pages_and_marks_the_rest_soon() -> None:
     assert '<a href="/search-health">Details</a>' in html
     assert '<a class="nl" href="/companies">Companies</a>' in html
     assert '<a class="nl" href="/watchlist">Watchlist</a>' in html
-    for label in ("Connections", "Settings"):
+    assert '<a class="nl" href="/settings">Settings</a>' in html
+    for label in ("Connections",):
         assert f'<span class="nl off">{label}<span class="soon">Soon</span></span>' in html
 
 
@@ -694,3 +697,66 @@ def test_watched_job_without_change_note_in_table() -> None:
 
     assert w.changed_jobs == []
     assert "<td>No change</td>" in render.watchlist_body(w, NOW)
+
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+CONFIG = load_config(Path("config/search.yaml"))
+
+
+def _get_settings(config: SearchConfig | None) -> str:
+    app = FastAPI()
+    app.include_router(portal.router(FakeData([], None), clock=lambda: NOW, config=config))
+
+    async def call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/settings")
+
+    page = asyncio.run(call())
+    assert page.status_code == 200
+    return page.text
+
+
+def test_settings_shows_the_real_search_setup() -> None:
+    html = _get_settings(CONFIG)
+
+    assert "<title>PEJIP · Settings</title>" in html
+    assert 'class="nl on" href="/settings" aria-current="page"' in html
+    assert '<span class="chip">vice president</span>' in html
+    assert '<span class="chip">intern</span>' in html
+    assert "San Francisco Bay Area" in html
+    assert "Any remote role in the US" in html
+    assert "Roles outside every location are hidden." in html
+    assert "<h3>Anthropic</h3>" in html
+    assert "Public Greenhouse job board" in html
+    assert "alerts@inbox.job-search.zephyr-mcg.com" in html
+    assert "Job board alerts" in html  # LinkedIn
+    assert "Careers site alerts" in html
+    assert f"Scoring version {CONFIG.scoring.version}." in html
+    assert "Priority 85+, Fit 85+" in html
+    assert "90 days, then deleted" in html
+
+
+def test_settings_variants() -> None:
+    config = CONFIG.model_copy(
+        update={
+            "inbox": None,
+            "geography": CONFIG.geography.model_copy(
+                update={
+                    "hard_filter": False,
+                    "scopes": {"SEATTLE": CONFIG.geography.scopes["US_REMOTE"]},
+                }
+            ),
+            "sources": [CONFIG.sources[0].model_copy(update={"adapter": "lever"})],
+        }
+    )
+    html = _get_settings(config)
+
+    assert "Job-alert emails are not set up." in html
+    assert "Roles outside these locations are kept, with lower priority." in html
+    assert "<td>Seattle</td>" in html
+    assert "Public Lever job board" in html
+
+
+def test_settings_without_configuration() -> None:
+    assert "The search configuration is not available" in _get_settings(None)
