@@ -93,7 +93,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_logging()
     settings = Settings.from_env()
     if args.command == "run":
-        return _cmd_run(settings)
+        try:
+            return _cmd_run(settings)
+        except Exception:
+            # The pejip-app-errors alarm counts ERROR lines; a run that crashes
+            # never logs run_finished, so say so before the traceback.
+            log.exception("run_crashed")
+            raise
     if args.command == "purge":
         return _cmd_purge(settings)
     if args.command == "export":
