@@ -29,7 +29,7 @@ from pejip.sources.email_alerts import S3Inbox, parse_alert
 from pejip.sources.greenhouse import fetch_greenhouse
 from pejip.sources.http import FetchError, PoliteClient
 from pejip.sources.lever import fetch_lever
-from pejip.store import AnalysisRecord, RecommendationRecord, Store
+from pejip.store import AnalysisRecord, RecommendationRecord, Store, is_current
 
 log = logging.getLogger(__name__)
 
@@ -50,8 +50,12 @@ class Pipeline:
     inbox: S3Inbox | None = None
     network: NetworkIndex | None = None
     unranked_reason: str = "ranking is not set up"
+    # The Claude Code routine analyses new roles after the run (design doc 0015),
+    # so their waiting is expected, not worth a digest note.
+    routine: bool = False
     _analysed: int = 0
     _budget_error: str | None = None
+    _new_recommendations_only: bool = False
 
     def run(self) -> Digest:
         run_id = str(uuid.uuid4())
@@ -96,7 +100,7 @@ class Pipeline:
         notes: list[str] = []
         if self.profile is None:
             notes.append(f"Roles are unranked because {self.unranked_reason}.")
-        elif self.ai is None:
+        elif self.ai is None and not self.routine:
             notes.append(f"New and changed roles are unranked because {self.unranked_reason}.")
         if self.inbox is not None and self.config.inbox is not None:
             companies = self.config.inbox.companies
@@ -109,14 +113,8 @@ class Pipeline:
             items.append(self._rank(self.store.get_job(job_id), discovery, now))
         analysed, budget_hit = self._analysed, self._budget_error is not None
 
-        failed_sources = sum(s.status == "FAILED" for s in sources)
+        status = _status(sources, items)
         unranked = sum(i.recommendation is None for i in items)
-        if sources and failed_sources == len(sources):
-            status = "FAILED"
-        elif failed_sources or unranked:
-            status = "PARTIAL"
-        else:
-            status = "SUCCESS"
         notes += _network_notes(self.network)
         if budget_hit:
             notes.append("The monthly AI spend cap was reached; remaining roles are unranked.")
@@ -125,13 +123,47 @@ class Pipeline:
             "candidates": len(seen),
             "analysed": analysed,
             "unranked": unranked,
+            # Kept so `pejip digest` can rank this run's roles again later (design 0015).
+            "seen": [list(pair) for pair in seen],
+            "notes": notes,
         }
         self.store.finish_run(run_id, status, summary, self.clock())
         log.info(
             "run_finished",
-            extra={"status": status, **{k: v for k, v in summary.items() if k != "sources"}},
+            extra={"status": status, **{k: v for k, v in summary.items() if k not in _UNLOGGED}},
         )
         return Digest(run_id, now, status, sources, items, notes)
+
+    def digest_from(self, run: dict[str, Any]) -> Digest:
+        """The digest of an earlier run, ranked again with the analyses stored since.
+
+        The ranking routine (design doc 0015) analyses a run's new roles after the run
+        ends; this scores them, without fetching anything or starting a new run.
+        """
+        now = self.clock()
+        summary = run["summary"]
+        # Runs stored before design 0015 have no "seen" or "notes".
+        sources = [SourceResult(**s) for s in summary.get("sources", [])]
+        self._analysed = 0
+        self._budget_error = None
+        # Roles the run already scored are scored again without a second
+        # recommendation row; a role two sources reported is listed once.
+        self._new_recommendations_only = True
+        items = []
+        for job_id, discovery in dict(map(tuple, summary.get("seen", []))).items():
+            job = self.store.find_job(job_id)
+            if job is not None:
+                items.append(self._rank(job, discovery, now))
+        status = _status(sources, items)
+        log.info(
+            "digest_built",
+            extra={
+                "status": status,
+                "roles": len(items),
+                "unranked": sum(i.recommendation is None for i in items),
+            },
+        )
+        return Digest(run["id"], now, status, sources, items, list(summary.get("notes", [])))
 
     def _read_inbox(
         self,
@@ -185,11 +217,7 @@ class Pipeline:
         if profile is None:
             return DigestItem(job, discovery, None, self.unranked_reason)
         latest = self.store.latest_analysis(job["id"])
-        if (
-            latest is None
-            or latest["status"] != "OK"
-            or latest["content_hash"] != job["content_hash"]
-        ):
+        if latest is None or not is_current(latest, job):
             latest, failure = self._analyse_if_allowed(profile, job, now)
             if latest is None:
                 return DigestItem(job, discovery, None, failure)
@@ -236,6 +264,17 @@ class Pipeline:
         )
         return {"id": analysis_id, "status": "OK", "payload": payload}
 
+    def _recorded(self, job_id: int, analysis_id: int, scoring_version: str) -> bool:
+        """In ``digest_from``: the run already stored this exact recommendation."""
+        if not self._new_recommendations_only:
+            return False
+        latest = self.store.latest_recommendation(job_id)
+        return (
+            latest is not None
+            and latest["analysis_id"] == analysis_id
+            and latest["scoring_version"] == scoring_version
+        )
+
     def _recommend(
         self,
         profile: CareerProfile,
@@ -263,24 +302,41 @@ class Pipeline:
         explanation = build_explanation(analysis, matching, rec, job, signal)
         verify_citations(explanation, job, profile, signal)
         detail = {**rec.to_dict(), "explanation": explanation}
-        self.store.add_recommendation(
-            RecommendationRecord(
-                job_id=job["id"],
-                analysis_id=analysis_row["id"],
-                fit=rec.fit,
-                confidence=rec.confidence,
-                priority=rec.priority,
-                detail=detail,
-                scoring_version=rec.scoring_version,
-                created_at=now,
+        if not self._recorded(job["id"], analysis_row["id"], rec.scoring_version):
+            self.store.add_recommendation(
+                RecommendationRecord(
+                    job_id=job["id"],
+                    analysis_id=analysis_row["id"],
+                    fit=rec.fit,
+                    confidence=rec.confidence,
+                    priority=rec.priority,
+                    detail=detail,
+                    scoring_version=rec.scoring_version,
+                    created_at=now,
+                )
             )
-        )
         return {
             "fit": rec.fit,
             "confidence": rec.confidence,
             "priority": rec.priority,
             "detail": detail,
         }
+
+
+# Run summary fields kept in the database but left out of the run_finished log line.
+_UNLOGGED = frozenset({"sources", "seen", "notes"})
+
+
+def _status(sources: list[SourceResult], items: list[DigestItem]) -> str:
+    failed_sources = sum(s.status == "FAILED" for s in sources)
+    unranked = sum(i.recommendation is None for i in items)
+    if sources and failed_sources == len(sources):
+        status = "FAILED"
+    elif failed_sources or unranked:
+        status = "PARTIAL"
+    else:
+        status = "SUCCESS"
+    return status
 
 
 def _network_notes(index: NetworkIndex | None) -> list[str]:

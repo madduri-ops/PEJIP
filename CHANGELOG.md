@@ -10,8 +10,21 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
+### Added
+
+- Ranking through a Claude Code routine on Babu's plan (design doc 0015): on AWS
+  the 06:00 run stores new roles without calling Claude, the routine analyses
+  them at 07:00 through two key-protected endpoints (`/api/ranking/queue` and
+  `/api/ranking/analyses`), and a new `pejip digest` task emails the ranked digest
+  at 08:00. If the routine sends nothing, the digest still goes out with those
+  roles unranked and a note, and an alarm fires.
+
 ### Changed
 
+- Job analysis and evidence matching can run in a Claude Code session as well as
+  through the API: `python -m pejip.routine` lays out each step with the same
+  prompt, input and schema, and checks every answer the way the API path does
+  (design doc 0015). The golden set can be scored through it.
 - The portal's sidebar shows the full name, Personal Executive Job Intelligence
   Platform, instead of PEJIP.
 - `python -m pejip.evaluation run` takes `--workers N` to score several golden

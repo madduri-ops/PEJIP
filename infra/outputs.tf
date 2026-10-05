@@ -102,3 +102,8 @@ output "dashboard_url" {
   description = "The pejip CloudWatch dashboard: search runs, source failures, errors, Claude spend and every PEJIP alarm."
   value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
 }
+
+output "ranking_key_parameter_name" {
+  description = "SSM parameter for the SHA-256 of the ranking routine's key (design doc 0015); Babu stores it."
+  value       = local.ranking_key_parameter
+}

@@ -49,6 +49,25 @@ resource "aws_lb_listener_rule" "healthz" {
   }
 }
 
+# The ranking routine runs on claude.ai, not in a browser, so it can't sign in
+# with Google. Its two endpoints skip sign-in here and check the routine's key
+# in the app instead (design doc 0015, ADR-0008).
+resource "aws_lb_listener_rule" "ranking" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 2
+
+  condition {
+    path_pattern {
+      values = ["/api/ranking/*"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
 # The load balancer calls Google's token and user info endpoints itself when a
 # sign-in completes.
 resource "aws_vpc_security_group_egress_rule" "alb_to_google" {

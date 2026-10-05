@@ -176,9 +176,19 @@ class Store:
             changed = row.content_hash != posting.content_hash
             return UpsertResult(row.id, "MATERIALLY_CHANGED" if changed else "PREVIOUSLY_SEEN")
 
+    def find_job(self, job_id: int) -> dict[str, Any] | None:
+        """The job, or None when it does not exist (or was purged)."""
+        with self.engine.connect() as conn:
+            row = conn.execute(select(jobs).where(jobs.c.id == job_id)).mappings().first()
+        return None if row is None else self._job(row)
+
     def get_job(self, job_id: int) -> dict[str, Any]:
         with self.engine.connect() as conn:
             row = conn.execute(select(jobs).where(jobs.c.id == job_id)).mappings().one()
+        return self._job(row)
+
+    @staticmethod
+    def _job(row: Any) -> dict[str, Any]:
         job = dict(row)
         for key in ("posted_at", "first_seen_at", "last_seen_at"):
             job[key] = _aware(job[key])
@@ -225,7 +235,41 @@ class Store:
             )
         return dict(row) if row else None
 
+    def needs_analysis(self, job: dict[str, Any]) -> bool:
+        """True when the posting has no successful analysis of its current text."""
+        return not is_current(self.latest_analysis(job["id"]), job)
+
+    def analyses_since(self, since: datetime, ranker: str) -> int:
+        """How many successful analyses ``ranker`` stored at or after ``since``."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(analyses.c.provenance).where(
+                    (analyses.c.created_at >= since) & (analyses.c.status == "OK")
+                )
+            ).scalars()
+            return sum(1 for provenance in rows if provenance.get("ranker") == ranker)
+
     # Runs -----------------------------------------------------------------
+
+    def latest_run(self) -> dict[str, Any] | None:
+        """The most recent finished run, or None before the first one."""
+        with self.engine.connect() as conn:
+            row = (
+                conn.execute(
+                    select(runs)
+                    .where(runs.c.finished_at.is_not(None))
+                    .order_by(runs.c.started_at.desc())
+                    .limit(1)
+                )
+                .mappings()
+                .first()
+            )
+        if row is None:
+            return None
+        run = dict(row)
+        run["started_at"] = _aware(run["started_at"])
+        run["finished_at"] = _aware(run["finished_at"])
+        return run
 
     def start_run(self, run_id: str, now: datetime) -> None:
         with self.engine.begin() as conn:
@@ -280,3 +324,12 @@ class Store:
         with self.engine.begin() as conn:
             for table in reversed(metadata.sorted_tables):
                 conn.execute(delete(table))
+
+
+def is_current(analysis: dict[str, Any] | None, job: dict[str, Any]) -> bool:
+    """True when ``analysis`` is a successful analysis of the job's current text."""
+    return (
+        analysis is not None
+        and analysis["status"] == "OK"
+        and analysis["content_hash"] == job["content_hash"]
+    )
