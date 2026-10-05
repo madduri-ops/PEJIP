@@ -18,11 +18,13 @@ section 5.1.
 | `network.tf` | `pejip-vpc` (`10.20.0.0/16`), two public subnets, internet gateway, locked default security group, VPC flow logs |
 | `alb.tf` | ACM certificate for `job-search.zephyr-mcg.com`, ALB `pejip-alb` (HTTPS with Google sign-in, HTTP redirect), WAF `pejip-alb` with blocked-request logs |
 | `auth.tf` | Google sign-in: reads the OAuth client from SSM, keeps `/healthz` open, lets the ALB reach Google ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md)) |
-| `ecs.tf` | ECS cluster and service `pejip-prod`, task definition, roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
-| `schedule.tf` | `pejip-purge-daily` schedule running `pejip purge` (created disabled) and its `pejip-scheduler` role |
+| `ecs.tf` | ECS cluster and service `pejip-prod`, task definition (data volume, run settings, Claude switch), roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
+| `efs.tf` | EFS file system `pejip-prod-data` (KMS-encrypted, TLS-only, no backups) holding the SQLite database, spend ledger and digests, with its access point and mount targets ([design](../docs/design/0012-daily-run-and-storage.md)) |
+| `digest.tf` | SNS topic `pejip-digest` that emails Babu the daily digest |
+| `schedule.tf` | `pejip-run-daily` (06:00 Pacific, `pejip run`) and `pejip-purge-daily` (`pejip purge`) schedules and their `pejip-scheduler` role |
 | `inbox.tf` | Job-alert inbox: SES receiving for `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket `pejip-inbox-275704950192` (90-day expiry) ([design](../docs/design/0010-job-alert-inbox.md)) |
 | `alarms.tf` | 5xx, unhealthy target, tasks-below-desired, CPU and memory alarms to `pejip-alerts` |
-| `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-search-run-failed`, `pejip-source-failures`, `pejip-app-errors` and `pejip-search-stalled` (off until `search_run_alarms_enabled = true`); dashboard `pejip` ([design](../docs/design/0011-monitoring.md)) |
+| `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-search-run-failed`, `pejip-source-failures`, `pejip-app-errors` and `pejip-search-stalled` (only while `run_schedule_enabled` is on); dashboard `pejip` ([design](../docs/design/0011-monitoring.md)) |
 
 The hosting decisions (public subnets without NAT, WAF rules, DNS at the registrar,
 cost) are in [ADR-0005](../docs/adr/0005-app-hosting-and-continuous-deploy.md) and
@@ -89,6 +91,36 @@ receiving, and `inbox_receiving_enabled` now defaults to `true`.
    the registrar: the TXT record (domain verification) and the MX record.
 4. Sign up for each career site's job alerts with
    `terraform output inbox_address`.
+
+## Daily run and storage (once)
+
+[Design 0012](../docs/design/0012-daily-run-and-storage.md). After the apply that
+creates the data file system, schedules and digest topic:
+
+1. Run the Deploy workflow on `main` (or merge any app change) so the image with
+   `pejip run`'s AWS support is live. The apply's own task definition revision
+   reuses the image the service is running, so the schedules never point at an
+   image that doesn't exist.
+2. Click the link in the "AWS Notification - Subscription Confirmation" email for
+   `pejip-digest`. No digest is delivered until then.
+3. Store the career profile (the same YAML as `examples/profile.example.yaml`)
+   from CloudShell, after uploading the file:
+   `aws ssm put-parameter --name /pejip/profile --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://profile.yaml`,
+   then delete the uploaded copy. To replace it later, add `--overwrite`.
+4. Create the app's Claude Console rule (the App column in
+   [design 0007](../docs/design/0007-claude-identity-federation.md)) and set its
+   IDs as the defaults of `claude_app_rule_id` and
+   `claude_app_service_account_id` in `variables.tf`; apply again and deploy.
+   Until then `PEJIP_AI_ENABLED` is `false` and roles are emailed unranked.
+
+To run a search now instead of waiting for the morning, start the schedule's task
+by hand from CloudShell:
+
+```sh
+aws ecs run-task --cluster pejip-prod --task-definition pejip-prod --launch-type FARGATE \
+  --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -json | jq -r '.public_subnet_ids.value | join(",")')],securityGroups=[$(terraform output -raw tasks_security_group_id)],assignPublicIp=ENABLED}" \
+  --overrides '{"cpu":"512","memory":"1024","containerOverrides":[{"name":"pejip","command":["pejip","run"]}]}'
+```
 
 ## Google sign-in
 

@@ -78,10 +78,11 @@ resource "aws_cloudwatch_metric_alarm" "app_errors" {
 
 # A stalled pipeline: no run finished (SUCCESS or PARTIAL) in 26 hours, which
 # covers a schedule that stopped, a task that never started and a crash before
-# run_finished. Off until the daily search schedule exists, or it would alarm
-# from the moment it is created. This one also emails when it clears.
+# run_finished. It exists only while the daily run schedule is on
+# (schedule.tf); otherwise it would alarm for a search that is not meant to run.
+# This one also emails when it clears.
 resource "aws_cloudwatch_metric_alarm" "search_stalled" {
-  count = var.search_run_alarms_enabled ? 1 : 0
+  count = var.run_schedule_enabled ? 1 : 0
 
   alarm_name          = "pejip-search-stalled"
   alarm_description   = "No PEJIP search run has finished in 26 hours. Check the daily search schedule and the task's logs."

@@ -354,3 +354,51 @@ def test_an_inbox_without_configured_companies_is_not_read(
 
     assert digest.sources == []
     assert s3.calls == []
+
+
+@pytest.mark.parametrize("missing", ["profile", "ai"])
+def test_without_a_profile_or_claude_roles_are_stored_but_unranked(
+    config: SearchConfig, profile: CareerProfile, store: Store, missing: str
+) -> None:
+    fake = FakeMessages()
+    pipeline = build(config, profile, store, Boards(), fake)
+    setattr(pipeline, missing, None)
+    pipeline.unranked_reason = "Claude access is not set up for this workload yet"
+    digest = pipeline.run()
+
+    assert fake.calls == []
+    assert digest.status == "PARTIAL"
+    assert len(digest.items) == 2
+    assert all(i.recommendation is None for i in digest.items)
+    assert {i.failure for i in digest.items} == {pipeline.unranked_reason}
+    assert store.latest_analysis(digest.items[0].job["id"]) is None
+    lead = "Roles" if missing == "profile" else "New and changed roles"
+    assert digest.notes == [
+        f"{lead} are unranked because Claude access is not set up for this workload yet."
+    ]
+    text = render(digest, config.scoring.strong_match_fit)
+    assert "Unranked: Claude access is not set up" in text
+
+
+def test_without_claude_roles_analysed_before_are_still_scored(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    boards = Boards()
+    fake = FakeMessages()
+    fake.responder = model_responder()
+    build(config, profile, store, boards, fake).run()
+    calls = len(fake.calls)
+
+    boards.jobs["alpha"].append(gh_job(5, "VP, Engineering Operations"))
+    pipeline = build(config, profile, store, boards, fake, clock_days=1)
+    pipeline.ai = None
+    pipeline.unranked_reason = "Claude access is not set up for this workload yet"
+    digest = pipeline.run()
+
+    assert len(fake.calls) == calls
+    ranked = {i.job["title"]: i.recommendation is not None for i in digest.items}
+    assert ranked == {
+        "VP, Technology Operations": True,
+        "Head of Engineering Operations": True,
+        "VP, Engineering Operations": False,
+    }
