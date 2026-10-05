@@ -31,6 +31,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - The Terraform plan check can read the load balancer's WAF association again
   (`wafv2:GetWebACLForResource` is checked against every regional web ACL).
+- Deploy waits for the ECS rollout to finish instead of failing a healthy
+  deploy whose rollout was still marked in progress.
 
 ## 0.1.0 - 2026-10-05
 
