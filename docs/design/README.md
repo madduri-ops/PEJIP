@@ -23,3 +23,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0011: Monitoring and alerts](0011-monitoring.md) | Accepted |
 | [0012: Daily run and storage on AWS](0012-daily-run-and-storage.md) | Accepted |
 | [0013: Web portal](0013-web-portal.md) | Implemented (sample data) |
+| [0015: Ranking through a Claude Code routine](0015-ranking-routine.md) | Draft |
