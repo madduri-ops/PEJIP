@@ -13,12 +13,26 @@ from datetime import datetime
 from html import escape
 from urllib.parse import quote
 
-from pejip.portal.data import Citation, Opportunity, Point, SearchRun, Signal, SourceStatus
+from pejip.config import SearchConfig
+from pejip.portal.data import (
+    Citation,
+    Company,
+    HistoryEvent,
+    Opportunity,
+    Point,
+    SearchRun,
+    Signal,
+    SourceStatus,
+)
 from pejip.portal.views import (
+    AGE_CHOICES,
     COMPANY_VIEWS,
     CONFIDENCE_CHOICES,
     FIT_CHOICES,
+    NETWORK_CHOICES,
+    PAY_CHOICES,
     PRIORITY_CHOICES,
+    SCOPE_CHOICES,
     SHOWN_BANDS,
     VIEWS,
     WORK_MODEL_CHOICES,
@@ -26,7 +40,9 @@ from pejip.portal.views import (
     CompanyRow,
     Filters,
     Listing,
+    Watchlist,
     age,
+    latest_signal,
     rank,
     when,
 )
@@ -59,16 +75,24 @@ CONCERN_KIND = (
     ("Not enough profile evidence", "k-unk", "Unknown"),
 )
 LOW_COMPONENT = 0.85
+SCOPE_LABEL = {"BAY_AREA": "San Francisco Bay Area", "US_REMOTE": "United States remote"}
+AGE_LABEL = {1: "Last 24 hours", 3: "Last 3 days", 7: "Last week", 30: "Last 30 days"}
+NETWORK_LABEL = {
+    "connected": "Has connections",
+    "none": "No connections",
+    "unknown": "Not imported yet",
+}
+PAY_LABEL = {"published": "Pay published", "unpublished": "Pay not published"}
 # Navigation in spec order (12.1): (key, label, link), with no link while a page is
 # still to come.
 NAV = (
     ("home", "Home", "/"),
     ("opportunities", "Opportunities", "/opportunities"),
     ("companies", "Companies", "/companies"),
-    ("watchlist", "Watchlist", None),
+    ("watchlist", "Watchlist", "/watchlist"),
     ("connections", "Connections", None),
     ("search-health", "Search Health", "/search-health"),
-    ("settings", "Settings", None),
+    ("settings", "Settings", "/settings"),
 )
 
 
@@ -99,8 +123,7 @@ def _nav(active: str, attention: int) -> str:
 
     return (
         '<nav class="nav" aria-label="Main">'
-        '<div class="brand">PEJIP</div>'
-        '<div class="brand-sub">Executive Job Intelligence</div>'
+        '<div class="brand">Personal Executive Job Intelligence Platform</div>'
         + "".join(link(*item) for item in NAV)
         + '<div class="foot">Signed in with Google</div></nav>'
     )
@@ -217,11 +240,12 @@ def _why(o: Opportunity, compact: bool = False) -> str:
     return f'<div class="why{one}">{cells}</div>' if cells else ""
 
 
-def card(o: Opportunity, now: datetime) -> str:
+def card(o: Opportunity, now: datetime, label: str = "") -> str:
     """The opportunity card (spec 12.5), used wherever a role is listed in full."""
     hot = " hot" if o.priority == "IMMEDIATE" else ""
+    tag = f'<span class="lbl">{e(label)}</span>' if label else ""
     return (
-        f'<article class="card{hot}"><div class="row spread"><div>'
+        f'<article class="card{hot}">{tag}<div class="row spread"><div>'
         f'<a class="title" href="{opportunity_url(o)}">{e(o.title)}</a>'
         f'<div class="co">{e(o.company)}</div></div>'
         f'<div class="row">{priority_pill(o.priority)}{fit_block(o)}</div></div>'
@@ -365,6 +389,30 @@ def _filters_form(f: Filters) -> str:
             "Work model",
             [("", "Any work model"), *((w, w) for w in WORK_MODEL_CHOICES)],
             f.work_model,
+        )
+        + _options(
+            "scope",
+            "Location",
+            [("", "Any location"), *((s, SCOPE_LABEL.get(s, words(s))) for s in SCOPE_CHOICES)],
+            f.scope,
+        )
+        + _options(
+            "age",
+            "Posting age",
+            [("", "Any age"), *((str(d), AGE_LABEL[d]) for d in AGE_CHOICES)],
+            str(f.max_age_days) if f.max_age_days else "",
+        )
+        + _options(
+            "network",
+            "Network",
+            [("", "Any network"), *((n, NETWORK_LABEL[n]) for n in NETWORK_CHOICES)],
+            f.network,
+        )
+        + _options(
+            "pay",
+            "Compensation",
+            [("", "Any compensation"), *((p, PAY_LABEL[p]) for p in PAY_CHOICES)],
+            f.pay,
         )
         + '<div><label for="f-company">Company</label>'
         f'<input id="f-company" name="company" type="text" maxlength="100" '
@@ -529,7 +577,54 @@ def _original(url: str) -> str:
     return '<span class="unk">No link to the original posting</span>'
 
 
-def detail_body(o: Opportunity, now: datetime) -> str:
+def _company_intel(o: Opportunity, company: Company | None, open_roles: int, now: datetime) -> str:
+    link = f'<a href="{e(company_roles_url(o.company))}">All roles at {e(o.company)}</a>'
+    head = f'<div class="row spread"><h2>Company intelligence</h2>{link}</div>'
+    if company is None:
+        return head + _empty("PEJIP has no company profile for this employer yet.")
+    return (
+        head
+        + '<div class="summary">'
+        + _kv("Industry", company.industry)
+        + _kv("Open roles you match", str(open_roles))
+        + _kv("Watch state", "Watching" if company.watching else "Not watched")
+        + "</div>"
+        + _signals(company.signals, now)
+    )
+
+
+def _verification(o: Opportunity, now: datetime) -> str:
+    return (
+        "<h2>Source and verification</h2>"
+        '<div class="summary">'
+        + _kv("Discovered", o.source.capitalize())
+        + _kv("Verified on", o.verified_on, "Not verified yet")
+        + _kv("Requisition", o.requisition, "Not published")
+        + _kv("Employer posted", when(o.posted_at, now) if o.posted_at else None)
+        + _kv("First seen", when(o.first_seen_at, now))
+        + _kv("Last verified", when(o.last_verified_at, now) if o.last_verified_at else None)
+        + _kv("Status", "Active")
+        + f"</div><div>{_original(o.url)}</div>"
+    )
+
+
+def _role_history(events: tuple[HistoryEvent, ...], now: datetime) -> str:
+    items = "".join(
+        f"<li><div><strong>{e(ev.text)}</strong>"
+        f'<div class="src">{when(ev.at, now)}</div></div></li>'
+        for ev in sorted(events, key=lambda ev: ev.at)
+    )
+    listing = f'<ul class="plus-list">{items}</ul>' if items else _empty("No changes recorded yet.")
+    return (
+        f"<h2>History</h2>{listing}"
+        '<p class="note">Only meaningful changes are listed: compensation, work model, '
+        "location, title, reposts and removal.</p>"
+    )
+
+
+def detail_body(
+    o: Opportunity, now: datetime, company: Company | None = None, open_roles: int = 1
+) -> str:
     fit = "Unknown" if o.fit is None else f"{o.fit:.0f}"
     summary = (
         '<section class="card hot" aria-labelledby="sum-h"><h2 id="sum-h">Summary</h2>'
@@ -567,8 +662,13 @@ def detail_body(o: Opportunity, now: datetime) -> str:
         f'<div class="card" id="network"><h2>Who you know · '
         f"{'Unknown' if o.connections is None else len(o.connections)}</h2>"
         f"{_network(o)}</div></section>"
+        f'<section class="card" id="company">{_company_intel(o, company, open_roles, now)}'
+        "</section>"
         f'<section class="card" id="jd"><h2>Job description</h2>{_description(o.description)}'
-        f"<div>{_original(o.url)}</div></section>"
+        "</section>"
+        '<section class="grid2">'
+        f'<div class="card" id="source">{_verification(o, now)}</div>'
+        f'<div class="card" id="history">{_role_history(o.history, now)}</div></section>'
         '<div class="row spread"><a href="/opportunities">Back to opportunities</a></div>'
     )
 
@@ -794,4 +894,257 @@ def companies_body(listing: CompanyListing, now: datetime) -> str:
         + discovered
         + '<p class="note">Watching a company raises how closely PEJIP follows it. It never '
         "raises the Fit of its jobs.</p>"
+    )
+
+
+# ── Watchlist ────────────────────────────────────────────────────────────────
+def _changed_card(o: Opportunity, now: datetime) -> str:
+    return card(o, now, f"Watched job changed · {o.change_note or 'posting changed'}")
+
+
+def _signal_rows(rows: list[tuple[CompanyRow, Signal]], now: datetime) -> str:
+    items = ""
+    for r, newest in rows:
+        items += (
+            f'<div class="li"><div class="grow"><h3>{e(r.company.name)}</h3>'
+            f"<div><strong>{e(newest.text)}</strong></div>"
+            f'<div class="src">{e(newest.source)} · {age(newest.seen_at, now)}</div></div>'
+            f"{_company_state(r.state)}</div>"
+        )
+    return f'<div class="list">{items}</div>'
+
+
+def _watched_jobs(items: list[Opportunity]) -> str:
+    rows = "".join(
+        f'<tr><td><a class="tl" href="{opportunity_url(o)}">{e(o.title)}</a></td>'
+        f"<td>{e(o.company)}</td>"
+        f'<td><span class="tfit">{"Unknown" if o.fit is None else f"{o.fit:.0f}"}</span></td>'
+        f"<td>{priority_pill(o.priority)}</td>"
+        f"<td>{e(o.change_note or 'No change')}</td></tr>"
+        for o in items
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Role</th>'
+        '<th scope="col">Company</th><th scope="col">Fit</th><th scope="col">Priority</th>'
+        f'<th scope="col">Last change</th></tr></thead><tbody>{rows}</tbody></table></div>'
+    )
+
+
+def _watched_companies(rows: list[CompanyRow], now: datetime) -> str:
+    def signal(r: CompanyRow) -> str:
+        newest = latest_signal(r.company)
+        if newest is None:
+            return '<span class="unk">None in 90 days</span>'
+        return f"{e(newest.text)} · {age(newest.seen_at, now)}"
+
+    body = "".join(
+        f"<tr><td>{e(r.company.name)}</td><td>{e(r.company.monitoring)}</td>"
+        f'<td class="num">{len(r.jobs)}'
+        + (f" · {r.high_priority} high-priority" if r.high_priority else "")
+        + f"</td><td>{signal(r)}</td>"
+        f'<td><a href="{e(company_roles_url(r.company.name))}">See roles</a></td></tr>'
+        for r in rows
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Company</th>'
+        '<th scope="col">Monitoring</th><th scope="col">Matching jobs</th>'
+        '<th scope="col">Latest signal</th><th scope="col">Roles</th></tr></thead>'
+        f"<tbody>{body}</tbody></table></div>"
+    )
+
+
+def watchlist_body(w: Watchlist, now: datetime) -> str:
+    """Changes in watched jobs and companies first, then everything watched (12.22)."""
+    tiles = (
+        (len(w.changed_jobs), "Watched jobs changed", "#changed"),
+        (len(w.new_at_watched), "New roles at watched companies", "#new-roles"),
+        (len(w.new_signals), "Watched companies with new signals", "#signals"),
+    )
+    tile_html = "".join(
+        f'<a class="tile" href="{href}"><div class="n">{n}</div><div class="l">{label}</div></a>'
+        for n, label, href in tiles
+    )
+    changed = (
+        '<div class="stackl">' + "".join(_changed_card(o, now) for o in w.changed_jobs) + "</div>"
+        if w.changed_jobs
+        else _empty("No watched job changed since the last search.")
+    )
+    new_roles = (
+        '<div class="stackl">' + "".join(card(o, now) for o in w.new_at_watched) + "</div>"
+        if w.new_at_watched
+        else _empty("No new role at a watched company.")
+    )
+    signals = (
+        _signal_rows(w.new_signals, now)
+        if w.new_signals
+        else _empty("No new signal at a watched company this week.")
+    )
+    jobs = (
+        _watched_jobs(w.jobs)
+        if w.jobs
+        else _empty("You are not watching any job yet. Watched roles show a Watching tag.")
+    )
+    companies = (
+        _watched_companies(w.companies, now)
+        if w.companies
+        else _empty("You are not watching any company yet.")
+    )
+    return (
+        f'<section aria-label="Summary"><div class="tiles">{tile_html}</div></section>'
+        f'<div id="changed">{_section("Watched jobs that changed", changed)}</div>'
+        f'<div id="new-roles">{_section("New roles at watched companies", new_roles)}</div>'
+        f'<div id="signals">{_section("New signals at watched companies", signals)}</div>'
+        + _section(f"Watched jobs · {len(w.jobs)}", jobs)
+        + _section(f"Watched companies · {len(w.companies)}", companies)
+        + '<p class="note">Watching a company raises how closely PEJIP follows it and may '
+        "raise Application Priority. It never changes the Fit of its jobs.</p>"
+    )
+
+
+# ── Settings ─────────────────────────────────────────────────────────────────
+# PEJIP's own alert address (design doc 0010); Babu signs up for job alerts with it.
+ALERT_ADDRESS = "alerts@inbox.job-search.zephyr-mcg.com"
+ADAPTER_LABEL = {"greenhouse": "Public Greenhouse job board", "lever": "Public Lever job board"}
+MONTHLY_AI_CAP = "$100"
+ANY_PLACE = "Any remote role in the US"
+
+
+def _chips(values: Iterable[str]) -> str:
+    return (
+        '<div class="views">'
+        + "".join(f'<span class="chip">{e(v)}</span>' for v in values)
+        + "</div>"
+    )
+
+
+def _settings_card(heading: str, anchor: str, body: str) -> str:
+    return f'<section class="card" id="{anchor}"><h2>{e(heading)}</h2>{body}</section>'
+
+
+def _locations(config: SearchConfig) -> str:
+    rows = "".join(
+        f"<tr><td>{e(SCOPE_LABEL.get(key, words(key)))}</td>"
+        f"<td>{e(words(scope.preference))}</td>"
+        f"<td>{e(', '.join(p.title() for p in scope.places) or ANY_PLACE)}</td></tr>"
+        for key, scope in config.geography.scopes.items()
+    )
+    rule = (
+        "Roles outside every location are hidden."
+        if config.geography.hard_filter
+        else "Roles outside these locations are kept, with lower priority."
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Location</th>'
+        '<th scope="col">Preference</th><th scope="col">Places</th></tr></thead>'
+        f'<tbody>{rows}</tbody></table></div><p class="note">{rule}</p>'
+    )
+
+
+def _sources(config: SearchConfig) -> str:
+    boards = "".join(
+        f'<div class="li"><div class="grow"><h3>{e(s.company)}</h3>'
+        f'<div class="muted">{e(ADAPTER_LABEL.get(s.adapter, s.adapter))}</div></div>'
+        '<span class="pill p-ok">On</span></div>'
+        for s in config.sources
+    )
+    alerts = (
+        "".join(
+            f'<div class="li"><div class="grow"><h3>{e(a.company)}</h3>'
+            f'<div class="muted">{"Job board alerts" if a.job_board else "Careers site alerts"}'
+            "</div></div></div>"
+            for a in config.inbox.companies
+        )
+        if config.inbox
+        else ""
+    )
+    alert_html = (
+        f'<h3>Job-alert emails</h3><p class="note">Sign up for each company\'s job alerts with '
+        f"<strong>{e(ALERT_ADDRESS)}</strong>. PEJIP reads only links to the careers pages "
+        f'listed here.</p><div class="list">{alerts}</div>'
+        if alerts
+        else '<p class="note">Job-alert emails are not set up.</p>'
+    )
+    return (
+        f'<h3>Careers sites · {len(config.sources)}</h3><div class="list">{boards}</div>'
+        f"{alert_html}"
+        '<p class="note">PEJIP reads only sources whose terms allow it, follows each '
+        "site's robots.txt and limits how often it asks. Live status is on "
+        '<a href="/search-health">Search Health</a>.</p>'
+    )
+
+
+def _ranking(config: SearchConfig) -> str:
+    s = config.scoring
+    weights = "".join(
+        f'<div class="kv"><span class="lbl">{e(COMPONENT_LABEL.get(k, words(k)))}</span>'
+        f'<span class="v">{v:.0f}%</span></div>'
+        for k, v in s.fit_weights.items()
+    )
+    bands = "".join(
+        f'<div class="kv"><span class="lbl">{e(words(band))}</span>'
+        f'<span class="v">Priority {threshold:.0f}+'
+        + (f", Fit {s.priority_min_fit[band]:.0f}+" if band in s.priority_min_fit else "")
+        + "</span></div>"
+        for band, threshold in s.priority_thresholds.items()
+    )
+    return (
+        f'<p class="note">Scoring version {e(s.version)}.</p>'
+        f'<h3>What makes up Fit</h3><div class="summary">{weights}</div>'
+        f'<h3>Priority bands</h3><div class="summary">{bands}</div>'
+        '<p class="note">Fit measures qualification only. Freshness, pay and location '
+        "affect priority, never fit.</p>"
+    )
+
+
+def settings_body(config: SearchConfig | None) -> str:
+    """What PEJIP searches for, when, and how it ranks: read-only for now (12.35)."""
+    if config is None:
+        return _empty("The search configuration is not available on this server.")
+    t = config.taxonomy
+    jump = "".join(
+        f'<a class="btn" href="#{anchor}">{label}</a>'
+        for anchor, label in (
+            ("roles", "Roles and titles"),
+            ("locations", "Locations"),
+            ("schedule", "Search schedule"),
+            ("sources", "Sources"),
+            ("ranking", "Ranking"),
+            ("privacy", "Privacy and data"),
+        )
+    )
+    roles = (
+        "<h3>Seniority a title needs</h3>"
+        + _chips(t.seniority_patterns)
+        + "<h3>Role words a title needs</h3>"
+        + _chips(t.role_terms)
+        + "<h3>Titles always left out</h3>"
+        + _chips(t.excluded_title_patterns)
+    )
+    schedule = (
+        '<div class="summary">'
+        + _kv("Search", "Daily at 6:00 AM Pacific")
+        + _kv("Roles analysed per search", str(config.ai.max_jobs_per_run))
+        + _kv("AI spending cap", f"{MONTHLY_AI_CAP} a month")
+        + "</div>"
+    )
+    privacy = (
+        '<div class="summary">'
+        + _kv("Kept", f"{config.retention_days} days, then deleted")
+        + _kv("Storage and transfer", "Encrypted at rest and in transit")
+        + _kv(
+            "Shared with", "Anthropic (Claude), only the job and profile text each analysis needs"
+        )
+        + _kv("Logs", "No personal data")
+        + "</div>"
+    )
+    return (
+        '<p class="note">These settings are read-only here for now; they change through '
+        "the search configuration file.</p>"
+        f'<nav class="views" aria-label="Settings sections">{jump}</nav>'
+        + _settings_card("Roles and titles", "roles", roles)
+        + _settings_card("Locations", "locations", _locations(config))
+        + _settings_card("Search schedule", "schedule", schedule)
+        + _settings_card("Sources", "sources", _sources(config))
+        + _settings_card("Ranking", "ranking", _ranking(config))
+        + _settings_card("Privacy and data", "privacy", privacy)
     )

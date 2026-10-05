@@ -16,6 +16,7 @@ from pejip.portal.data import (
     Company,
     Connection,
     FitComponent,
+    HistoryEvent,
     Opportunity,
     Point,
     SearchRun,
@@ -57,6 +58,12 @@ DESCRIPTION = (
 )
 
 
+def _scope(location: str) -> str | None:
+    if location == "United States":
+        return "US_REMOTE"
+    return "BAY_AREA" if location.endswith(", CA") or "Bay Area" in location else None
+
+
 def _opportunity(  # noqa: PLR0913 - one row of sample data per call
     now: datetime,
     *,
@@ -80,6 +87,18 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
     discovery: str = "NEW_POSTING",
     change_note: str | None = None,
 ) -> Opportunity:
+    first_seen = now - timedelta(hours=seen_hours)
+    verified = now - timedelta(hours=min(seen_hours, 1))
+    history = [
+        HistoryEvent(first_seen, "First discovered by the daily search"),
+        HistoryEvent(verified, f"Verified on the {company} careers site"),
+    ]
+    if change_note:
+        history.append(HistoryEvent(verified, change_note))
+    if fit is not None:
+        history.append(
+            HistoryEvent(verified, f"Scored: fit {fit:.0f}, priority {priority.title()}")
+        )
     return Opportunity(
         id=number,
         title=title,
@@ -88,7 +107,7 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
         work_model=work_model,
         compensation=compensation,
         posted_at=None if posted_hours is None else now - timedelta(hours=posted_hours),
-        first_seen_at=now - timedelta(hours=seen_hours),
+        first_seen_at=first_seen,
         fit=fit,
         confidence=confidence,
         priority=priority,
@@ -103,6 +122,11 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
         connections=connections,
         watched=watched,
         change_note=change_note,
+        location_scope=_scope(location),
+        verified_on=f"{company} careers site",
+        requisition=f"R{100000 + number}",
+        last_verified_at=verified,
+        history=tuple(history),
     )
 
 

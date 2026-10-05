@@ -12,6 +12,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- The portal's sidebar shows the full name, Personal Executive Job Intelligence
+  Platform, instead of PEJIP.
 - `python -m pejip.evaluation run` takes `--workers N` to score several golden
   cases at once; the live model evaluation in CI uses six.
 - The live model evaluation in CI runs only on pull requests labelled
@@ -24,6 +26,16 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- An opportunity's page shows company intelligence (industry, other roles you
+  match, watch state and recent signals), where the role was found and verified,
+  and a history of meaningful changes.
+- Opportunities has a Bay Area view and filters for location, posting age,
+  network and whether pay is published.
+- The portal has a read-only Settings page at `/settings` showing the real search
+  setup: titles, locations, schedule, sources and the alert address, how ranking
+  works, and data retention.
+- The portal has a Watchlist page at `/watchlist`: what changed in watched jobs
+  and companies, then everything watched.
 - The portal has a Companies page at `/companies`: target companies with their
   matching roles, connections and signals, why a company without an opening stays
   relevant, and companies discovered in searches.

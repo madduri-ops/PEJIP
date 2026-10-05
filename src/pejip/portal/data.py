@@ -54,6 +54,14 @@ class FitComponent:
 
 
 @dataclass(frozen=True)
+class HistoryEvent:
+    """A meaningful change to a role: discovery, verification, a material edit, a score."""
+
+    at: datetime
+    text: str
+
+
+@dataclass(frozen=True)
 class Opportunity:
     """A ranked role with its explanation, as the pages show it."""
 
@@ -80,6 +88,15 @@ class Opportunity:
     connections: tuple[Connection, ...] | None = None
     watched: bool = False
     change_note: str | None = None
+    # The configured geographic scope the location falls in (``discovery.place``),
+    # such as BAY_AREA or US_REMOTE; None when it is in none.
+    location_scope: str | None = None
+    # Where the posting was confirmed (the employer's own site when possible, spec
+    # 12.9), its requisition number and when it was last confirmed still open.
+    verified_on: str | None = None
+    requisition: str | None = None
+    last_verified_at: datetime | None = None
+    history: tuple[HistoryEvent, ...] = ()
 
 
 @dataclass(frozen=True)
