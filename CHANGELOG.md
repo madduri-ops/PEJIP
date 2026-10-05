@@ -12,6 +12,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- The portal's sidebar shows the full name, Personal Executive Job Intelligence
+  Platform, instead of PEJIP.
 - `python -m pejip.evaluation run` takes `--workers N` to score several golden
   cases at once; the live model evaluation in CI uses six.
 - The live model evaluation in CI runs only on pull requests labelled

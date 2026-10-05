@@ -126,6 +126,7 @@ def test_home_shows_attention_new_changes_and_health() -> None:
     assert page.headers["content-type"].startswith("text/html")
     html = page.text
     assert "<title>PEJIP · Home</title>" in html
+    assert '<div class="brand">Personal Executive Job Intelligence Platform</div>' in html
     assert "Sample data until the database is connected" in html
     assert "VP Technology Transformation" in html
     assert "Onsite to Remote" in html

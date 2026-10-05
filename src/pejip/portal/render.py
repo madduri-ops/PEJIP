@@ -123,8 +123,7 @@ def _nav(active: str, attention: int) -> str:
 
     return (
         '<nav class="nav" aria-label="Main">'
-        '<div class="brand">PEJIP</div>'
-        '<div class="brand-sub">Executive Job Intelligence</div>'
+        '<div class="brand">Personal Executive Job Intelligence Platform</div>'
         + "".join(link(*item) for item in NAV)
         + '<div class="foot">Signed in with Google</div></nav>'
     )
