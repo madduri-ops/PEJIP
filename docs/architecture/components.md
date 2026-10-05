@@ -124,6 +124,11 @@ flowchart TB
 
 - **Responsibility:** JSON log lines with the run id; redacts personal fields and
   scrubs e-mail addresses and phone numbers.
+- **Monitoring:** CloudWatch log metric filters count `run_finished` (by status),
+  `source_failed` and ERROR lines into the `PEJIP` namespace for the search, source
+  and error alarms and the `pejip` dashboard
+  ([design 0011](../design/0011-monitoring.md)). `pejip run` logs `run_crashed` at
+  ERROR when it raises.
 
 ## golden_eval
 

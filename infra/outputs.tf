@@ -97,3 +97,8 @@ output "tasks_security_group_id" {
   description = "Security group PEJIP tasks use (for starting a run by hand, infra/README.md)."
   value       = aws_security_group.tasks.id
 }
+
+output "dashboard_url" {
+  description = "The pejip CloudWatch dashboard: search runs, source failures, errors, Claude spend and every PEJIP alarm."
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"
+}
