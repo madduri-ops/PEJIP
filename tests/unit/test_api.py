@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from ci.alb_token import AlbSigner
 from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
-from pejip.portal.data import Opportunity
+from pejip.portal.data import Opportunity, SearchRun
 from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 
 
@@ -63,6 +63,9 @@ def test_portal_reads_the_data_it_is_given(signer: AlbSigner) -> None:
 
         def latest_run(self) -> None:
             return None
+
+        def recent_runs(self) -> list[SearchRun]:
+            return []
 
         def opportunities(self) -> list[Opportunity]:
             return []

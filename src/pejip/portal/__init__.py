@@ -1,4 +1,4 @@
-"""The signed-in web portal: Home, Opportunities and Opportunity detail pages.
+"""The signed-in web portal: Home, Opportunities, Opportunity detail and Search Health.
 
 Built from the portal mocks (spec section 12, design doc 0011). Pages read through
 :class:`pejip.portal.data.PortalData`; sample data stands in until the persistent
@@ -108,6 +108,16 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
             crumb='<div class="crumb"><a href="/opportunities">Opportunities</a></div>',
         )
         return HTMLResponse(html)
+
+    @routes.get("/search-health")
+    def search_health() -> str:
+        """Search Health: what each recent run searched and what failed (spec 12.27)."""
+        return frame(
+            active="search-health",
+            heading="Search Health",
+            subtitle="Did the searches cover everything they should?",
+            body=render.search_health_body(data.recent_runs(), now_fn()),
+        )
 
     @routes.get("/portal.css", response_class=Response)
     def stylesheet() -> Response:

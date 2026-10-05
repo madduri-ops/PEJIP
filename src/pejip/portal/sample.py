@@ -18,6 +18,7 @@ from pejip.portal.data import (
     Opportunity,
     Point,
     SearchRun,
+    SourceStatus,
 )
 
 
@@ -327,6 +328,54 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
     ]
 
 
+SAMPLE_SOURCES = (
+    *(f"Company {letter} careers site" for letter in "ABCDEFGHIJKL"),
+    "Job-alert inbox",
+    "Job discovery source B",
+)
+FAILING_SOURCE = "Job discovery source B"
+
+
+def _sources(failed: str | None = None) -> tuple[SourceStatus, ...]:
+    return tuple(
+        SourceStatus(
+            name,
+            "FAILED" if name == failed else "OK",
+            0 if name == failed else 4 + 3 * (i % 5),
+            0 if name == failed else i % 3,
+        )
+        for i, name in enumerate(SAMPLE_SOURCES)
+    )
+
+
+def sample_runs(now: datetime) -> list[SearchRun]:
+    """Recent runs, newest first: two clean runs, a partial one, then clean again."""
+    hour = timedelta(hours=1)
+    # (hours ago, status, failed source, new, changed, expired)
+    history = (
+        (1, "SUCCESS", None, 7, 3, 2),
+        (6, "SUCCESS", None, 4, 1, 0),
+        (20, "PARTIAL", FAILING_SOURCE, 5, 2, 1),
+        (25, "SUCCESS", None, 3, 0, 2),
+        (30, "SUCCESS", None, 6, 1, 0),
+    )
+    total = len(SAMPLE_SOURCES)
+    return [
+        SearchRun(
+            started_at=now - ago * hour,
+            status=status,
+            sources_searched=total - (failed is not None),
+            sources_total=total,
+            new=new,
+            changed=changed,
+            expired=expired,
+            next_run_at=now + 4 * hour if ago == 1 else None,
+            sources=_sources(failed),
+        )
+        for ago, status, failed, new, changed, expired in history
+    ]
+
+
 class SampleData:
     """A :class:`pejip.portal.data.PortalData` serving the sample roles."""
 
@@ -336,17 +385,10 @@ class SampleData:
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def latest_run(self) -> SearchRun | None:
-        now = self._clock()
-        return SearchRun(
-            started_at=now - timedelta(hours=1),
-            status="SUCCESS",
-            sources_searched=14,
-            sources_total=14,
-            new=7,
-            changed=3,
-            expired=2,
-            next_run_at=now + timedelta(hours=4),
-        )
+        return self.recent_runs()[0]
+
+    def recent_runs(self) -> list[SearchRun]:
+        return sample_runs(self._clock())
 
     def opportunities(self) -> list[Opportunity]:
         return sample_opportunities(self._clock())

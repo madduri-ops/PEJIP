@@ -10,8 +10,16 @@ from fastapi import FastAPI
 
 from pejip import portal
 from pejip.portal import render
-from pejip.portal.data import Citation, Connection, FitComponent, Opportunity, Point, SearchRun
-from pejip.portal.sample import SampleData, sample_opportunities
+from pejip.portal.data import (
+    Citation,
+    Connection,
+    FitComponent,
+    Opportunity,
+    Point,
+    SearchRun,
+    SourceStatus,
+)
+from pejip.portal.sample import SampleData, sample_opportunities, sample_runs
 from pejip.portal.views import (
     DEFAULT_VIEW,
     Filters,
@@ -29,14 +37,22 @@ class FakeData:
     """A PortalData with whatever roles and run a test needs."""
 
     def __init__(
-        self, items: list[Opportunity], run: SearchRun | None, sample: bool = False
+        self,
+        items: list[Opportunity],
+        run: SearchRun | None,
+        sample: bool = False,
+        runs: list[SearchRun] | None = None,
     ) -> None:
         self.items = items
         self.run = run
         self.is_sample = sample
+        self.runs = runs if runs is not None else ([run] if run else [])
 
     def latest_run(self) -> SearchRun | None:
         return self.run
+
+    def recent_runs(self) -> list[SearchRun]:
+        return list(self.runs)
 
     def opportunities(self) -> list[Opportunity]:
         return list(self.items)
@@ -76,7 +92,8 @@ def _get(data: FakeData, path: str) -> httpx.Response:
 
 
 def _sample() -> FakeData:
-    return FakeData(sample_opportunities(NOW), SampleData(lambda: NOW).latest_run(), True)
+    data = SampleData(lambda: NOW)
+    return FakeData(sample_opportunities(NOW), data.latest_run(), True, data.recent_runs())
 
 
 # ── Pages ────────────────────────────────────────────────────────────────────
@@ -403,3 +420,87 @@ def test_sample_data_is_marked_and_current() -> None:
     assert run.started_at < datetime.now(UTC) < run.next_run_at
     assert len(data.opportunities()) == 9
     assert {o.company for o in data.opportunities()} <= {f"Company {c}" for c in "ABCDEFGHI"}
+
+
+# ── Search Health ────────────────────────────────────────────────────────────
+def _run(hours_ago: int, status: str = "SUCCESS", *sources: SourceStatus) -> SearchRun:
+    return SearchRun(
+        started_at=NOW - timedelta(hours=hours_ago),
+        status=status,
+        sources_searched=sum(s.status == "OK" for s in sources),
+        sources_total=len(sources),
+        new=1,
+        changed=0,
+        expired=0,
+        next_run_at=None,
+        sources=sources,
+    )
+
+
+def test_search_health_shows_latest_sources_and_history() -> None:
+    page = _get(_sample(), "/search-health")
+
+    assert page.status_code == 200
+    html = page.text
+    assert "<title>PEJIP · Search Health</title>" in html
+    assert 'class="nl on" href="/search-health" aria-current="page"' in html
+    assert "Sources in the latest search · 14" in html
+    assert "Company A careers site" in html
+    assert "Recent searches · 5" in html
+    # The older partial run is in the history; the clean latest run has no failures.
+    assert '<span class="pill p-warn">PARTIAL</span>' in html
+    assert "Sources that failed" not in html
+    assert "Sample data until the database is connected" in html
+
+
+def test_search_health_explains_a_failed_source_without_raw_errors() -> None:
+    ok, failed = SourceStatus("Board A", "OK", 5, 1), SourceStatus("Board B", "FAILED", 0, 0)
+    never = SourceStatus("Board C", "FAILED", 0, 0)
+    runs = [
+        _run(1, "PARTIAL", ok, failed, never),
+        _run(5, "PARTIAL", ok, replace(failed, status="FAILED"), never),
+        _run(9, "SUCCESS", ok, replace(failed, status="OK")),
+    ]
+    html = _get(FakeData([], runs[0], runs=runs), "/search-health").text
+
+    assert "Sources that failed · 2" in html
+    assert "Results from this source may be incomplete." in html
+    assert "Today 3:00 AM" in html  # Board B last worked nine hours ago
+    assert "None in recent runs" in html  # Board C never worked
+    # Failed sources are listed first in the sources table.
+    assert html.index("<td>Board B</td>") < html.index("<td>Board A</td>")
+
+
+def test_search_health_before_any_run_and_without_source_detail() -> None:
+    assert (
+        "No search has run yet. The first scheduled search"
+        in _get(FakeData([], None), "/search-health").text
+    )
+    bare = _run(2)
+    html = _get(FakeData([], bare), "/search-health").text
+    assert "This run did not record its sources." in html
+
+
+def test_search_health_pills_for_unexpected_statuses() -> None:
+    assert render._source_pill("SKIPPED") == '<span class="pill p-warn">Skipped</span>'
+    assert render._run_pill("FAILED") == '<span class="pill p-fail">FAILED</span>'
+
+
+def test_navigation_links_live_pages_and_marks_the_rest_soon() -> None:
+    html = _get(_sample(), "/").text
+
+    assert '<a class="nl" href="/search-health">Search Health</a>' in html
+    assert '<a href="/search-health">Details</a>' in html
+    for label in ("Companies", "Watchlist", "Connections", "Settings"):
+        assert f'<span class="nl off">{label}<span class="soon">Soon</span></span>' in html
+
+
+def test_sample_runs_have_one_partial_run_with_a_failed_source() -> None:
+    runs = sample_runs(NOW)
+
+    assert [r.status for r in runs].count("PARTIAL") == 1
+    assert runs[0].status == "SUCCESS"
+    assert runs[0].started_at > runs[-1].started_at
+    partial = next(r for r in runs if r.status == "PARTIAL")
+    assert [s.name for s in partial.sources if s.status == "FAILED"] == ["Job discovery source B"]
+    assert partial.sources_searched == partial.sources_total - 1

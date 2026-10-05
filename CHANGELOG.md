@@ -24,6 +24,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Search Health page at `/search-health`: the latest search, any
+  failed sources with their impact and last success, every source searched, and
+  recent runs.
 - PEJIP searches on its own every morning at 6am Pacific on AWS, keeps its results
   in an encrypted SQLite database on EFS, and emails Babu the digest. Data past 90
   days is purged daily.

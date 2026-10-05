@@ -83,8 +83,22 @@ class Opportunity:
 
 
 @dataclass(frozen=True)
+class SourceStatus:
+    """How one source did in a run (``pejip.digest.SourceResult``).
+
+    ``status`` is OK or FAILED. Low-level errors stay in the logs; the portal shows
+    only the impact (spec 12.31).
+    """
+
+    name: str
+    status: str
+    fetched: int
+    candidates: int
+
+
+@dataclass(frozen=True)
 class SearchRun:
-    """The latest search run, for the status line on every page."""
+    """One search run: the status line on every page and the Search Health page."""
 
     started_at: datetime
     status: str  # SUCCESS, PARTIAL or FAILED
@@ -94,6 +108,7 @@ class SearchRun:
     changed: int
     expired: int
     next_run_at: datetime | None
+    sources: tuple[SourceStatus, ...] = ()
 
 
 class PortalData(Protocol):
@@ -105,6 +120,9 @@ class PortalData(Protocol):
 
     def latest_run(self) -> SearchRun | None:
         """The most recent search run, or None before the first one."""
+
+    def recent_runs(self) -> list[SearchRun]:
+        """Recent search runs, newest first; empty before the first one."""
 
     def opportunities(self) -> list[Opportunity]:
         """Every active opportunity, in any order."""

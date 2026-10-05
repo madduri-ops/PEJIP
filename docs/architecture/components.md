@@ -7,7 +7,7 @@ batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is
 ```mermaid
 flowchart TB
     api[api: GET /healthz]
-    portal[portal: Home, Opportunities, detail pages]
+    portal[portal: Home, Opportunities, detail, Search Health pages]
     api --> portal
     cli[cli: pejip run, purge, export, delete-all]
     pipe[pipeline: one search run]
@@ -144,7 +144,7 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
+  `/opportunities/{id}`, `/search-health` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
   `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and
@@ -156,11 +156,11 @@ flowchart TB
 
 ## Portal (`pejip.portal`)
 
-- **Responsibility:** server-rendered Home, Opportunities and Opportunity detail
-  pages built from the portal mocks; ranking, saved views, filters and Pacific time
+- **Responsibility:** server-rendered Home, Opportunities, Opportunity detail and
+  Search Health pages built from the portal mocks; ranking, saved views, filters and Pacific time
   display.
 - **Interfaces:** `portal.router(data, clock)` mounted by `create_app`; reads a
-  `PortalData` (`is_sample`, `latest_run()`, `opportunities()`). Pages get their own
+  `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`). Pages get their own
   content security policy (`PAGE_CSP`), with no script.
 - **Data:** none stored. `SampleData` (synthetic) until a store-backed reader lands.
 - **Design doc:** [0013: Web portal](../design/0013-web-portal.md).
