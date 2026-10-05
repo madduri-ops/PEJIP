@@ -19,7 +19,8 @@ In scope:
 - `CHANGELOG.md` and its structure check.
 - `ci/release.py`: version, changelog and tag checks, cutting a release, release
   notes, and choosing the rollback target.
-- `.github/workflows/release.yml`: publishes a GitHub Release for each version tag.
+- `.github/workflows/release.yml`: run on `main`, tags the release and publishes its
+  GitHub Release.
 - `ci/rollback_drill.py` and the **Rollback drill** CI job.
 
 Out of scope here, and where it lands:
@@ -56,18 +57,20 @@ sequenceDiagram
     participant R as Release workflow
     D->>D: python -m ci.release prepare X.Y.Z
     D->>M: PR (changelog section + version bump), all gates green, squash merge
-    D->>M: git tag -a vX.Y.Z on the merge commit, push the tag
-    M->>R: tag push
-    R->>R: check-tag (tag = pyproject version, changelog valid)
-    R->>R: tagged commit is on main
+    D->>R: gh workflow run release.yml (on main)
+    R->>R: ci.release version (changelog valid, version = newest section)
+    R->>R: vX.Y.Z does not exist yet
     R->>R: notes X.Y.Z from CHANGELOG.md
+    R->>M: tag vX.Y.Z on main's head
     R-->>D: GitHub Release vX.Y.Z
 ```
 
 `prepare` refuses a version that is not newer than the current one and an empty
-Unreleased section. The release workflow refuses a tag that doesn't match
-`pyproject.toml` or that points at a commit not on `main`, so only gated code is
-released.
+Unreleased section. The release workflow runs only on `main`, so only gated code is
+released, and refuses a version that is already tagged. It creates the tag itself
+rather than reacting to a pushed tag, for two reasons: the deploy role trusts only
+`refs/heads/main`, so a later step that adds the `vX.Y.Z` tag to the release's ECR
+image can run in the same job; and no one needs push rights for tags.
 
 ### Rollback
 
@@ -99,9 +102,10 @@ Interface with the deploy workflow (proposed to the app hosting and deploy work;
   ```
 
   The next merge to `main` deploys again, so a rollback holds until the fix merges.
-- The ECR lifecycle policy keeps the last 10 images. Release images must survive it,
-  so the deploy work either also tags release images `vX.Y.Z` and exempts that prefix,
-  or keeps enough images; otherwise an old release can't be rolled back to.
+- The ECR lifecycle policy (deploy work) keeps the last 100 images tagged `v*` and
+  the last 10 of the rest. With the deploy workflow, the Release workflow gains a step
+  that adds `vX.Y.Z` to the release's SHA-tagged image (re-putting its manifest with
+  the deploy role), so release images survive and stay available to roll back to.
 
 ### Rollback drill
 
@@ -120,7 +124,7 @@ A failure in any step fails the job, which is a required check.
 
 ## Interfaces
 
-- `python -m ci.release check | prepare X.Y.Z | check-tag vX.Y.Z | notes X.Y.Z |
+- `python -m ci.release check | version | prepare X.Y.Z | check-tag vX.Y.Z | notes X.Y.Z |
   rollback-target [--version X.Y.Z] [--head SHA] [--fallback-parent]`; exit code 1 and
   a `::error::` annotation on any broken rule.
 - `python -m ci.rollback_drill --current PY --previous PY --previous-version X.Y.Z
@@ -140,7 +144,7 @@ release record.
   (policy section 15), and the drill is extended to apply this build's migrations to
   a scratch database before starting the previous release on it.
 - **Security:** the release workflow is the only job with `contents: write`, runs only
-  on version tags and refuses commits not on `main`. The release tooling runs git with
+  on `main` and refuses a version that is already released. The release tooling runs git with
   fixed arguments and no shell.
 - **Tests:** `tests/unit/test_release.py` covers every rule; the integration tests run
   rollback target selection against a real git repository and the drill against real

@@ -226,6 +226,16 @@ def test_main_check(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert "agree on 0.2.0" in capsys.readouterr().out
 
 
+def test_main_version(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert release.main(["--root", str(_repo(tmp_path)), "version"]) == 0
+    assert capsys.readouterr().out == "0.2.0\n"
+
+
+def test_main_version_refuses_a_broken_changelog(tmp_path: Path) -> None:
+    root = _repo(tmp_path, changelog="# Changelog\n")
+    assert release.main(["--root", str(root), "version"]) == 1
+
+
 def test_main_check_fails(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     root = _repo(tmp_path, pyproject=PYPROJECT.replace("0.2.0", "0.3.0", 1))
     assert release.main(["--root", str(root), "check"]) == 1
