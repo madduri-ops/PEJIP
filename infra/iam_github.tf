@@ -191,6 +191,12 @@ data "aws_iam_policy_document" "plan" {
   }
 
   statement {
+    sid       = "ReadAlarms"
+    actions   = ["cloudwatch:DescribeAlarms", "cloudwatch:ListTagsForResource"]
+    resources = ["arn:aws:cloudwatch:${var.aws_region}:${local.account_id}:alarm:pejip-*"]
+  }
+
+  statement {
     sid       = "ReadBudget"
     actions   = ["budgets:ListTagsForResource", "budgets:ViewBudget"]
     resources = ["arn:aws:budgets::${local.account_id}:budget/pejip-*"]

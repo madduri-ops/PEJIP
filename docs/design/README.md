@@ -10,3 +10,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 
 | Doc | Status |
 |---|---|
+| [0001: AI cost guard](0001-ai-cost-guard.md) | Implemented |
