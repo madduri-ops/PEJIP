@@ -73,7 +73,8 @@ checks postings carry no email addresses, phone numbers or URLs.
 - **Reliability:** scorer failures are contained per case and reported.
 - **Performance:** 24 cases plus 3 probes means 27 scorer calls per run, so an AI
   scorer's run costs roughly 27 ranking calls. The scoring pipeline states that
-  cost when it wires the run into CI (policy section 13). The live CI job scores
+  cost when it wires the run into CI (policy section 13). The live CI job runs only
+  on a PR labelled `live-eval` (Babu's choice, 2026-10-05), and scores
   six cases at once (`--workers 6`): the same calls at the same cost, in about a
   sixth of the eight minutes they took one at a time. Each case and its network
   probe run on one thread, and all threads share one client and spend cap.

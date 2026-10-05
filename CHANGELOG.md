@@ -14,6 +14,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - `python -m pejip.evaluation run` takes `--workers N` to score several golden
   cases at once; the live model evaluation in CI uses six.
+- The live model evaluation in CI runs only on pull requests labelled
+  `live-eval`, so CI makes no paid model calls by default.
 - The job search covers Anthropic, the one target company whose roles are
   available through an allowed public API; the example company boards are gone.
 - For testing, the search also covers the public Greenhouse boards of nine Bay
