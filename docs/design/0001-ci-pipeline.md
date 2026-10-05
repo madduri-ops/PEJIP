@@ -33,6 +33,7 @@ flowchart LR
     unit --> cov[Coverage gate]
     integration --> cov
     system --> cov
+    system --> drill[Rollback drill]
     hooks[Pre-commit hooks]
     secrets[Secrets scan<br/>gitleaks]
 ```
@@ -51,6 +52,8 @@ tests, gate scripts, `pyproject.toml`, the coverage baseline, `eval/` or the wor
 | Build artifact | `ci/check_wheel.py` | non-`pejip` or dev/demo/test files in the wheel | `wheel` |
 | Golden evaluation set | `python -m pejip.evaluation` ([0003](0003-golden-evaluation-set.md)) | invalid set; once a scorer is wired, any metric below `eval/baseline.json` | log |
 | API smoke | `tests/system/test_api_smoke.py` | any GET route not returning 200 | `coverage-system` |
+| Rollback drill | `ci/rollback_drill.py` ([0006](0006-releases-and-rollback.md)) | the rollback target or this build not healthy, or the target reporting the wrong version | log |
+| Changelog and version | `python -m ci.release check` (pre-commit hook) | malformed `CHANGELOG.md`, or its newest release not matching `pyproject.toml` | log |
 
 ## Interfaces
 

@@ -345,3 +345,47 @@ jobs:
             coverage-html/
             coverage.json
           if-no-files-found: ignore
+
+  # Rollback drill (policy section 15, docs/design/0006-releases-and-rollback.md).
+  # Serves this build's wheel, rolls back to the release a rollback would return to
+  # (built from its tag), checks it comes up healthy on its own version, then rolls
+  # forward. Until the first release is tagged, the commit before this one stands in.
+  rollback-drill:
+    name: Rollback drill
+    needs: system
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - uses: actions/download-artifact@v8
+        with:
+          name: wheel
+          path: dist
+      - name: Pick the rollback target
+        id: target
+        run: python -m ci.release rollback-target --head "${GITHUB_SHA}" --fallback-parent >> "${GITHUB_OUTPUT}"
+      - name: Build the rollback target
+        env:
+          TARGET_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          git worktree add --detach "${RUNNER_TEMP}/previous" "${TARGET_SHA}"
+          python -m venv "${RUNNER_TEMP}/venv-previous"
+          "${RUNNER_TEMP}/venv-previous/bin/pip" install "build==1.6.1"
+          "${RUNNER_TEMP}/venv-previous/bin/python" -m build --wheel \
+            --outdir "${RUNNER_TEMP}/dist-previous" "${RUNNER_TEMP}/previous"
+          "${RUNNER_TEMP}/venv-previous/bin/pip" install "${RUNNER_TEMP}"/dist-previous/*.whl
+          python -m venv "${RUNNER_TEMP}/venv-current"
+          "${RUNNER_TEMP}/venv-current/bin/pip" install dist/*.whl
+      - name: Roll back and forward
+        env:
+          TARGET_VERSION: ${{ steps.target.outputs.version }}
+        run: >-
+          python -m ci.rollback_drill
+          --current "${RUNNER_TEMP}/venv-current/bin/python"
+          --previous "${RUNNER_TEMP}/venv-previous/bin/python"
+          --previous-version "${TARGET_VERSION}"
