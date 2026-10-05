@@ -4,7 +4,7 @@ import json
 from datetime import timedelta
 
 from pejip.models import Compensation, Posting
-from pejip.store import AIUsage, AnalysisRecord, RecommendationRecord, Store, _aware
+from pejip.store import AnalysisRecord, RecommendationRecord, Store, _aware
 from tests.conftest import NOW
 
 
@@ -57,13 +57,6 @@ def test_analyses_and_recommendations(store: Store) -> None:
     assert rec["fit"] == 90.0
 
 
-def test_month_spend_counts_only_this_month(store: Store) -> None:
-    store.record_ai_usage(AIUsage("f", "m", 10, 5, 1.5, NOW))
-    store.record_ai_usage(AIUsage("f", "m", 10, 5, 2.0, NOW - timedelta(days=40)))
-    assert store.month_spend(NOW) == 1.5
-    assert Store("sqlite://").month_spend(NOW) == 0.0
-
-
 def test_runs_are_recorded(store: Store) -> None:
     store.start_run("r1", NOW)
     store.finish_run("r1", "SUCCESS", {"n": 1}, NOW)
@@ -75,7 +68,6 @@ def test_purge_removes_expired_rows_only(store: Store) -> None:
     old = NOW - timedelta(days=120)
     old_job = store.upsert_job(posting(), old).job_id
     store.add_analysis(AnalysisRecord(old_job, "h", "OK", {}, None, {}, old))
-    store.record_ai_usage(AIUsage("f", "m", 1, 1, 0.1, old))
     store.start_run("old", old)
     fresh = Posting("lever", "c:2", "Co", "VP", "SF", "d", "u")
     fresh_id = store.upsert_job(fresh, NOW).job_id
@@ -87,11 +79,11 @@ def test_purge_removes_expired_rows_only(store: Store) -> None:
 
     deleted = store.purge_expired(NOW, 90)
 
-    assert deleted == 6
+    assert deleted == 5
     data = json.loads(store.export_all())
     assert [j["id"] for j in data["jobs"]] == [fresh_id]
     assert len(data["analyses"]) == 1
-    assert data["ai_usage"] == data["runs"] == data["recommendations"] == []
+    assert data["runs"] == data["recommendations"] == []
 
 
 def test_delete_all(store: Store) -> None:

@@ -80,7 +80,9 @@ posting quote, a profile evidence id or a stored job field, and
 
 - CLI: `pejip run | purge | export <file> | delete-all --yes | eval [--live]`.
 - Environment: `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
-  `PEJIP_OUTPUT_DIR`, `ANTHROPIC_API_KEY`.
+  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (default `pejip-ai-spend.db`; keep it on
+  persistent storage, since a fresh ledger restarts the month's spend at zero),
+  `ANTHROPIC_API_KEY`.
 - Files: `config/search.yaml` (sources, taxonomy, geography, AI, scoring),
   `profile.yaml` (see `examples/profile.example.yaml`), prompts in
   `src/pejip/prompts/<name>.v<N>.md`.
@@ -92,7 +94,6 @@ posting quote, a profile evidence id or a stored job field, and
 | `jobs` | One row per source posting: identity fingerprint, posting fields, pay, content hash, first and last seen |
 | `analyses` | AI analysis and matching payloads per content hash, status OK or FAILED, provenance |
 | `recommendations` | Fit, Confidence, Priority, components, reason codes, explanation, scoring version, one row per run |
-| `ai_usage` | Tokens and cost per call, by feature and model |
 | `runs` | Status (SUCCESS, PARTIAL, FAILED) and per-source results |
 
 ## Non-functional considerations
@@ -101,8 +102,11 @@ posting quote, a profile evidence id or a stored job field, and
   3k to 6k output tokens (thinking included), roughly $0.10 to $0.15 per role at
   Opus 5.5 prices. Analyses are reused until a posting changes, so steady state is
   the new roles each day: at 5 to 10 a day, about $15 to $45 a month. The 40-role
-  per-run limit bounds a busy day, and the $100 monthly cap is checked before every
-  call; once reached, remaining roles show as unranked.
+  per-run limit bounds a busy day. Every call reserves its worst case (16,000 output
+  tokens, about $0.33) with the AI cost guard, which refuses it once the $100
+  monthly cap would be passed; remaining roles then show as unranked. Running as a
+  local CLI, the guard's 50%-and-up alerts are log lines; the CloudWatch metrics
+  that email Babu are wired when the pipeline runs in AWS.
 - **Reliability:** source failures and analysis failures are isolated and shown in
   the digest; a failed analysis is retried on the next run.
 - **Security and privacy:** see [docs/SECURITY.md](../SECURITY.md).

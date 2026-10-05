@@ -26,7 +26,6 @@ from sqlalchemy import (
     Text,
     create_engine,
     delete,
-    func,
     insert,
     select,
     update,
@@ -85,18 +84,6 @@ recommendations = Table(
     Column("created_at", DateTime(timezone=True), nullable=False),
 )
 
-ai_usage = Table(
-    "ai_usage",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("at", DateTime(timezone=True), nullable=False),
-    Column("feature", String(64), nullable=False),
-    Column("model", String(64), nullable=False),
-    Column("input_tokens", Integer, nullable=False),
-    Column("output_tokens", Integer, nullable=False),
-    Column("cost_usd", Float, nullable=False),
-)
-
 runs = Table(
     "runs",
     metadata,
@@ -137,18 +124,6 @@ class RecommendationRecord:
     detail: dict[str, Any]
     scoring_version: str
     created_at: datetime
-
-
-@dataclass(frozen=True)
-class AIUsage:
-    """Tokens and cost of one model call."""
-
-    feature: str
-    model: str
-    input_tokens: int
-    output_tokens: int
-    cost_usd: float
-    at: datetime
 
 
 def _aware(value: datetime | None) -> datetime | None:
@@ -249,22 +224,6 @@ class Store:
             )
         return dict(row) if row else None
 
-    # AI spend -------------------------------------------------------------
-
-    def record_ai_usage(self, usage: AIUsage) -> None:
-        with self.engine.begin() as conn:
-            conn.execute(insert(ai_usage).values(asdict(usage)))
-
-    def month_spend(self, now: datetime) -> float:
-        start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        with self.engine.connect() as conn:
-            total = conn.execute(
-                select(func.coalesce(func.sum(ai_usage.c.cost_usd), 0.0)).where(
-                    ai_usage.c.at >= start
-                )
-            ).scalar_one()
-        return float(total)
-
     # Runs -----------------------------------------------------------------
 
     def start_run(self, run_id: str, now: datetime) -> None:
@@ -296,7 +255,6 @@ class Store:
                     )
                 ).rowcount
             deleted += conn.execute(delete(jobs).where(jobs.c.last_seen_at < cutoff)).rowcount
-            deleted += conn.execute(delete(ai_usage).where(ai_usage.c.at < cutoff)).rowcount
             deleted += conn.execute(delete(runs).where(runs.c.started_at < cutoff)).rowcount
         return deleted
 

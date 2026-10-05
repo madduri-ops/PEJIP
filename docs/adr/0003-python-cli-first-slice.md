@@ -22,9 +22,11 @@ Babu can read a digest file.
   job (`pejip run`). It writes a Markdown digest per run.
 - Persistence uses SQLAlchemy Core with portable types. It runs on SQLite locally
   and in tests, and on PostgreSQL unchanged when the service is deployed.
-- AI calls use the Anthropic SDK through a single `AIClient` that enforces the
-  monthly cap, records spend per feature and model, requests schema-constrained
-  JSON, and opts into server-side refusal fallbacks. The default model is
+- AI calls use the Anthropic SDK through a single `AIClient` that reserves each
+  call's worst-case cost with the AI cost guard (design doc 0002), which enforces
+  the monthly cap and records spend, and requests schema-constrained JSON. Calls
+  pin one model rather than allow server-side fallback, so each call's cost is
+  priced for the model that served it. The default model is
   `claude-opus-5-5` at `medium` effort, set in `config/search.yaml`.
 - AI only extracts structured requirements and requirement-to-evidence judgements.
   Fit, Confidence, Priority, reason codes and explanation text are computed by

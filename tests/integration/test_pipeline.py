@@ -11,11 +11,12 @@ import pytest
 
 from pejip.ai.client import AIClient
 from pejip.config import SearchConfig, SourceConfig
+from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile
 from pejip.sources.http import HTTPStatusError, PoliteClient
-from pejip.store import AIUsage, Store
+from pejip.store import Store
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages, response
 
@@ -85,9 +86,11 @@ def build(
 ) -> Pipeline:
     """Wire a pipeline to the stub boards and model.
 
-    ``clock_days`` moves the clock forward; any other option overrides AI config.
+    ``clock_days`` moves the clock forward and ``guard`` replaces the default cost
+    guard; any other option overrides AI config.
     """
     clock_days = options.pop("clock_days", 0)
+    guard = options.pop("guard", None) or CostGuard(SqliteLedger(":memory:"), clock=lambda: NOW)
     cfg = config.model_copy(
         update={
             "sources": [
@@ -108,7 +111,7 @@ def build(
         transport=httpx.MockTransport(boards.handler),
         sleep=lambda _s: None,
     )
-    client = AIClient(cfg.ai, store, messages=fake, clock=lambda: when)
+    client = AIClient(cfg.ai, guard, messages=fake, clock=lambda: when)
     return Pipeline(cfg, profile, store, client, http, clock=lambda: when)
 
 
@@ -204,9 +207,9 @@ def test_no_sources_is_an_empty_success(
 def test_spend_cap_leaves_remaining_roles_unranked(
     config: SearchConfig, profile: CareerProfile, store: Store
 ) -> None:
-    store.record_ai_usage(AIUsage("earlier", "claude-opus-5-5", 0, 0, 100.0, NOW))
+    guard = CostGuard(SqliteLedger(":memory:"), cap_usd="0.10", clock=lambda: NOW)
     fake = FakeMessages()
-    digest = build(config, profile, store, Boards(), fake).run()
+    digest = build(config, profile, store, Boards(), fake, guard=guard).run()
     assert fake.calls == []
     assert digest.status == "PARTIAL"
     assert all(i.recommendation is None and i.failure and "cap" in i.failure for i in digest.items)

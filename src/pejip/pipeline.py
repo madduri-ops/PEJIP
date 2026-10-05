@@ -13,9 +13,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from pejip.ai.client import AIBudgetExceededError, AIClient, AIError
+from pejip.ai.client import AIClient, AIError
 from pejip.analysis import EvidenceMatching, JobAnalysis, PostingText, analyze_job
 from pejip.config import SearchConfig, SourceConfig
+from pejip.cost import BudgetExceededError
 from pejip.digest import Digest, DigestItem, SourceResult
 from pejip.discovery import classify_location, is_candidate
 from pejip.explain import build_explanation, verify_citations
@@ -130,7 +131,7 @@ class Pipeline:
             self._analysed += 1
             try:
                 latest = self._analyse(job, now)
-            except AIBudgetExceededError as exc:
+            except BudgetExceededError as exc:
                 self._budget_error = str(exc)
                 return DigestItem(job, discovery, None, self._budget_error)
             if latest is None:
@@ -141,8 +142,6 @@ class Pipeline:
         job_id, content_hash = job["id"], job["content_hash"]
         try:
             outcome = analyze_job(self.ai, self.profile, PostingText.from_job(job))
-        except AIBudgetExceededError:
-            raise
         except AIError as exc:
             log.warning("analysis_failed", extra={"job_id": job_id, "error": str(exc)})
             self.store.add_analysis(

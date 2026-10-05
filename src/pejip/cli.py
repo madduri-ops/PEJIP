@@ -11,6 +11,7 @@ from pathlib import Path
 
 from pejip.ai.client import AIClient
 from pejip.config import Settings, load_config
+from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
 from pejip.golden_eval import EvalPaths, run_eval
 from pejip.logs import configure_logging
@@ -26,12 +27,14 @@ def _cmd_run(settings: Settings) -> int:
     config = load_config(settings.config_path)
     profile = load_profile(settings.profile_path)
     store = Store(settings.database_url)
+    ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
     try:
-        pipeline = Pipeline(config, profile, store, AIClient(config.ai, store), http)
-        digest = pipeline.run()
+        ai = AIClient(config.ai, CostGuard(ledger))
+        digest = Pipeline(config, profile, store, ai, http).run()
     finally:
         http.close()
+        ledger.close()
     settings.output_dir.mkdir(parents=True, exist_ok=True)
     path = settings.output_dir / f"digest-{digest.generated_at:%Y%m%d-%H%M%S}.md"
     path.write_text(render(digest, config.scoring.strong_match_fit), encoding="utf-8")

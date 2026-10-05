@@ -12,7 +12,7 @@ from pejip.profile import CareerProfile, load_profile
 
 def test_config_loads_and_validates(config: SearchConfig) -> None:
     assert config.ai.model == "claude-opus-5-5"
-    assert config.ai.monthly_cap_usd == 100.0
+    assert config.ai.max_jobs_per_run == 40
     assert config.retention_days == 90
     assert sum(config.scoring.fit_weights.values()) == 100
     assert {s.adapter for s in config.sources} == {"greenhouse", "lever"}
@@ -29,6 +29,7 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
     defaults = Settings.from_env({})
     assert defaults.config_path == Path("config/search.yaml")
     assert defaults.database_url == "sqlite:///pejip.db"
+    assert defaults.ai_ledger_path == Path("pejip-ai-spend.db")
     custom = Settings.from_env(
         {
             "PEJIP_CONFIG": "c.yaml",

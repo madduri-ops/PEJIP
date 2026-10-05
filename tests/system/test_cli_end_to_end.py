@@ -20,6 +20,7 @@ from typing import Any, ClassVar
 import pytest
 import yaml
 
+from pejip.cost import CostGuard, SqliteLedger
 from tests import factories as f
 from tests.conftest import ROOT
 
@@ -118,6 +119,7 @@ def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> No
         "PEJIP_PROFILE": str(ROOT / "examples" / "profile.example.yaml"),
         "PEJIP_DATABASE_URL": f"sqlite:///{tmp_path / 'pejip.db'}",
         "PEJIP_OUTPUT_DIR": str(tmp_path / "out"),
+        "PEJIP_AI_LEDGER": str(tmp_path / "spend.db"),
         "ANTHROPIC_API_KEY": "test-key-not-real",
         "ANTHROPIC_BASE_URL": server,
         "NO_PROXY": "127.0.0.1,localhost",
@@ -143,7 +145,7 @@ def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> No
     assert "Office Manager" not in text
 
     assert len(Stub.model_requests) == 2
-    assert Stub.model_requests[0]["fallbacks"] == "default"
+    assert Stub.model_requests[0]["model"] == "claude-opus-5-5"
     assert "Alex Example" not in json.dumps(Stub.model_requests)
 
     logs = [json.loads(line) for line in result.stderr.splitlines() if line.startswith("{")]
@@ -160,5 +162,9 @@ def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> No
         capture_output=True,
     )
     data = json.loads(exported.read_text())
-    assert data["ai_usage"][0]["cost_usd"] > 0
+    assert data["recommendations"][0]["fit"] == 100.0
+    ledger = SqliteLedger(tmp_path / "spend.db")
+    spend = {(line.feature, line.model) for line in CostGuard(ledger).breakdown()}
+    ledger.close()
+    assert spend == {("job_analysis", "claude-opus-5-5"), ("evidence_matching", "claude-opus-5-5")}
     assert data["recommendations"][0]["scoring_version"] == "fit-1"

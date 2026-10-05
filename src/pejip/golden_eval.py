@@ -29,11 +29,11 @@ from pejip.analysis import (
     ground_matching,
 )
 from pejip.config import SearchConfig, load_config
+from pejip.cost import CostGuard, SqliteLedger
 from pejip.discovery import classify_location
 from pejip.explain import UnsupportedClaimError, build_explanation, verify_citations
 from pejip.profile import CareerProfile, load_profile
 from pejip.scoring import JobFacts, Recommendation, score_job
-from pejip.store import Store
 
 EVAL_NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
 
@@ -131,7 +131,8 @@ def run_eval(paths: EvalPaths, *, live: bool, ai: AIClient | None = None) -> int
         if not os.environ.get("ANTHROPIC_API_KEY"):
             sys.stderr.write("Live evaluation needs ANTHROPIC_API_KEY.\n")
             return 2
-        ai = AIClient(config.ai, Store("sqlite://"))
+        # CI runs are bounded by the set size; the cap guards production spend.
+        ai = AIClient(config.ai, CostGuard(SqliteLedger(":memory:")))
     results = [evaluate_case(c, config, profile, ai if live else None) for c in cases]
     score = round(sum(r.passed for r in results) / len(results), 4)
     baseline = float(json.loads(paths.baseline.read_text(encoding="utf-8"))[mode])

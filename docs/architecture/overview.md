@@ -32,7 +32,8 @@ and Priority with deterministic rules, and writes a Markdown digest. See
 - **Security and privacy:** personal data stays local except the minimum sent to the
   Anthropic API; logs are redacted; 90-day retention. See
   [docs/SECURITY.md](../SECURITY.md).
-- **Cost:** the AI client enforces the $100 monthly cap before every call.
+- **Cost:** every AI call reserves its worst-case cost with the AI cost guard,
+  which enforces the $100 monthly cap before the call is made.
 - **Quality:** deterministic scoring gated by the golden evaluation set.
 - **Performance and accessibility:** targets are set with the API and web UI.
 

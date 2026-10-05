@@ -1,26 +1,22 @@
 from __future__ import annotations
 
 import logging
-from types import SimpleNamespace
+from decimal import Decimal
+from pathlib import Path
 
 import anthropic
 import httpx2
 import pytest
 from pydantic import BaseModel
 
-from pejip.ai.client import (
-    FALLBACK_BETA,
-    AIBudgetExceededError,
-    AIClient,
-    AIError,
-    strict_schema,
-)
+from pejip.ai.client import AIClient, AIError, strict_schema
 from pejip.ai.prompts import Prompt
 from pejip.config import SearchConfig
-from pejip.store import AIUsage, Store
+from pejip.cost import BudgetExceededError, CostGuard, SqliteLedger
 from tests.conftest import NOW, FakeMessages, response
 
 PROMPT = Prompt("TEST", 3, "Do the thing.")
+API_URL = "https://api.anthropic.com/v1/messages"
 
 
 class Inner(BaseModel):
@@ -33,8 +29,8 @@ class Output(BaseModel):
     items: list[Inner]
 
 
-def make(config: SearchConfig, store: Store, fake: FakeMessages) -> AIClient:
-    return AIClient(config.ai, store, messages=fake, clock=lambda: NOW)
+def make(config: SearchConfig, guard: CostGuard, fake: FakeMessages) -> AIClient:
+    return AIClient(config.ai, guard, messages=fake, clock=lambda: NOW)
 
 
 def call(client: AIClient) -> Output:
@@ -58,10 +54,11 @@ def test_strict_schema_requires_every_property_and_forbids_extras() -> None:
     assert "title" not in schema
 
 
-def test_structured_call_records_spend_and_provenance(config: SearchConfig, store: Store) -> None:
+def test_structured_call_settles_spend_and_records_provenance(
+    config: SearchConfig, guard: CostGuard
+) -> None:
     fake = FakeMessages(response(GOOD, usage=(1_000_000, 100_000)))
-    client = make(config, store, fake)
-    result = client.structured(
+    result = make(config, guard, fake).structured(
         feature="test", prompt=PROMPT, content="input", schema=Output, schema_version="s1"
     )
     assert result.output.inner.value == 2
@@ -76,80 +73,78 @@ def test_structured_call_records_spend_and_provenance(config: SearchConfig, stor
     request = fake.calls[0]
     assert request["model"] == "claude-opus-5-5"
     assert request["system"] == "Do the thing."
-    assert request["betas"] == [FALLBACK_BETA]
-    assert request["fallbacks"] == "default"
     assert request["output_config"]["effort"] == "medium"
     assert request["output_config"]["format"]["type"] == "json_schema"
-    assert store.month_spend(NOW) == pytest.approx(4.0 + 2.0)
+    assert "fallbacks" not in request
+    # $4 per million input tokens plus $20 per million output tokens.
+    assert guard.month_to_date_usd() == Decimal(6)
+    [line] = guard.breakdown()
+    assert (line.feature, line.model) == ("test", "claude-opus-5-5")
 
 
-def test_cost_uses_cache_rates_and_charges_unknown_models_the_top_price(
-    config: SearchConfig, store: Store
-) -> None:
-    client = make(config, store, FakeMessages())
-    usage = SimpleNamespace(
-        input_tokens=1_000_000,
-        output_tokens=0,
-        cache_creation_input_tokens=1_000_000,
-        cache_read_input_tokens=1_000_000,
-    )
-    assert client.cost_usd("claude-opus-5-5", usage) == pytest.approx(4 + 5 + 0.4)
-    plain = SimpleNamespace(input_tokens=0, output_tokens=1_000_000)
-    assert client.cost_usd("some-new-model", plain) == pytest.approx(50.0)
-
-
-def test_malformed_output_is_retried_once(config: SearchConfig, store: Store) -> None:
+def test_malformed_output_is_retried_once(config: SearchConfig, guard: CostGuard) -> None:
     fake = FakeMessages(response("not json"), response(GOOD))
-    assert call(make(config, store, fake)).name == "x"
+    assert call(make(config, guard, fake)).name == "x"
     assert len(fake.calls) == 2
 
 
-def test_repeated_bad_output_raises(config: SearchConfig, store: Store) -> None:
+def test_repeated_bad_output_raises(config: SearchConfig, guard: CostGuard) -> None:
     fake = FakeMessages(response({"name": "x"}), response(GOOD, text=False))
     with pytest.raises(AIError, match="no text block"):
-        call(make(config, store, fake))
+        call(make(config, guard, fake))
     fake = FakeMessages(response({"name": "x"}), response({"name": "y"}))
     with pytest.raises(AIError, match="malformed output"):
-        call(make(config, store, fake))
+        call(make(config, guard, fake))
 
 
-def test_refusal_and_truncation_are_errors(config: SearchConfig, store: Store) -> None:
+def test_refusal_and_truncation_are_errors(config: SearchConfig, guard: CostGuard) -> None:
     for reason in ("refusal", "max_tokens"):
         fake = FakeMessages(response(GOOD, stop_reason=reason))
         with pytest.raises(AIError, match=reason):
-            call(make(config, store, fake))
-    assert store.month_spend(NOW) > 0  # the failed calls were still billed and recorded
+            call(make(config, guard, fake))
+    assert guard.month_to_date_usd() > 0  # the failed calls were still billed
 
 
-def test_api_errors_are_wrapped(config: SearchConfig, store: Store) -> None:
-    request = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
-    fake = FakeMessages(anthropic.APIConnectionError(request=request))
+def test_api_rejection_releases_the_reservation(config: SearchConfig, guard: CostGuard) -> None:
+    rejected = httpx2.Response(400, request=httpx2.Request("POST", API_URL))
+    fake = FakeMessages(anthropic.BadRequestError("bad", response=rejected, body=None))
+    with pytest.raises(AIError, match="BadRequestError"):
+        call(make(config, guard, fake))
+    assert guard.month_to_date_usd() == 0
+
+
+def test_lost_response_keeps_the_worst_case_on_the_books(
+    config: SearchConfig, guard: CostGuard
+) -> None:
+    fake = FakeMessages(anthropic.APIConnectionError(request=httpx2.Request("POST", API_URL)))
     with pytest.raises(AIError, match="APIConnectionError"):
-        call(make(config, store, fake))
+        call(make(config, guard, fake))
+    # Up to 16,000 output tokens at $20 per million, plus the input estimate.
+    assert guard.month_to_date_usd() > Decimal("0.32")
 
 
-def test_budget_cap_blocks_calls(config: SearchConfig, store: Store) -> None:
-    store.record_ai_usage(AIUsage("other", "m", 0, 0, 100.0, NOW))
+def test_budget_cap_blocks_calls_before_the_api(config: SearchConfig, tmp_path: Path) -> None:
+    guard = CostGuard(SqliteLedger(tmp_path / "spend.db"), cap_usd="0.10", clock=lambda: NOW)
     fake = FakeMessages(response(GOOD))
-    with pytest.raises(AIBudgetExceededError):
-        call(make(config, store, fake))
+    with pytest.raises(BudgetExceededError):
+        call(make(config, guard, fake))
     assert fake.calls == []
 
 
-def test_threshold_alerts(
-    config: SearchConfig, store: Store, caplog: pytest.LogCaptureFixture
+def test_spend_alerts_come_from_the_guard(
+    config: SearchConfig, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    store.record_ai_usage(AIUsage("other", "m", 0, 0, 45.0, NOW))
-    fake = FakeMessages(response(GOOD, usage=(0, 1_000_000)))  # $20
+    guard = CostGuard(SqliteLedger(tmp_path / "spend.db"), cap_usd=10, clock=lambda: NOW)
+    fake = FakeMessages(response(GOOD, usage=(0, 300_000)))  # $6
     with caplog.at_level(logging.WARNING):
-        call(make(config, store, fake))
-    alerts = [r for r in caplog.records if r.msg == "ai_spend_threshold"]
+        call(make(config, guard, fake))
+    alerts = [r for r in caplog.records if r.msg == "ai_spend_threshold_crossed"]
     assert [r.__dict__["percent"] for r in alerts] == [50, 60]
 
 
 def test_default_messages_client(
-    config: SearchConfig, store: Store, monkeypatch: pytest.MonkeyPatch
+    config: SearchConfig, guard: CostGuard, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
-    client = AIClient(config.ai, store)
+    client = AIClient(config.ai, guard)
     assert client._messages is not None

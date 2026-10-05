@@ -13,8 +13,8 @@ from pejip.analysis import (
     quote_in,
 )
 from pejip.config import SearchConfig
+from pejip.cost import CostGuard
 from pejip.profile import CareerProfile
-from pejip.store import Store
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages, response
 
@@ -91,10 +91,10 @@ def test_ground_matching(profile: CareerProfile) -> None:
 
 
 def test_analyze_job_runs_both_prompts(
-    config: SearchConfig, store: Store, profile: CareerProfile
+    config: SearchConfig, guard: CostGuard, profile: CareerProfile
 ) -> None:
     fake = FakeMessages(response(f.analysis()), response(f.matching()))
-    ai = AIClient(config.ai, store, messages=fake, clock=lambda: NOW)
+    ai = AIClient(config.ai, guard, messages=fake, clock=lambda: NOW)
     outcome = analyze_job(ai, profile, PostingText("VP Ops", "Co", "SF", f.POSTING_TEXT))
     assert outcome.matching.matches[0].match_strength == "STRONG_MATCH"
     assert outcome.dropped_requirements == 0

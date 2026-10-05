@@ -49,19 +49,11 @@ class GeographyConfig(_Strict):
     scopes: dict[str, GeoScope]
 
 
-class Price(_Strict):
-    input: float = Field(ge=0)
-    output: float = Field(ge=0)
-
-
 class AIConfig(_Strict):
     model: str
     effort: Literal["low", "medium", "high", "xhigh", "max"]
     max_tokens: int = Field(gt=0)
-    monthly_cap_usd: float = Field(gt=0)
-    alert_thresholds_percent: list[int]
     max_jobs_per_run: int = Field(ge=0)
-    pricing: dict[str, Price]
 
 
 class ScoringConfig(_Strict):
@@ -101,6 +93,7 @@ class Settings:
     profile_path: Path
     database_url: str
     output_dir: Path
+    ai_ledger_path: Path
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -110,4 +103,5 @@ class Settings:
             profile_path=Path(e.get("PEJIP_PROFILE", "profile.yaml")),
             database_url=e.get("PEJIP_DATABASE_URL", "sqlite:///pejip.db"),
             output_dir=Path(e.get("PEJIP_OUTPUT_DIR", "output")),
+            ai_ledger_path=Path(e.get("PEJIP_AI_LEDGER", "pejip-ai-spend.db")),
         )

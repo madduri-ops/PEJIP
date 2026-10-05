@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from pejip.config import SearchConfig, load_config
+from pejip.cost import CostGuard, SqliteLedger
 from pejip.profile import CareerProfile, load_profile
 from pejip.store import Store
 
@@ -22,6 +23,14 @@ NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
 @pytest.fixture
 def config() -> SearchConfig:
     return load_config(ROOT / "config" / "search.yaml")
+
+
+@pytest.fixture
+def guard(tmp_path: Path) -> Iterator[CostGuard]:
+    """A cost guard with the real $100 cap and a throwaway ledger."""
+    ledger = SqliteLedger(tmp_path / "spend.db")
+    yield CostGuard(ledger, clock=lambda: NOW)
+    ledger.close()
 
 
 @pytest.fixture

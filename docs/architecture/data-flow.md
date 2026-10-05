@@ -18,8 +18,8 @@ flowchart LR
     score --> explain[Cited explanation]
     explain --> recs[(recommendations)]
     recs --> digest[/digest-*.md/]
-    analyse -. spend .-> usage[(ai_usage)]
-    match -. spend .-> usage
+    analyse -. spend .-> guard[AI cost guard] -.-> spend[(ai_spend)]
+    match -. spend .-> guard
 ```
 
 Only the profile's headline, target seniority, career direction and evidence items
@@ -33,7 +33,7 @@ leave the machine, sent to the Anthropic API for matching (see
 | `jobs` | Posting fields, pay, content hash, first and last seen | store (via pipeline) | 90 days after last seen |
 | `analyses` | AI analysis and matching output, provenance | analysis (via pipeline) | 90 days |
 | `recommendations` | Scores, components, reasons, explanation | scoring (via pipeline) | 90 days |
-| `ai_usage` | Tokens and cost per call by feature and model | ai.client | 90 days |
 | `runs` | Run status and per-source results | pipeline | 90 days |
 | `profile.yaml` | Career profile (personal data, local file) | Babu | Babu's own file |
 | `output/digest-*.md` | Digest per run | cli | Babu's own files |
+| `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |

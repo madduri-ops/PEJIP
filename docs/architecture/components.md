@@ -14,7 +14,10 @@ flowchart TB
     disc[discovery: title taxonomy + geography]
     store[(store: SQLAlchemy Core)]
     ana[analysis: grounding + validation]
-    ai[ai.client: AIClient, spend cap]
+    ai[ai.client: AIClient]
+    guard[cost: CostGuard]
+    ledger[(ai_spend ledger)]
+    cw[CloudWatch PEJIP metrics]
     prompts[ai.prompts: versioned prompt files]
     score[scoring: Fit, Confidence, Priority]
     explain[explain: cited explanations]
@@ -27,7 +30,8 @@ flowchart TB
     pipe --> store
     pipe --> ana --> ai
     ana --> prompts
-    ai --> store
+    ai --> guard --> ledger
+    guard -.-> cw
     pipe --> score --> explain
     cli --> digest
     evals --> ana
@@ -40,7 +44,8 @@ flowchart TB
   store, HTTP and AI clients together.
 - **Interfaces:** `pejip run | purge | export <file> | delete-all --yes | eval [--live]`;
   environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
-  `PEJIP_OUTPUT_DIR`, `ANTHROPIC_API_KEY`.
+  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
+  `ANTHROPIC_API_KEY`.
 - **Data:** writes `digest-*.md` to the output directory.
 
 ## pipeline
@@ -67,12 +72,13 @@ flowchart TB
 
 ## ai.client and ai.prompts
 
-- **Responsibility:** the single AI client. Checks the monthly cap before each
-  call, records spend per feature and model, logs threshold alerts, requests
-  schema-constrained JSON, retries malformed output once and raises `AIError`
-  otherwise. Prompts are versioned files loaded by id.
-- **Interfaces:** `AIClient.structured(feature, prompt, content, schema, schema_version)`.
-- **Data:** `ai_usage` table.
+- **Responsibility:** the single AI client. Reserves each call's worst-case cost
+  with the AI cost guard (which refuses it at the cap), settles the actual usage,
+  requests schema-constrained JSON, retries malformed output once and raises
+  `AIError` otherwise. Prompts are versioned files loaded by id.
+- **Interfaces:** `AIClient(config, guard).structured(feature, prompt, content, schema,
+  schema_version)`.
+- **Data:** none of its own; spend goes to the cost guard's `ai_spend` ledger.
 
 ## analysis
 
@@ -95,7 +101,7 @@ flowchart TB
 
 - **Responsibility:** persistence, 90-day retention, export and deletion.
 - **Interfaces:** `Store(database_url)`.
-- **Data:** `jobs`, `analyses`, `recommendations`, `ai_usage`, `runs`.
+- **Data:** `jobs`, `analyses`, `recommendations`, `runs`.
 
 ## logs
 
@@ -116,3 +122,15 @@ flowchart TB
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`).
 - **Data:** none.
 - **Design doc:** [0001: CI pipeline and health endpoint](../design/0001-ci-pipeline.md).
+
+
+## AI cost guard
+
+- **Responsibility:** enforces the $100 monthly Claude API cap before each call and
+  records what each call cost (policy section 13).
+- **Interfaces:** `pejip.cost.CostGuard.reserve(...)` returning a reservation that is
+  settled with the API response's `usage`; raises `BudgetExceededError` at the cap.
+  Publishes `PEJIP/AISpendMonthToDateUSD` and `PEJIP/AICallCostUSD` to CloudWatch.
+- **Data:** the `ai_spend` SQLite table (feature, model, tokens, cost; no personal
+  data) and the price table `src/pejip/cost/pricing.json`.
+- **Design doc:** [0002: AI cost guard](../design/0002-ai-cost-guard.md).

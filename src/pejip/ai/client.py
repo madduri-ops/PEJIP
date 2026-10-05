@@ -1,8 +1,9 @@
-"""The single AI client: spend tracking, the monthly cap and failure handling.
+"""The single AI client: the spend cap, structured output and failure handling.
 
-Policy section 13: every AI call goes through here. Spend is recorded per feature
-and model, calls are refused once the month's spend reaches the cap, and crossing
-50% and each further 10% of the cap logs a ``ai_spend_threshold`` alert event.
+Policy section 13: every model call reserves its worst-case cost with the
+:class:`~pejip.cost.CostGuard` first, which refuses the call with
+:class:`~pejip.cost.BudgetExceededError` when it would pass the monthly cap, then
+settles the actual usage and raises the spend alerts.
 Policy section 12: output is schema-validated before anyone uses it, and a model
 error, refusal or malformed output raises :class:`AIError` instead of guessing.
 """
@@ -21,23 +22,18 @@ from pydantic import BaseModel, ValidationError
 
 from pejip.ai.prompts import Prompt
 from pejip.config import AIConfig
-from pejip.store import AIUsage, Store
+from pejip.cost import CostGuard
 
 log = logging.getLogger(__name__)
 
-FALLBACK_BETA = "server-side-fallback-2026-07-01"
 SCHEMA_ATTEMPTS = 2
+# A deliberately high estimate of tokens per character of request text, so the
+# reservation errs above the real input cost (English runs nearer 0.25).
+INPUT_TOKENS_PER_CHAR = 0.5
 
 
 class AIError(Exception):
     """The model call failed or returned unusable output."""
-
-
-class AIBudgetExceededError(AIError):
-    """This month's AI spend has reached the configured cap."""
-
-    def __init__(self, cap_usd: float) -> None:
-        super().__init__(f"monthly AI cap of ${cap_usd:.2f} reached")
 
 
 class ModelCallError(AIError):
@@ -102,31 +98,14 @@ class AIClient:
     def __init__(
         self,
         config: AIConfig,
-        store: Store,
+        guard: CostGuard,
         messages: MessagesAPI | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
     ) -> None:
         self._config = config
-        self._store = store
-        self._messages = messages or anthropic.Anthropic(max_retries=2).beta.messages
+        self._guard = guard
+        self._messages = messages or anthropic.Anthropic(max_retries=2).messages
         self._clock = clock
-
-    def cost_usd(self, model: str, usage: Any) -> float:
-        prices = self._config.pricing.get(model)
-        if prices is None:
-            in_price = max(p.input for p in self._config.pricing.values())
-            out_price = max(p.output for p in self._config.pricing.values())
-        else:
-            in_price, out_price = prices.input, prices.output
-        cache_write = getattr(usage, "cache_creation_input_tokens", None) or 0
-        cache_read = getattr(usage, "cache_read_input_tokens", None) or 0
-        dollars: float = (
-            usage.input_tokens * in_price
-            + cache_write * in_price * 1.25
-            + cache_read * in_price * 0.1
-            + usage.output_tokens * out_price
-        )
-        return dollars / 1_000_000
 
     def structured[T: BaseModel](
         self,
@@ -162,43 +141,34 @@ class AIClient:
         raise AIError(last_error)
 
     def _call(self, feature: str, prompt: Prompt, content: str, schema: type[BaseModel]) -> Any:
-        now = self._clock()
-        before = self._store.month_spend(now)
-        if before >= self._config.monthly_cap_usd:
-            raise AIBudgetExceededError(self._config.monthly_cap_usd)
-        try:
-            response = self._messages.create(
-                model=self._config.model,
-                max_tokens=self._config.max_tokens,
-                system=prompt.text,
-                messages=[{"role": "user", "content": content}],
-                output_config={
-                    "effort": self._config.effort,
-                    "format": {"type": "json_schema", "schema": strict_schema(schema)},
-                },
-                betas=[FALLBACK_BETA],
-                fallbacks="default",
-            )
-        except anthropic.APIError as exc:
-            raise ModelCallError(exc) from exc
-        model = str(response.model)
-        cost = self.cost_usd(model, response.usage)
-        self._store.record_ai_usage(
-            AIUsage(
-                feature, model, response.usage.input_tokens, response.usage.output_tokens, cost, now
-            )
-        )
-        self._alert_thresholds(before, before + cost)
+        json_schema = strict_schema(schema)
+        request_chars = len(prompt.text) + len(content) + len(json.dumps(json_schema))
+        with self._guard.reserve(
+            feature=feature,
+            model=self._config.model,
+            input_tokens=int(request_chars * INPUT_TOKENS_PER_CHAR),
+            max_output_tokens=self._config.max_tokens,
+        ) as call:
+            try:
+                response = self._messages.create(
+                    model=self._config.model,
+                    max_tokens=self._config.max_tokens,
+                    system=prompt.text,
+                    messages=[{"role": "user", "content": content}],
+                    output_config={
+                        "effort": self._config.effort,
+                        "format": {"type": "json_schema", "schema": json_schema},
+                    },
+                )
+            except anthropic.APIStatusError as exc:
+                # The API answered with an error, so nothing was billed.
+                call.release()
+                raise ModelCallError(exc) from exc
+            except anthropic.APIError as exc:
+                # No answer (timeout, connection lost): it may have been billed,
+                # so the guard keeps the worst-case amount on the books.
+                raise ModelCallError(exc) from exc
+            call.settle(response.usage)
         if response.stop_reason != "end_turn":
             raise IncompleteOutputError(response.stop_reason)
         return response
-
-    def _alert_thresholds(self, before: float, after: float) -> None:
-        cap = self._config.monthly_cap_usd
-        for pct in sorted(self._config.alert_thresholds_percent):
-            level = cap * pct / 100
-            if before < level <= after:
-                log.warning(
-                    "ai_spend_threshold",
-                    extra={"percent": pct, "spend_usd": round(after, 2), "cap_usd": cap},
-                )

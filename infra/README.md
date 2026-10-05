@@ -13,6 +13,7 @@ section 5.1.
 | `ecr.tf` | ECR repository `pejip`, immutable tags, scan on push, KMS-encrypted, keeps 10 images |
 | `iam_github.tf` | `pejip-github-deploy` (main only) and `pejip-github-plan` (pull requests, read only) |
 | `alerts.tf` | SNS topic `pejip-alerts` with Babu's email, and the `pejip-monthly` budget on `Project = PEJIP` |
+| `ai_cost.tf` | Alarms `pejip-ai-spend-50pct` to `-100pct` on the app's month-to-date Claude spend, emailing through `pejip-alerts` ([design](../docs/design/0002-ai-cost-guard.md)) |
 
 The VPC, load balancer, ECS service, certificate for `job-search.zephyr-mcg.com` and
 the service alarms land with the first app code, when there is something to run.
