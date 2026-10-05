@@ -57,6 +57,8 @@ CI scores the golden set with the ranking pipeline from the model output recorde
 in `eval/recordings/` (`--scorer pejip.golden_eval:replay_scorer`) on every app
 change, and by calling the model (`live_scorer`, needs `ANTHROPIC_API_KEY`) when a
 prompt, the AI client, the analysis code, `config/search.yaml` or `eval/` changes.
+The live run gates only the hard rules (`--gate invariants`); a prompt or model
+change commits fresh recordings, and the replay holds them to the full baseline.
 See [eval/README.md](eval/README.md) for refreshing the recordings and raising the
 baseline.
 

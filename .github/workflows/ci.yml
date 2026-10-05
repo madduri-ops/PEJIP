@@ -280,8 +280,11 @@ jobs:
           if-no-files-found: ignore
 
   # Re-scores the golden set by calling the model when a prompt, the AI client, the
-  # analysis code, the AI config, the adapter or the set itself changes, and fails
-  # below eval/baseline.json. Pull requests only, as it costs a few dollars; it needs
+  # analysis code, the AI config, the adapter or the set itself changes. Model
+  # answers vary run to run, so only the hard rules gate (every case scored, every
+  # citation valid, network invariance); the other metrics are reported, and the
+  # replay job gates them on the committed recordings. Pull requests only, as it
+  # costs a few dollars; it needs
   # the ANTHROPIC_API_KEY secret. What the model returned is uploaded, and printed
   # one line per case, so the recordings in eval/recordings can be refreshed.
   eval-live:
@@ -298,7 +301,7 @@ jobs:
       - run: pip install -e .
       - run: >-
           python -m pejip.evaluation run --scorer pejip.golden_eval:live_scorer
-          --report eval-live-report.json
+          --gate invariants --report eval-live-report.json
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           PEJIP_EVAL_RECORD_DIR: recordings

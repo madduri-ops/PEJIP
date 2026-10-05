@@ -124,6 +124,7 @@ See [ADR-0003](../adr/0003-python-cli-first-slice.md).
 
 - Which company boards Babu wants searched; `config/search.yaml` starts with six
   examples.
-- Live and recorded runs share one baseline, so a live run whose model output
-  varies from the recordings may land just under it. If that happens often, the live
-  job needs its own, lower floor.
+- Model answers vary between runs (two live runs of the same code scored 67% and
+  46% Fit in range), so the live job gates only the hard rules (`--gate invariants`,
+  Babu's choice on 2026-10-05) and the replay of committed recordings gates the
+  rest. Making the analysis more stable from run to run is open work.
