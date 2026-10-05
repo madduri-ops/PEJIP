@@ -22,7 +22,7 @@ section 5.1.
 | `schedule.tf` | `pejip-purge-daily` schedule running `pejip purge` (created disabled) and its `pejip-scheduler` role |
 | `inbox.tf` | Job-alert inbox: SES receiving for `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket `pejip-inbox-275704950192` (90-day expiry) ([design](../docs/design/0010-job-alert-inbox.md)) |
 | `alarms.tf` | 5xx, unhealthy target, tasks-below-desired, CPU and memory alarms to `pejip-alerts` |
-| `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-source-failures`, `pejip-app-errors` and `pejip-search-stalled` (off until `search_run_alarms_enabled = true`); dashboard `pejip` ([design](../docs/design/0012-monitoring.md)) |
+| `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-search-run-failed`, `pejip-source-failures`, `pejip-app-errors` and `pejip-search-stalled` (off until `search_run_alarms_enabled = true`); dashboard `pejip` ([design](../docs/design/0011-monitoring.md)) |
 
 The hosting decisions (public subnets without NAT, WAF rules, DNS at the registrar,
 cost) are in [ADR-0005](../docs/adr/0005-app-hosting-and-continuous-deploy.md) and

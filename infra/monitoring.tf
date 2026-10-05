@@ -1,12 +1,9 @@
-# Search, error and spend monitoring (policy section 14, design 0012).
+# Search, error and spend monitoring (policy section 14, design 0011).
 #
 # The app already writes structured JSON logs to /ecs/pejip-prod, so search and
 # error metrics come from log metric filters rather than extra API calls in the
 # app: `run_finished` (with its status), `source_failed` and any ERROR line.
 # Each alarm emails Babu through pejip-alerts once, on the way into ALARM.
-# A run that fails, crashes or never starts is emailed by the task-failed
-# EventBridge rule in alarms.tf, so no alarm here repeats it: a FAILED run is
-# only charted, and `run_crashed` lines are left out of AppErrors.
 # Spend alarms are in ai_cost.tf and the hosting alarms in alarms.tf; the
 # dashboard shows all of them in one place.
 
@@ -16,7 +13,7 @@ locals {
     SearchRunsPartial   = "{ ($.event = \"run_finished\") && ($.status = \"PARTIAL\") }"
     SearchRunsFailed    = "{ ($.event = \"run_finished\") && ($.status = \"FAILED\") }"
     SourceFailures      = "{ $.event = \"source_failed\" }"
-    AppErrors           = "{ (($.level = \"ERROR\") || ($.level = \"CRITICAL\")) && ($.event != \"run_crashed\") }"
+    AppErrors           = "{ ($.level = \"ERROR\") || ($.level = \"CRITICAL\") }"
   }
 }
 
@@ -35,8 +32,22 @@ resource "aws_cloudwatch_log_metric_filter" "search" {
   }
 }
 
-# A single broken source makes the run PARTIAL, which the task-failed rule
-# doesn't see, so it gets its own alarm. The dashboard's "Source failures by source" table names the source.
+resource "aws_cloudwatch_metric_alarm" "search_run_failed" {
+  alarm_name          = "pejip-search-run-failed"
+  alarm_description   = "A PEJIP search run finished FAILED: every job source failed. The run's digest lists each source's error."
+  namespace           = "PEJIP"
+  metric_name         = aws_cloudwatch_log_metric_filter.search["SearchRunsFailed"].metric_transformation[0].name
+  statistic           = "Sum"
+  period              = 3600
+  evaluation_periods  = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = local.alarm_actions
+}
+
+# A single broken source makes the run PARTIAL, not FAILED, so it gets its own
+# alarm. The dashboard's "Source failures by source" table names the source.
 resource "aws_cloudwatch_metric_alarm" "source_failures" {
   alarm_name          = "pejip-source-failures"
   alarm_description   = "A PEJIP job source could not be fetched. See the Source failures table on the pejip dashboard for which one."
@@ -53,7 +64,7 @@ resource "aws_cloudwatch_metric_alarm" "source_failures" {
 
 resource "aws_cloudwatch_metric_alarm" "app_errors" {
   alarm_name          = "pejip-app-errors"
-  alarm_description   = "PEJIP logged an error (for example failed spend reporting). See Recent errors on the pejip dashboard."
+  alarm_description   = "PEJIP logged an error (a crashed run, failed spend reporting, or another ERROR line). See Recent errors on the pejip dashboard."
   namespace           = "PEJIP"
   metric_name         = aws_cloudwatch_log_metric_filter.search["AppErrors"].metric_transformation[0].name
   statistic           = "Sum"
@@ -115,6 +126,7 @@ resource "aws_cloudwatch_metric_alarm" "search_stalled" {
 locals {
   monitored_alarm_arns = concat(
     [
+      aws_cloudwatch_metric_alarm.search_run_failed.arn,
       aws_cloudwatch_metric_alarm.source_failures.arn,
       aws_cloudwatch_metric_alarm.app_errors.arn,
     ],
