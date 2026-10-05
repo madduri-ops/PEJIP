@@ -14,7 +14,16 @@ from html import escape
 from urllib.parse import quote
 
 from pejip.config import SearchConfig
-from pejip.portal.data import Citation, Opportunity, Point, SearchRun, Signal, SourceStatus
+from pejip.portal.data import (
+    Citation,
+    Company,
+    HistoryEvent,
+    Opportunity,
+    Point,
+    SearchRun,
+    Signal,
+    SourceStatus,
+)
 from pejip.portal.views import (
     AGE_CHOICES,
     COMPANY_VIEWS,
@@ -569,7 +578,54 @@ def _original(url: str) -> str:
     return '<span class="unk">No link to the original posting</span>'
 
 
-def detail_body(o: Opportunity, now: datetime) -> str:
+def _company_intel(o: Opportunity, company: Company | None, open_roles: int, now: datetime) -> str:
+    link = f'<a href="{e(company_roles_url(o.company))}">All roles at {e(o.company)}</a>'
+    head = f'<div class="row spread"><h2>Company intelligence</h2>{link}</div>'
+    if company is None:
+        return head + _empty("PEJIP has no company profile for this employer yet.")
+    return (
+        head
+        + '<div class="summary">'
+        + _kv("Industry", company.industry)
+        + _kv("Open roles you match", str(open_roles))
+        + _kv("Watch state", "Watching" if company.watching else "Not watched")
+        + "</div>"
+        + _signals(company.signals, now)
+    )
+
+
+def _verification(o: Opportunity, now: datetime) -> str:
+    return (
+        "<h2>Source and verification</h2>"
+        '<div class="summary">'
+        + _kv("Discovered", o.source.capitalize())
+        + _kv("Verified on", o.verified_on, "Not verified yet")
+        + _kv("Requisition", o.requisition, "Not published")
+        + _kv("Employer posted", when(o.posted_at, now) if o.posted_at else None)
+        + _kv("First seen", when(o.first_seen_at, now))
+        + _kv("Last verified", when(o.last_verified_at, now) if o.last_verified_at else None)
+        + _kv("Status", "Active")
+        + f"</div><div>{_original(o.url)}</div>"
+    )
+
+
+def _role_history(events: tuple[HistoryEvent, ...], now: datetime) -> str:
+    items = "".join(
+        f"<li><div><strong>{e(ev.text)}</strong>"
+        f'<div class="src">{when(ev.at, now)}</div></div></li>'
+        for ev in sorted(events, key=lambda ev: ev.at)
+    )
+    listing = f'<ul class="plus-list">{items}</ul>' if items else _empty("No changes recorded yet.")
+    return (
+        f"<h2>History</h2>{listing}"
+        '<p class="note">Only meaningful changes are listed: compensation, work model, '
+        "location, title, reposts and removal.</p>"
+    )
+
+
+def detail_body(
+    o: Opportunity, now: datetime, company: Company | None = None, open_roles: int = 1
+) -> str:
     fit = "Unknown" if o.fit is None else f"{o.fit:.0f}"
     summary = (
         '<section class="card hot" aria-labelledby="sum-h"><h2 id="sum-h">Summary</h2>'
@@ -607,8 +663,13 @@ def detail_body(o: Opportunity, now: datetime) -> str:
         f'<div class="card" id="network"><h2>Who you know · '
         f"{'Unknown' if o.connections is None else len(o.connections)}</h2>"
         f"{_network(o)}</div></section>"
+        f'<section class="card" id="company">{_company_intel(o, company, open_roles, now)}'
+        "</section>"
         f'<section class="card" id="jd"><h2>Job description</h2>{_description(o.description)}'
-        f"<div>{_original(o.url)}</div></section>"
+        "</section>"
+        '<section class="grid2">'
+        f'<div class="card" id="source">{_verification(o, now)}</div>'
+        f'<div class="card" id="history">{_role_history(o.history, now)}</div></section>'
         '<div class="row spread"><a href="/opportunities">Back to opportunities</a></div>'
     )
 

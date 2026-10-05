@@ -17,6 +17,7 @@ from pejip.portal.data import (
     Company,
     Connection,
     FitComponent,
+    HistoryEvent,
     Opportunity,
     Point,
     SearchRun,
@@ -241,6 +242,56 @@ def test_opportunity_detail_without_concerns() -> None:
     html = _get(FakeData([_role()], None), "/opportunities/1").text
 
     assert "No concerns found." in html
+
+
+def test_opportunity_detail_shows_company_source_and_history() -> None:
+    html = _get(_sample(), "/opportunities/1").text
+
+    assert "Company intelligence" in html
+    assert 'href="/opportunities?view=all&amp;company=Company%20A">All roles at Company A' in html
+    assert "Enterprise Software · AI Platforms" in html
+    assert "Enterprise AI investment" in html
+    assert "Open roles you match" in html
+    assert "Source and verification" in html
+    assert "Company A careers site" in html
+    assert "R100001" in html
+    assert "First discovered by the daily search" in html
+    assert "Scored: fit 94, priority Immediate" in html
+
+
+def test_opportunity_detail_without_company_profile_or_history() -> None:
+    html = _get(FakeData([_role()], None), "/opportunities/1").text
+
+    assert "PEJIP has no company profile for this employer yet." in html
+    assert "Not verified yet" in html
+    assert "No changes recorded yet." in html
+
+
+def test_opportunity_detail_lists_history_oldest_first() -> None:
+    company = Company(
+        name="Company A",
+        industry=None,
+        target=True,
+        watching=True,
+        monitoring="HIGH",
+        relevance="STRATEGICALLY_RELEVANT",
+        job_source="Careers site feed",
+    )
+    role = _role(
+        history=(
+            HistoryEvent(NOW - timedelta(hours=1), "Second <event>"),
+            HistoryEvent(NOW - timedelta(hours=2), "First event"),
+        ),
+        verified_on="Company A careers site",
+        requisition="R1",
+        last_verified_at=NOW - timedelta(hours=1),
+    )
+    html = _get(FakeData([role, _role(2)], None, companies=[company]), "/opportunities/1").text
+
+    assert html.index("First event") < html.index("Second &lt;event&gt;")
+    assert "Watching" in html
+    assert '<span class="lbl">Open roles you match</span><span class="v">2</span>' in html
+    assert "No relevant signals in the last 90 days." in html
 
 
 def test_unknown_opportunity_is_not_found() -> None:
