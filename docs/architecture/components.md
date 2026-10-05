@@ -43,8 +43,8 @@ flowchart TB
   store, HTTP and AI clients together.
 - **Interfaces:** `pejip run | purge | export <file> | delete-all --yes`;
   environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
-  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
-  `ANTHROPIC_API_KEY`.
+  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file), and Claude
+  credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory.
 
 ## pipeline

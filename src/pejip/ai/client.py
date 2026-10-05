@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -20,6 +21,7 @@ from typing import Any, Protocol
 import anthropic
 from pydantic import BaseModel, ValidationError
 
+from pejip import claude_auth
 from pejip.ai.prompts import Prompt
 from pejip.config import AIConfig
 from pejip.cost import CostGuard
@@ -99,6 +101,13 @@ def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
     return schema
 
 
+def _credentials() -> anthropic.WorkloadIdentityCredentials | None:
+    # Keyless in CI and on ECS (ADR-0004); a developer's own login when
+    # PEJIP_CLAUDE_IDENTITY is unset.
+    kwargs = claude_auth.federation_credentials(os.environ)
+    return anthropic.WorkloadIdentityCredentials(**kwargs) if kwargs else None
+
+
 class AIClient:
     def __init__(
         self,
@@ -109,7 +118,9 @@ class AIClient:
     ) -> None:
         self._config = config
         self._guard = guard
-        self._messages = messages or anthropic.Anthropic(max_retries=2).messages
+        self._messages = (
+            messages or anthropic.Anthropic(max_retries=2, credentials=_credentials()).messages
+        )
         self._clock = clock
 
     def structured[T: BaseModel](

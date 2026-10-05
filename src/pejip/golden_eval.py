@@ -298,5 +298,5 @@ def _live() -> Callable[[EvalInput], Prediction]:
 
 
 def live_scorer(item: EvalInput) -> Prediction:
-    """Score a case by calling the model; needs ``ANTHROPIC_API_KEY``."""
+    """Score a case by calling the model; needs Claude credentials (``pejip.claude_auth``)."""
     return _live()(item)

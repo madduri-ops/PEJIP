@@ -83,7 +83,8 @@ posting quote, a profile evidence id or a stored job field, and
 - Environment: `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
   `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (default `pejip-ai-spend.db`; keep it on
   persistent storage, since a fresh ledger restarts the month's spend at zero),
-  `ANTHROPIC_API_KEY`.
+  and Claude credentials (`PEJIP_CLAUDE_IDENTITY` and the federation IDs from
+  [0007](0007-claude-identity-federation.md), or `ANTHROPIC_API_KEY` locally).
 - Files: `config/search.yaml` (sources, taxonomy, geography, AI, scoring),
   `profile.yaml` (see `examples/profile.example.yaml`), prompts in
   `src/pejip/prompts/<name>.v<N>.md`.

@@ -71,8 +71,8 @@ network context, profile; never the labels) and returns a `pejip.evaluation.scor
 python -m pejip.evaluation run --scorer pejip.golden_eval:replay_scorer
 ```
 
-`live_scorer` calls the model instead (needs `ANTHROPIC_API_KEY`, a few dollars per
-run). CI runs it on pull requests that change a prompt, the AI client, the analysis
+`live_scorer` calls the model instead (needs Claude credentials, a few dollars per
+run; CI signs in without a key, see ADR-0004). CI runs it on pull requests that change a prompt, the AI client, the analysis
 code, `config/search.yaml`, the adapter or this set, and the "Evaluation set (live
 model)" job uploads and prints what the model returned. The model's answers vary
 from run to run (the same code has scored 46% and 67% Fit in range), so that job

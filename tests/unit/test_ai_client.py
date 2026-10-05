@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 from pejip.ai.client import AIClient, AIError, strict_schema
 from pejip.ai.prompts import Prompt
+from pejip.claude_auth import ClaudeAuthError
 from pejip.config import SearchConfig
 from pejip.cost import BudgetExceededError, CostGuard, SqliteLedger
 from tests.conftest import NOW, FakeMessages, response
@@ -148,3 +149,27 @@ def test_default_messages_client(
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
     client = AIClient(config.ai, guard)
     assert client._messages is not None
+
+
+def test_default_messages_client_uses_federation(
+    config: SearchConfig, guard: CostGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("PEJIP_CLAUDE_IDENTITY", "github-actions")
+    monkeypatch.setenv("ANTHROPIC_ORGANIZATION_ID", "00000000-0000-4000-8000-000000000000")
+    monkeypatch.setenv("ANTHROPIC_FEDERATION_RULE_ID", "fdrl_test")
+    monkeypatch.setenv("ANTHROPIC_SERVICE_ACCOUNT_ID", "svac_test")
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_URL", "https://example.invalid/token")
+    monkeypatch.setenv("ACTIONS_ID_TOKEN_REQUEST_TOKEN", "request-token-not-real")
+    client = AIClient(config.ai, guard)
+    assert client._messages is not None
+
+
+def test_default_messages_client_refuses_a_leftover_key(
+    config: SearchConfig, guard: CostGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+    monkeypatch.setenv("PEJIP_CLAUDE_IDENTITY", "github-actions")
+    with pytest.raises(ClaudeAuthError):
+        AIClient(config.ai, guard)
