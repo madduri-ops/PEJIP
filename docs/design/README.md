@@ -13,3 +13,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0001: CI pipeline and health endpoint](0001-ci-pipeline.md) | Implemented |
 | [0002: AI cost guard](0002-ai-cost-guard.md) | Implemented |
 | [0003: Golden evaluation set](0003-golden-evaluation-set.md) | Implemented |
+| [0004: Keyless Claude access](0004-claude-identity-federation.md) | Accepted |

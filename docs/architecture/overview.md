@@ -31,6 +31,11 @@ ECR repository `pejip`, the GitHub deploy and plan roles, the `pejip-alerts` top
 the `pejip-monthly` budget. The VPC, ALB, ECS service and the certificate for
 `job-search.zephyr-mcg.com` land with the first app code.
 
+Neither CI nor the app holds a Claude API key: both swap a short-lived identity
+token (GitHub Actions OIDC, or AWS STS for the ECS task role) for a short-lived
+Claude token through Workload Identity Federation
+([ADR-0004](../adr/0004-keyless-claude-access.md)).
+
 ```mermaid
 flowchart LR
     gh[GitHub Actions<br/>madduri-ops/PEJIP] -- OIDC --> role[pejip-github-deploy]

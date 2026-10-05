@@ -48,3 +48,16 @@ flowchart TB
 - **Data:** reads `eval/golden/` (synthetic cases and profile) and
   `eval/baseline.json`; writes an optional JSON report.
 - **Design doc:** [0003: Golden evaluation set](../design/0003-golden-evaluation-set.md).
+
+## Claude credentials (`pejip.claude_auth`)
+
+- **Responsibility:** gives every Claude caller short-lived credentials through
+  Workload Identity Federation, so no Claude API key exists in CI or AWS
+  ([ADR-0004](../adr/0004-keyless-claude-access.md)).
+- **Interfaces:** `federation_credentials(env, sts=...)` returns the arguments for
+  the SDK's `WorkloadIdentityCredentials` (or `None` on a developer machine); reads
+  `PEJIP_CLAUDE_IDENTITY` and the `ANTHROPIC_*` federation IDs; raises
+  `ClaudeAuthError` on misconfiguration or a leftover API key. Consumes the GitHub
+  Actions OIDC endpoint or AWS STS `GetWebIdentityToken`.
+- **Data:** none stored; tokens live in memory only.
+- **Design doc:** [0004: Keyless Claude access](../design/0004-claude-identity-federation.md).

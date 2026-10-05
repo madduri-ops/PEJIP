@@ -1,0 +1,74 @@
+# Proves keyless Claude access works from GitHub Actions (ADR-0004,
+# docs/design/0004-claude-identity-federation.md): pejip.claude_auth fetches the
+# job's OIDC token, Anthropic swaps it for a short-lived Claude token, and the job
+# lists models with it. Listing models is free, so this check costs nothing.
+# It fails until the federation repository variables are set.
+name: Claude federation
+
+on:
+  pull_request:
+    paths:
+      - 'src/pejip/claude_auth.py'
+      - 'infra/claude_federation.tf'
+      - '.github/workflows/claude-federation.yml'
+
+concurrency:
+  group: claude-federation-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.12'
+
+jobs:
+  verify:
+    name: Claude federation check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PEJIP_CLAUDE_IDENTITY: github-actions
+      ANTHROPIC_ORGANIZATION_ID: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+      ANTHROPIC_FEDERATION_RULE_ID: ${{ vars.ANTHROPIC_CI_FEDERATION_RULE_ID }}
+      ANTHROPIC_SERVICE_ACCOUNT_ID: ${{ vars.ANTHROPIC_CI_SERVICE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - name: Exchange the GitHub OIDC token and list models
+        run: |
+          set -euo pipefail
+          # Builds the same arguments the app passes to the Anthropic SDK; fails on
+          # a missing or malformed ID before anything is sent.
+          python - > request.json <<'PY'
+          import json, os
+          from pejip.claude_auth import federation_credentials
+          kwargs = federation_credentials(os.environ)
+          print(json.dumps({
+              "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+              "assertion": kwargs["identity_token_provider"](),
+              "federation_rule_id": kwargs["federation_rule_id"],
+              "organization_id": kwargs["organization_id"],
+              "service_account_id": kwargs["service_account_id"],
+          }))
+          PY
+          status=$(curl -sS -o exchange.json -w '%{http_code}' https://api.anthropic.com/v1/oauth/token \
+            -H 'content-type: application/json' --data-binary @request.json)
+          rm request.json
+          if [ "$status" != 200 ]; then
+            jq -c '.error // .' exchange.json
+            echo "::error::Token exchange returned $status. The deny reason is in the Claude Console under Settings > Workload identity > History."
+            exit 1
+          fi
+          token=$(jq -r .access_token exchange.json)
+          rm exchange.json
+          echo "::add-mask::$token"
+          count=$(curl -sSf https://api.anthropic.com/v1/models \
+            -H "authorization: Bearer $token" -H 'anthropic-version: 2023-06-01' | jq '.data | length')
+          echo "Keyless Claude access works: $count models visible to the CI service account."
