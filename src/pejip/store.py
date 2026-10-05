@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -31,6 +31,7 @@ from sqlalchemy import (
     update,
 )
 
+from pejip import retention
 from pejip.models import Posting
 
 metadata = MetaData()
@@ -244,7 +245,7 @@ class Store:
 
     def purge_expired(self, now: datetime, retention_days: int) -> int:
         """Delete everything older than the retention window. Returns rows deleted."""
-        cutoff = now - timedelta(days=retention_days)
+        cutoff = retention.cutoff(now, retention_days)
         deleted = 0
         with self.engine.begin() as conn:
             stale_jobs = select(jobs.c.id).where(jobs.c.last_seen_at < cutoff)

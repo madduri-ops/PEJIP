@@ -10,6 +10,8 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from pejip.retention import RETENTION_DAYS
+
 Adapter = Literal["greenhouse", "lever"]
 Preference = Literal["PREFERRED", "ACCEPTABLE", "UNDESIRABLE"]
 
@@ -76,7 +78,7 @@ class SearchConfig(_Strict):
     geography: GeographyConfig
     ai: AIConfig
     scoring: ScoringConfig
-    retention_days: int = Field(gt=0)
+    retention_days: int = Field(ge=1, le=RETENTION_DAYS)
 
 
 def load_config(path: Path) -> SearchConfig:

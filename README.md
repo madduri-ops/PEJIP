@@ -93,7 +93,7 @@ digest that explains each ranking with cited evidence. Network data, feedback,
 notifications, feature API endpoints and the web UI come next. The build policy, repository
 hygiene, the Python CI pipeline, a health endpoint, the golden evaluation set for
 rankings and foundation AWS infrastructure are in place; the app is not deployed yet.
-See the [design doc](docs/design/0004-find-thin-slice.md) and the
+See the [design doc](docs/design/0005-find-thin-slice.md) and the
 [changelog](CHANGELOG.md).
 
 ## Getting started

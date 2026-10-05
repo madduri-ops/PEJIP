@@ -16,6 +16,7 @@ from pejip.digest import render
 from pejip.logs import configure_logging
 from pejip.pipeline import Pipeline
 from pejip.profile import load_profile
+from pejip.retention import purge_files
 from pejip.sources.http import PoliteClient
 from pejip.store import Store
 
@@ -38,6 +39,7 @@ def _cmd_run(settings: Settings) -> int:
     path = settings.output_dir / f"digest-{digest.generated_at:%Y%m%d-%H%M%S}.md"
     path.write_text(render(digest, config.scoring.strong_match_fit), encoding="utf-8")
     log.info("digest_written", extra={"path": str(path), "status": digest.status})
+    _purge_output(settings, config.retention_days)
     return 1 if digest.status == "FAILED" else 0
 
 
@@ -45,7 +47,14 @@ def _cmd_purge(settings: Settings) -> int:
     config = load_config(settings.config_path)
     deleted = Store(settings.database_url).purge_expired(datetime.now(UTC), config.retention_days)
     log.info("purge_finished", extra={"deleted_rows": deleted})
+    _purge_output(settings, config.retention_days)
     return 0
+
+
+def _purge_output(settings: Settings, retention_days: int) -> None:
+    """Delete digests and exports past the retention window (policy section 10)."""
+    deleted = purge_files(settings.output_dir, datetime.now(UTC), retention_days)
+    log.info("output_purged", extra={"deleted_files": deleted})
 
 
 def _cmd_export(settings: Settings, out: Path) -> int:

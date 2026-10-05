@@ -1,4 +1,4 @@
-# 0001: FIND thin slice (discover, rank, explain)
+# 0005: FIND thin slice (discover, rank, explain)
 
 _Status: implemented. Last updated: 2026-10-05._
 
@@ -31,7 +31,7 @@ sequenceDiagram
     participant AI as AIClient (cap, spend)
     participant Claude
     participant Score as Scoring + explain
-    CLI->>DB: purge rows older than 90 days
+    CLI->>DB: purge rows older than 90 days (pejip.retention)
     CLI->>Src: fetch each configured board
     Src->>Lim: GET (rate-limited, robots.txt checked)
     Src-->>CLI: postings (a failed board is recorded, others continue)

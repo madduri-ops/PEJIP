@@ -25,6 +25,14 @@ def test_config_rejects_unknown_fields(config: SearchConfig) -> None:
         SearchConfig.model_validate(data)
 
 
+@pytest.mark.parametrize("days", [0, 91])
+def test_retention_can_be_shortened_but_never_lengthened(config: SearchConfig, days: int) -> None:
+    data = config.model_dump()
+    data["retention_days"] = days
+    with pytest.raises(ValidationError):
+        SearchConfig.model_validate(data)
+
+
 def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> None:
     defaults = Settings.from_env({})
     assert defaults.config_path == Path("config/search.yaml")

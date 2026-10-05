@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import runpy
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
@@ -63,3 +65,27 @@ def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit) as exit_info:
         runpy.run_module("pejip", run_name="__main__")
     assert exit_info.value.code == 0
+
+
+@pytest.mark.parametrize("command", ["run", "purge"])
+def test_old_digests_are_deleted_and_recent_ones_kept(
+    env: Path, monkeypatch: pytest.MonkeyPatch, command: str
+) -> None:
+    class StubPipeline:
+        def __init__(self, *args: Any) -> None:
+            self.args = args
+
+        def run(self) -> Digest:
+            return Digest("run-1", NOW, "SUCCESS", [])
+
+    monkeypatch.setattr(cli, "Pipeline", StubPipeline)
+    out = env / "out"
+    out.mkdir()
+    old, recent = out / "digest-old.md", out / "digest-recent.md"
+    old.write_text("old")
+    recent.write_text("recent")
+    hundred_days_ago = time.time() - 100 * 86400
+    os.utime(old, (hundred_days_ago, hundred_days_ago))
+    assert cli.main([command]) == 0
+    assert not old.exists()
+    assert recent.exists()

@@ -1,7 +1,7 @@
 # Data flow
 
 How a role moves from a company job board to a ranked, explained entry in the
-digest. Detail is in [design doc 0004](../design/0004-find-thin-slice.md).
+digest. Detail is in [design doc 0005](../design/0005-find-thin-slice.md).
 
 ```mermaid
 flowchart LR
@@ -37,3 +37,6 @@ leave the machine, sent to the Anthropic API for matching (see
 | `profile.yaml` | Career profile (personal data, local file) | Babu | Babu's own file |
 | `output/digest-*.md` | Digest per run | cli | Babu's own files |
 | `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |
+
+Personal data, job postings and rankings are each kept for 90 days, using the
+window in `pejip.retention` (see [0004: Data retention](../design/0004-data-retention.md)).

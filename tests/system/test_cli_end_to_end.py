@@ -150,7 +150,9 @@ def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> No
 
     logs = [json.loads(line) for line in result.stderr.splitlines() if line.startswith("{")]
     assert {"run_started", "run_finished", "digest_written"} <= {entry["event"] for entry in logs}
-    assert len({entry["run_id"] for entry in logs if entry["event"] != "digest_written"}) == 1
+    # Events logged by the CLI after the run carry no run id.
+    after_run = {"digest_written", "output_purged"}
+    assert len({entry["run_id"] for entry in logs if entry["event"] not in after_run}) == 1
     assert "alex@example.com" not in result.stderr
 
     exported = tmp_path / "export.json"
