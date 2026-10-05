@@ -39,6 +39,14 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - The portal has a Companies page at `/companies`: target companies with their
   matching roles, connections and signals, why a company without an opening stays
   relevant, and companies discovered in searches.
+- Connection matching: `pejip run` reads a LinkedIn Connections export
+  (`PEJIP_CONNECTIONS`) and shows, for each role, your matured connections
+  (first-degree, at the hiring company, at the role's level or above). They raise
+  Application Priority, never Fit. Unclear titles and ambiguous employer names are
+  asked about instead of guessed, and answered in a decisions file
+  (`PEJIP_NETWORK_DECISIONS`).
+- `pejip connections <file>` checks an export before use: counts, rejected rows,
+  connections per tracked company and employer names to review.
 - The portal has a Search Health page at `/search-health`: the latest search, any
   failed sources with their impact and last success, every source searched, and
   recent runs.

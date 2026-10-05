@@ -43,6 +43,17 @@ inbox:
       link_patterns: [linkedin.com/jobs/view, linkedin.com/comm/jobs/view]
       job_id_pattern: 'jobs/view/\d+'
 
+network:
+  # Other employer names LinkedIn profiles use for a tracked company (spec 13.3).
+  # Matching is exact after removing case, punctuation and suffixes such as Inc.;
+  # anything less certain waits for Babu's review instead of guessing.
+  company_aliases:
+    Google: [Alphabet, Google LLC]
+    Meta: [Facebook, Meta Platforms]
+    Micron: [Micron Technology]
+    Microsoft: [Microsoft Corporation]
+    NVIDIA: [Nvidia Corporation]
+
 fetch:
   user_agent: "PEJIP/0.1 (personal job research; +https://github.com/madduri-ops/PEJIP)"
   min_interval_seconds: 1.0      # per source host
@@ -120,7 +131,7 @@ ai:
   # (src/pejip/cost/); the model must have an entry in its pricing.json.
 
 scoring:
-  version: fit-1
+  version: fit-2
   # Fit component weights (spec 9.7). Starting parameters, tuned on the golden set.
   fit_weights:
     ROLE_RESPONSIBILITY: 25
@@ -141,5 +152,10 @@ scoring:
   priority_min_fit: {IMMEDIATE: 85, HIGH: 75}   # a band also needs this much Fit
   immediate_max_age_days: 3
   strong_match_fit: 75
+  # Priority points from the network (design doc 0014): a matured connection at the
+  # company, otherwise any first-degree connection there. Fit never changes, and the
+  # priority_min_fit floors still apply, so a weak-fit role stays out of the top bands.
+  network_priority_boost: {MATURED: 10, CONNECTED: 3}
+  network_min_fit: 60            # below this Fit, connections add no Priority
 
 retention_days: 90

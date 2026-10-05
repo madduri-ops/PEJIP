@@ -11,8 +11,9 @@ repository. Do not open a public issue.
 
 ## Personal data
 
-PEJIP treats the career profile (`profile.yaml`), compensation preferences, stored
-analyses and recommendations as personal data.
+PEJIP treats the career profile (`profile.yaml`), compensation preferences, the
+LinkedIn connections export and network decisions, stored analyses and
+recommendations as personal data.
 
 - **Where it lives:** the profile is a local YAML file outside the repository
   (`PEJIP_PROFILE`, git-ignored). Run data is in the database at
@@ -33,6 +34,13 @@ analyses and recommendations as personal data.
   there for its LinkedIn alerts, so the bucket also receives his other email:
   `pejip run` deletes any email that lists no roles, records only how many, and
   never logs or shows its sender, subject or content.
+- **LinkedIn connections:** the export is a local file outside the repository
+  (`PEJIP_CONNECTIONS`, and the decisions file `PEJIP_NETWORK_DECISIONS`; both
+  git-ignored names). PEJIP never needs a LinkedIn login, drops e-mail addresses as
+  it reads the file, sends no connection data to Claude or any other service, and
+  logs no names or profile URLs ([design 0014](design/0014-connection-matching.md)).
+  The names and titles of the connections shown for a role are stored with that
+  role's recommendation, so they follow its 90-day retention, export and deletion.
 - **Retention:** each run deletes jobs, analyses, recommendations, AI usage and run
   records older than 90 days (`pejip purge` does the same on demand).
 - **Export and deletion:** `pejip export <file>` writes every stored row as JSON;
@@ -40,7 +48,7 @@ analyses and recommendations as personal data.
 - **Logs:** all logs go through a JSON formatter that redacts personal fields and
   scrubs e-mail addresses and phone numbers; `tests/unit/test_logs.py` proves it.
 - **Tests and examples:** synthetic data only (`examples/profile.example.yaml`,
-  the golden set's `eval/golden/profile.toml`).
+  `examples/Connections.example.csv`, the golden set's `eval/golden/profile.toml`).
 
 ## Third parties that receive personal data
 

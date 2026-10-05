@@ -36,7 +36,12 @@ def rec(fit: float | None, priority: str) -> dict[str, Any]:
                         "citations": [{"type": "job_field", "field": "posted_at"}],
                     }
                 ],
-                "who_you_know": [],
+                "who_you_know": [
+                    {
+                        "text": "Matured connection: Avery Example, SVP",
+                        "citations": [{"type": "network", "connection_id": "c1"}],
+                    }
+                ],
             }
         },
     }
@@ -74,6 +79,7 @@ def test_render_groups_items_and_shows_search_health() -> None:
     assert '("Lead ops"; E1)' in text
     assert '"' + "x" * 117 + '..."' in text
     assert "(job posted_at)" in text
+    assert "- Who you know:\n  - Matured connection: Avery Example, SVP (LinkedIn import)" in text
     assert "| B (greenhouse) | FAILED: HTTP 500 | 0 | 0 |" in text
     assert text.endswith("remaining roles are unranked.\n")
 

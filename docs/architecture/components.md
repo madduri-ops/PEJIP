@@ -9,7 +9,7 @@ flowchart TB
     api[api: GET /healthz]
     portal[portal: Home, Opportunities, detail, Companies, Watchlist, Search Health, Settings pages]
     api --> portal
-    cli[cli: pejip run, purge, export, delete-all]
+    cli[cli: pejip run, connections, purge, export, delete-all]
     pipe[pipeline: one search run]
     src[sources: greenhouse, lever adapters, email_alerts]
     http[sources.http: PoliteClient + RateLimiter]
@@ -25,6 +25,7 @@ flowchart TB
     explain[explain: cited explanations]
     digest[digest: Markdown digest]
     evals[golden_eval: golden set adapter]
+    net[network: LinkedIn export, companies, seniority, matching]
     cli --> pipe
     pipe --> src --> http
     pipe --> disc
@@ -34,6 +35,8 @@ flowchart TB
     ai --> guard --> ledger
     guard -.-> cw
     pipe --> score --> explain
+    pipe --> net
+    cli --> net
     cli --> digest
     evals --> ana
     evals --> score
@@ -43,11 +46,13 @@ flowchart TB
 
 - **Responsibility:** command line entry point; wires configuration, profile,
   store, HTTP and AI clients together.
-- **Interfaces:** `pejip run | purge | export <file> | delete-all --yes`;
-  environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
-  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
-  `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM instead of a
-  file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest), `PEJIP_AI_ENABLED`, and Claude
+- **Interfaces:** `pejip run | connections <file> | purge | export <file> |
+  delete-all --yes`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
+  `PEJIP_DATABASE_URL`, `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's
+  SQLite file), `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM
+  instead of a file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest),
+  `PEJIP_AI_ENABLED`, `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the
+  LinkedIn export and the candidate's network decisions), and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
   emails it through `pejip.delivery`.
@@ -80,6 +85,19 @@ flowchart TB
   `S3Inbox(client, bucket)` with `message_keys`, `read` and `delete`, and
   `parse_alert(raw, companies) -> AlertMessage`.
 - **Data:** none stored; allowed sources are listed in [docs/sources.md](../sources.md).
+
+## network
+
+- **Responsibility:** connection matching
+  ([design 0014](../design/0014-connection-matching.md)): parse a LinkedIn
+  Connections export, resolve employer names to tracked companies without
+  guessing, read a seniority level from a title, and find matured connections
+  for a role. Unclear titles and ambiguous employers wait for the candidate.
+- **Interfaces:** `linkedin.parse_export`, `linkedin.compare_imports`,
+  `companies.CompanyDirectory`, `seniority.title_level`,
+  `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`.
+- **Data:** imports are not stored yet; reads the export and decisions files named in the
+  environment. The "Who you know" lines are saved inside each recommendation.
 
 ## discovery
 

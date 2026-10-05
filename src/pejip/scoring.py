@@ -75,6 +75,19 @@ class Component:
 
 
 @dataclass(frozen=True)
+class NetworkFacts:
+    """Who the candidate knows at the hiring company (spec 9.22, design doc 0014).
+
+    Counts of first-degree connections there, of those that are matured for this
+    role, and of those whose level waits on the candidate's call. Priority only.
+    """
+
+    first_degree: int
+    matured: int
+    your_call: int
+
+
+@dataclass(frozen=True)
 class JobFacts:
     """Stored facts about the posting that Priority uses (not career evidence).
 
@@ -87,6 +100,7 @@ class JobFacts:
     comp_max: float | None
     location_preference: str  # PREFERRED, ACCEPTABLE, UNDESIRABLE or UNKNOWN
     as_of: datetime
+    network: NetworkFacts | None = None
 
 
 @dataclass(frozen=True)
@@ -104,6 +118,7 @@ class Recommendation:
     location_fit: str
     reason_codes: list[str] = field(default_factory=list)
     scoring_version: str = ""
+    network_boost: float = 0.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -217,6 +232,30 @@ def _confidence(
     return max(0.0, round(score, 3)), factors
 
 
+def _network_boost(
+    network: NetworkFacts | None, fit: float | None, cfg: ScoringConfig
+) -> tuple[float, list[str]]:
+    """Priority points and reasons from the network; it never touches Fit (spec 8.25).
+
+    A role below ``network_min_fit`` keeps its reasons but gains nothing, so a weak
+    match is not lifted out of the bottom band by who the candidate knows (spec 8.26).
+    """
+    if network is None:
+        return 0.0, []
+    boost, reasons = 0.0, []
+    if network.matured:
+        boost = cfg.network_priority_boost.get("MATURED", 0.0)
+        reasons.append("MATURED_CONNECTION")
+    elif network.first_degree:
+        boost = cfg.network_priority_boost.get("CONNECTED", 0.0)
+        reasons.append("FIRST_DEGREE_CONNECTIONS")
+    if network.your_call:
+        reasons.append("NETWORK_DECISION_NEEDED")
+    if fit is None or fit < cfg.network_min_fit:
+        boost = 0.0
+    return boost, reasons
+
+
 def _band(score: float, thresholds: dict[str, float]) -> str:
     for band in ("IMMEDIATE", "HIGH", "MEDIUM"):
         if score >= thresholds[band]:
@@ -273,6 +312,9 @@ def score_job(
     if core_gaps:
         reasons.append("CORE_REQUIREMENT_GAP")
 
+    boost, network_reasons = _network_boost(facts.network, fit, cfg)
+    reasons += network_reasons
+
     priority_score: float | None = None
     priority = "UNRANKED"
     hard_excluded = comp == "BELOW_MINIMUM" and profile.compensation.minimum_is_hard_filter
@@ -285,9 +327,8 @@ def score_job(
         }
         used = {k: v for k, v in inputs.items() if v is not None}
         weights = {k: cfg.priority_weights[k] for k in used}
-        priority_score = round(
-            100 * sum(used[k] * weights[k] for k in used) / sum(weights.values()), 1
-        )
+        weighted = 100 * sum(used[k] * weights[k] for k in used) / sum(weights.values())
+        priority_score = round(min(100.0, weighted + boost), 1)
         priority = _band(priority_score, cfg.priority_thresholds)
         # Freshness or location alone must not lift a middling Fit into a top band.
         while priority in cfg.priority_min_fit and fit < cfg.priority_min_fit[priority]:
@@ -324,4 +365,5 @@ def score_job(
         location_fit=location,
         reason_codes=reasons,
         scoring_version=cfg.version,
+        network_boost=boost if priority_score is not None else 0.0,
     )
