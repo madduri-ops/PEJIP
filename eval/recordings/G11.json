@@ -1,0 +1,150 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "No reporting line, team size, or budget stated; unclear whether the role leads a team or is primarily an individual contributor.",
+      "The breadth of ownership is not defined; 'work on' initiatives may mean supporting rather than owning them.",
+      "The location is given as a region but the work model (remote, hybrid, onsite) is not stated.",
+      "The title's seniority is not corroborated by any stated scope."
+    ],
+    "analysis_confidence": "LOW",
+    "inferred_scope": "UNKNOWN",
+    "inferred_seniority": "SENIOR_DIRECTOR",
+    "missing_information": [
+      "COMPENSATION",
+      "ORG_SCOPE",
+      "TEAM_SIZE",
+      "BUDGET",
+      "REPORTING_LINE",
+      "WORK_MODEL"
+    ],
+    "negative_signals": [],
+    "normalized_title": "Senior Director, Strategy & Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "partner with leaders across the company"
+      },
+      {
+        "quote": "our most important\ninitiatives"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "CONTEXTUAL",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will work on our most important\ninitiatives",
+        "text": "Help the company scale by driving its most important initiatives"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "CONTEXTUAL",
+        "id": "R2",
+        "importance": "IMPORTANT",
+        "quote": "partner with leaders across the company",
+        "text": "Partner with leaders across the company"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "CONTEXTUAL",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "bring structure to how we\nplan and execute",
+        "text": "Bring structure to company planning and execution"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "You are a strategic thinker who loves ambiguity and gets things done.",
+        "text": "Strategic thinking and comfort with ambiguity; execution-oriented"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "PREFERRED",
+        "id": "R5",
+        "importance": "SUPPORTING",
+        "quote": "Experience in\noperations, strategy or program leadership is a plus.",
+        "text": "Experience in operations, strategy or program leadership"
+      }
+    ],
+    "role_family": "Strategy & Operations",
+    "work_model": "UNKNOWN"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led an enterprise transformation across 14 business units and ran a 60-program portfolio of major initiatives, which corresponds to driving the company's most important initiatives.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Worked across 14 business units and had executive exposure to the CIO, CTO, COO and board audit committee, showing cross-company partnership with leaders.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Built a Transformation Management Office with quarterly value reporting and owned release governance, directly bringing structure to planning and execution.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2",
+          "E4"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Leading multi-year transformation and delivering measurable platform outcomes shows execution orientation, but strategic thinking and comfort with ambiguity are not directly evidenced.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E3",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Owned technology operations and led program portfolios of up to 60 programs, directly covering operations and program leadership.",
+        "requirement_id": "R5"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:34:32.492878+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:34:38.359503+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Exact line breaks in quotes may differ from the source formatting; content is verbatim."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "HEAD_OF",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Head of Technology Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "$60M annual spend"
+      },
+      {
+        "quote": "lead a 150-person organization through five directors"
+      },
+      {
+        "quote": "reviewed by\nthe executive leadership team"
+      },
+      {
+        "quote": "quarterly business reviews with the CTO and\nCFO"
+      },
+      {
+        "quote": "900-person engineering organization"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "run the operating backbone of a 900-person engineering organization",
+        "text": "Run the operating backbone of a 900-person engineering organization"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "You will own incident management, release governance, change management, vendor management",
+        "text": "Own incident management, release governance, change management and vendor management"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "engineering budget planning ($60M annual spend)",
+        "text": "Own engineering budget planning for $60M annual spend"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "You will lead a 150-person organization through five directors",
+        "text": "Lead a 150-person organization through five directors"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the\nCTO",
+        "text": "Reports to the CTO"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "set operating metrics reviewed by the executive leadership team",
+        "text": "Set operating metrics reviewed by the executive leadership team"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "run quarterly business reviews with the CTO and CFO",
+        "text": "Run quarterly business reviews with the CTO and CFO"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "CORE",
+        "quote": "has run technology operations at\nenterprise scale",
+        "text": "Experience running technology operations at enterprise scale"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "built teams of managers",
+        "text": "Experience building teams of managers"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R10",
+        "importance": "IMPORTANT",
+        "quote": "partnered with executive stakeholders across engineering, finance and product",
+        "text": "Partnered with executive stakeholders across engineering, finance and product"
+      }
+    ],
+    "role_family": "Technology Operations",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E3",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E3",
+          "E4"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate owned technology operations for a 320-person engineering organization and ran a platform serving 1,100 engineers, somewhat smaller operational scope than 900.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate directly owned incident management, release governance and vendor management, with change management closely aligned to release governance.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate managed budgets up to $140M through a portfolio, though engineering budget planning specifically is not stated.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate led organizations up to 320 people as a manager of managers, exceeding a 150-person organization led through directors.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate has executive exposure to the CTO, consistent with a CTO reporting line.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E4"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate provided quarterly value reporting to the executive team and drove measurable engineering metrics like lead time.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate ran quarterly executive reporting and had CTO exposure, but CFO-facing business reviews are not stated.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate ran technology operations and an enterprise transformation across 14 business units.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate was a manager of managers and built a Transformation Management Office, though building manager teams is not explicitly described.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E5"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate partnered with CIO, CTO and COO and delivered AI use cases in finance, but product-side partnership is not shown.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:31:30.171439+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:31:38.940736+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

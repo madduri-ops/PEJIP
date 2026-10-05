@@ -1,0 +1,231 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Posting says remote but requires about 60% travel, so the role is effectively travel-heavy rather than home-based.",
+      "$100M portfolio may refer to transformation investment portfolio rather than an operating budget owned by the role."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "ENTERPRISE",
+    "inferred_seniority": "HEAD_OF",
+    "missing_information": [],
+    "negative_signals": [
+      {
+        "code": "OTHER",
+        "quote": "The role requires travel to regional operations about 60% of the time."
+      }
+    ],
+    "normalized_title": "Head of Global Transformation Office",
+    "positive_scope_signals": [
+      {
+        "quote": "reporting to the CEO"
+      },
+      {
+        "quote": "run the enterprise transformation program across 22\ncountries"
+      },
+      {
+        "quote": "own a $100M portfolio"
+      },
+      {
+        "quote": "lead a 70-person office through six regional leads"
+      },
+      {
+        "quote": "reporting quarterly to the board"
+      },
+      {
+        "quote": "organizations of managers"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will run the enterprise transformation program across 22\ncountries",
+        "text": "Run the enterprise transformation program across 22 countries"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "reporting to the CEO",
+        "text": "Report directly to the CEO"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "own a $100M portfolio",
+        "text": "Own a $100M transformation portfolio"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "lead a 70-person office through six regional leads",
+        "text": "Lead a 70-person office through six regional leads"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "reporting quarterly to the board",
+        "text": "Report quarterly to the board"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "You have led enterprise-wide transformation offices",
+        "text": "Experience leading enterprise-wide transformation offices"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "portfolio governance",
+        "text": "Experience in portfolio governance"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "organizations of managers",
+        "text": "Experience leading organizations of managers"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "The role requires travel to regional operations about 60% of the time.",
+        "text": "Travel to regional operations about 60% of the time"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "CONTEXTUAL",
+        "id": "R10",
+        "importance": "MINOR",
+        "quote": "Summit Freight Logistics",
+        "text": "Logistics/freight industry context"
+      }
+    ],
+    "role_family": "Transformation / Strategy & Operations",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ADVANCES",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led a three-year enterprise transformation across 14 business units with a TMO, though there is no evidence of multi-country scope.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "Executive exposure to the CIO, CTO and COO is listed, but the profile does not state any reporting line to a CEO.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Ran a $140M, 60-program transformation portfolio, which exceeds $100M.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led organizations of up to 320 people as a manager of managers, though regional lead structures are not described.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Gave quarterly value reporting to the executive team and had exposure to the board audit committee, but no regular board reporting is stated.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Built and ran a Transformation Management Office for an enterprise transformation spanning 14 business units.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Governed a 60-program portfolio with quarterly value reporting.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Was a manager of managers with a largest organization of 320 people.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention travel.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The listed industries are enterprise software, cloud infrastructure and fintech, and the profile does not mention logistics or freight.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:36:58.803131+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:37:05.754721+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

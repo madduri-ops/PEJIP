@@ -52,6 +52,19 @@ The golden evaluation set lives in `eval/` and its harness in `src/pejip/evaluat
 set. A change to prompts, models, ranking logic or scoring weights must hold the
 evaluation baseline; see [eval/README.md](eval/README.md).
 
+Run the job search locally with `pejip run` (see the README's Getting started).
+CI scores the golden set with the ranking pipeline from the model output recorded
+in `eval/recordings/` (`--scorer pejip.golden_eval:replay_scorer`) on every app
+change, and by calling the model (`live_scorer`, needs `ANTHROPIC_API_KEY`) when a
+prompt, the AI client, the analysis code, `config/search.yaml` or `eval/` changes.
+The live run gates only the hard rules (`--gate invariants`); a prompt or model
+change commits fresh recordings, and the replay holds them to the full baseline.
+See [eval/README.md](eval/README.md) for refreshing the recordings and raising the
+baseline.
+
+Tests and examples use synthetic data only. Never commit a real `profile.yaml`,
+database or digest; `.gitignore` excludes them.
+
 ### Container image
 
 The production image is built from the root `Dockerfile` (see
@@ -75,7 +88,8 @@ Language-specific setup for any other part of the app is added here as it lands.
 2. Make the change with tests. A bug fix always includes tests that reproduce it.
    If the change touches architecture, an interface, a data model, an integration or
    infrastructure, update `docs/architecture/` and the feature's doc in `docs/design/`
-   in the same branch.
+   in the same branch. A new job source also needs a row in `docs/sources.md`, and a
+   new AI call states its expected monthly cost in the PR.
 3. Run the hooks and the test suite locally.
 4. Open a pull request. It merges (squash only) once every gate is green.
 
@@ -109,7 +123,10 @@ Versions follow [semantic versioning](https://semver.org/) and are tagged
   (or Actions > Release > Run workflow). It checks `CHANGELOG.md` against
   `pyproject.toml`, tags `main`'s head `vX.Y.Z` and publishes a GitHub Release with
   that version's notes.
-- **Rolling back:** a failed post-deploy health gate rolls back automatically. The
-  one-command manual rollback (`gh workflow run rollback.yml`) arrives with the deploy
-  workflow; see the design doc's Rollback section. CI's **Rollback drill** job
-  exercises a rollback to the previous release on every app change.
+- **Rolling back:** a failed post-deploy health gate rolls back automatically. To
+  put production back on an earlier release by hand, run
+  `gh workflow run rollback.yml` (the release before the live one) or
+  `gh workflow run rollback.yml -f version=X.Y.Z` (or Actions > Rollback > Run
+  workflow). It redeploys that release's image through the Deploy workflow and its
+  health gate. CI's **Rollback drill** job exercises a rollback to the previous
+  release on every app change.

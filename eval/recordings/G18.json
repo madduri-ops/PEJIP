@@ -1,0 +1,215 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Unclear whether banking industry experience is required or only contextual."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "ENTERPRISE",
+    "inferred_seniority": "VP",
+    "missing_information": [
+      "COMPENSATION"
+    ],
+    "negative_signals": [
+      {
+        "code": "OTHER",
+        "quote": "Relocation to London is required; the role is onsite five days a week."
+      }
+    ],
+    "normalized_title": "Vice President, Enterprise Transformation",
+    "positive_scope_signals": [
+      {
+        "quote": "lead the bank-wide transformation office"
+      },
+      {
+        "quote": "GBP 70M portfolio of change programs"
+      },
+      {
+        "quote": "lead a 100-person organization through six directors"
+      },
+      {
+        "quote": "reporting to the executive committee and the board"
+      },
+      {
+        "quote": "reporting to the Group COO"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will lead the bank-wide transformation office",
+        "text": "Lead the bank-wide transformation office"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "own a\nGBP 70M portfolio of change programs",
+        "text": "Own a GBP 70M portfolio of change programs"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "lead a 100-person organization through six directors",
+        "text": "Lead a 100-person organization through six directors"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the Group COO",
+        "text": "Report to the Group COO"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the executive committee and the board",
+        "text": "Report to the executive committee and the board"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "You have led\nenterprise-wide transformation and portfolio governance at scale.",
+        "text": "Track record leading enterprise-wide transformation at scale"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "portfolio governance at scale",
+        "text": "Portfolio governance expertise"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "CONTEXTUAL",
+        "id": "R8",
+        "importance": "SUPPORTING",
+        "quote": "Thamesgate Bank is hiring a Vice President of Enterprise Transformation",
+        "text": "Banking/financial services context"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "Relocation to London is required; the role is onsite five days a week.",
+        "text": "Relocation to London and onsite five days a week"
+      }
+    ],
+    "role_family": "Transformation / Strategy & Operations",
+    "work_model": "ONSITE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E2",
+          "E1"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Built and ran a Transformation Management Office supporting an enterprise-wide transformation across 14 business units.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Tracked a 60-program, $140M portfolio, which is comparable to or greater than a GBP 70M change portfolio.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led organizations of up to 320 people as a manager of managers, exceeding a 100-person organization led through directors.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Has executive exposure to a COO, though a direct reporting line to a Group COO is not stated.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Delivered quarterly value reporting to the executive team and had exposure to the board audit committee.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E1"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led a three-year enterprise technology transformation across 14 business units, consolidating 9 delivery organizations.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Ran a TMO that governed a 60-program portfolio with quarterly value reporting.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Industry experience includes fintech, which is adjacent to banking but not banking itself.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile says nothing about location, relocation or onsite preferences.",
+        "requirement_id": "R9"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:36:24.419741+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:36:31.340049+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

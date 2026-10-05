@@ -1,0 +1,230 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Location listed as San Francisco Bay Area while hybrid work is stated as Santa Clara; likely consistent but office specifics are not detailed.",
+      "Bonus amount or target is not specified."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "VP",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Vice President, Technology Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "the technology operating budget ($110M)"
+      },
+      {
+        "quote": "You will lead a 250-person global organization across three regions through eight\ndirectors"
+      },
+      {
+        "quote": "present operating reviews to the executive leadership team"
+      },
+      {
+        "quote": "You will lead global technology operations for a 4,000-person company"
+      },
+      {
+        "quote": "built organizations of\nmanagers"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will lead global technology operations for a 4,000-person company",
+        "text": "Lead global technology operations for a 4,000-person company"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "incident and problem management, release governance, vendor management, IT service\nmanagement",
+        "text": "Own incident and problem management, release governance, vendor management and IT service management"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "the technology operating budget ($110M)",
+        "text": "Own the $110M technology operating budget"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "You will lead a 250-person global organization across three regions through eight\ndirectors",
+        "text": "Lead a 250-person global organization across three regions through eight directors"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "reporting to\nthe CIO",
+        "text": "Reports to the CIO"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "present operating reviews to the executive leadership team",
+        "text": "Present operating reviews to the executive leadership team"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "drive\ncontinuous improvement across a matrixed organization",
+        "text": "Drive continuous improvement across a matrixed organization"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "CORE",
+        "quote": "You have led technology operations at enterprise scale",
+        "text": "Experience leading technology operations at enterprise scale"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "built organizations of\nmanagers",
+        "text": "Experience building organizations of managers"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R10",
+        "importance": "IMPORTANT",
+        "quote": "partnered with C-suite stakeholders",
+        "text": "Experience partnering with C-suite stakeholders"
+      }
+    ],
+    "role_family": "Technology Operations",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E3",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E3",
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Owned technology operations for a 320-person engineering organization and led transformation across 14 business units, though company-wide global scope is not stated.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E3"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Owned incident management, release governance and vendor management; problem management and IT service management are not explicitly stated.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Largest budget was $140M via a program portfolio, exceeding $110M, though not explicitly a technology operating budget.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led a 320-person organization as a manager of managers; multi-region structure is not stated.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Has executive exposure to the CIO, though a direct reporting line is not stated.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Provided quarterly value reporting to the executive team.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E4"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Consolidated delivery organizations across 14 business units and cut lead time via a developer platform, showing cross-organization improvement.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E1"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Owned technology operations for a 320-person engineering organization within an enterprise-wide transformation.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Was a manager of managers and built a Transformation Management Office.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Has executive exposure to the CIO, CTO, COO and board audit committee and reported to the executive team.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:35:15.585240+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:35:23.644358+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

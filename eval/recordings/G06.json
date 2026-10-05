@@ -1,0 +1,187 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Location listed as San Francisco Bay Area while hybrid work is specified in San Jose."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "TEAM",
+    "inferred_seniority": "BELOW_DIRECTOR",
+    "missing_information": [
+      "REPORTING_LINE",
+      "BUDGET"
+    ],
+    "negative_signals": [
+      {
+        "code": "INDIVIDUAL_CONTRIBUTOR",
+        "quote": "As an individual contributor"
+      },
+      {
+        "code": "INDIVIDUAL_CONTRIBUTOR",
+        "quote": "This role has no direct reports."
+      }
+    ],
+    "normalized_title": "Technical Program Manager III",
+    "positive_scope_signals": [],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "drive delivery of our\npayments platform migration",
+        "text": "Drive delivery of payments platform migration"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "IMPORTANT",
+        "quote": "coordinate\nacross three engineering teams",
+        "text": "Coordinate across three engineering teams"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "maintain the program plan and risk log, and run\nweekly status meetings",
+        "text": "Maintain program plan and risk log, run weekly status meetings"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "5+ years of technical program management",
+        "text": "5+ years of technical program management"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "SUPPORTING",
+        "quote": "experience with agile\ndelivery",
+        "text": "Experience with agile delivery"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "SUPPORTING",
+        "quote": "strong written communication",
+        "text": "Strong written communication"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "This role has no direct reports.",
+        "text": "Individual contributor role with no direct reports"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "CONTEXTUAL",
+        "id": "R8",
+        "importance": "MINOR",
+        "quote": "payments platform migration",
+        "text": "Payments platform domain context"
+      }
+    ],
+    "role_family": "Technical Program Management",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "AWAY",
+    "career_direction_evidence_ids": [
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E1",
+          "E4"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate led large technology transformation and platform delivery, but nothing shows a payments platform migration specifically.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate coordinated across 14 business units and 9 delivery organizations and ran operations for a 320-person engineering organization, well beyond three teams.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Running a Transformation Management Office that tracked a 60-program portfolio implies program planning and tracking, though at portfolio rather than single-program level.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate has extensive program and portfolio leadership over 18 years, though not explicitly in a technical program manager role.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention agile delivery practices.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Quarterly value reporting to executives and exposure to the board audit committee loosely suggest written communication skills.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "NO_MATCH",
+        "rationale": "The candidate is a manager of managers who has led up to 320 people, which clearly differs from an individual contributor role with no reports.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Fintech industry experience is loosely related to payments platform context.",
+        "requirement_id": "R8"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:32:58.736091+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:33:10.249544+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

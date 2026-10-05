@@ -1,5 +1,6 @@
 # Python
 __pycache__/
+*.py[cod]
 *.egg-info/
 .venv/
 dist/
@@ -12,3 +13,9 @@ reports/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
+
+# Local runtime data: personal data never enters the repository.
+*.db
+*.sqlite
+profile.yaml
+output/

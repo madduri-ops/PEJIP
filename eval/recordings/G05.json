@@ -1,0 +1,217 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Title is Director but scope (CTO reporting line, 160-person org via six senior managers, $55M budget) suggests a senior director or head-of level role.",
+      "Scope is a single function (engineering effectiveness) but its impact spans all 1,400 engineers and sets enterprise-wide standards."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "SENIOR_DIRECTOR",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Director of Engineering Effectiveness",
+    "positive_scope_signals": [
+      {
+        "quote": "reporting directly to\nthe CTO"
+      },
+      {
+        "quote": "You will lead a 160-person organization through six senior managers"
+      },
+      {
+        "quote": "own a $55M\nannual budget"
+      },
+      {
+        "quote": "set enterprise-wide engineering standards with the executive leadership team"
+      },
+      {
+        "quote": "own developer productivity for all 1,400 engineers"
+      },
+      {
+        "quote": "multi-year platform\ninvestment roadmap"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will own developer productivity for all 1,400 engineers: the internal\ndeveloper platform, CI/CD, build infrastructure and engineering metrics.",
+        "text": "Own developer productivity for all engineers, including internal developer platform, CI/CD, build infrastructure and engineering metrics"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "You will lead a 160-person organization through six senior managers",
+        "text": "Lead a 160-person organization through six senior managers"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "own a $55M\nannual budget",
+        "text": "Own a $55M annual budget"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "reporting directly to\nthe CTO",
+        "text": "Reports directly to the CTO"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "set enterprise-wide engineering standards with the executive leadership team",
+        "text": "Set enterprise-wide engineering standards with the executive leadership team"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "partner with product and finance on a multi-year platform\ninvestment roadmap",
+        "text": "Partner with product and finance on a multi-year platform investment roadmap"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "CORE",
+        "quote": "You have led platform or developer productivity organizations at enterprise scale",
+        "text": "Experience leading platform or developer productivity organizations at enterprise scale"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "managed managers",
+        "text": "Experience managing managers"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "can show measurable improvements in delivery speed",
+        "text": "Demonstrated measurable improvements in delivery speed"
+      }
+    ],
+    "role_family": "Engineering / Developer Productivity",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E4"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E4",
+          "E3"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate launched an internal developer platform with lead-time metrics for 1,100 engineers and owned release governance, though CI/CD and build infrastructure are not explicitly named.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate has led an organization of up to 320 people as a manager of managers, exceeding the 160-person scope.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate's largest budget of $140M exceeds the $55M requirement.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate has executive exposure to the CTO, but a direct reporting line is not stated.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E3",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate led an enterprise transformation across 14 business units, ran release governance and reported to the executive team, which is adjacent to setting enterprise engineering standards.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2",
+          "E4"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate led multi-year transformation and portfolio value reporting and built a developer platform, but explicit partnership with product and finance on a platform roadmap is not stated.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E4",
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate launched an internal developer platform serving 1,100 engineers within an enterprise transformation context.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate is explicitly described as a manager of managers.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E4"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate cut median lead time for changes from 9 days to 2 days for 1,100 engineers.",
+        "requirement_id": "R9"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:32:38.315186+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:32:51.031250+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}
