@@ -9,17 +9,24 @@ import pytest
 from fastapi import FastAPI
 
 from pejip import portal
-from pejip.portal import render
+from pejip.portal import render, views
 from pejip.portal.data import (
     Citation,
+    Company,
     Connection,
     FitComponent,
     Opportunity,
     Point,
     SearchRun,
+    Signal,
     SourceStatus,
 )
-from pejip.portal.sample import SampleData, sample_opportunities, sample_runs
+from pejip.portal.sample import (
+    SampleData,
+    sample_companies,
+    sample_opportunities,
+    sample_runs,
+)
 from pejip.portal.views import (
     DEFAULT_VIEW,
     Filters,
@@ -42,17 +49,22 @@ class FakeData:
         run: SearchRun | None,
         sample: bool = False,
         runs: list[SearchRun] | None = None,
+        companies: list[Company] | None = None,
     ) -> None:
         self.items = items
         self.run = run
         self.is_sample = sample
         self.runs = runs if runs is not None else ([run] if run else [])
+        self.company_list = companies or []
 
     def latest_run(self) -> SearchRun | None:
         return self.run
 
     def recent_runs(self) -> list[SearchRun]:
         return list(self.runs)
+
+    def companies(self) -> list[Company]:
+        return list(self.company_list)
 
     def opportunities(self) -> list[Opportunity]:
         return list(self.items)
@@ -93,7 +105,13 @@ def _get(data: FakeData, path: str) -> httpx.Response:
 
 def _sample() -> FakeData:
     data = SampleData(lambda: NOW)
-    return FakeData(sample_opportunities(NOW), data.latest_run(), True, data.recent_runs())
+    return FakeData(
+        sample_opportunities(NOW),
+        data.latest_run(),
+        True,
+        data.recent_runs(),
+        data.companies(),
+    )
 
 
 # ── Pages ────────────────────────────────────────────────────────────────────
@@ -491,7 +509,8 @@ def test_navigation_links_live_pages_and_marks_the_rest_soon() -> None:
 
     assert '<a class="nl" href="/search-health">Search Health</a>' in html
     assert '<a href="/search-health">Details</a>' in html
-    for label in ("Companies", "Watchlist", "Connections", "Settings"):
+    assert '<a class="nl" href="/companies">Companies</a>' in html
+    for label in ("Watchlist", "Connections", "Settings"):
         assert f'<span class="nl off">{label}<span class="soon">Soon</span></span>' in html
 
 
@@ -504,3 +523,115 @@ def test_sample_runs_have_one_partial_run_with_a_failed_source() -> None:
     partial = next(r for r in runs if r.status == "PARTIAL")
     assert [s.name for s in partial.sources if s.status == "FAILED"] == ["Job discovery source B"]
     assert partial.sources_searched == partial.sources_total - 1
+
+
+# ── Companies ────────────────────────────────────────────────────────────────
+def _company(name: str = "Company A", **changes: object) -> Company:
+    base = Company(
+        name,
+        "Enterprise Software",
+        target=True,
+        watching=False,
+        monitoring="NORMAL",
+        relevance="NO_CURRENT_MATCH",
+        job_source="Careers site feed",
+    )
+    return replace(base, **changes)  # type: ignore[arg-type]
+
+
+def test_companies_page_shows_targets_and_discovered() -> None:
+    page = _get(_sample(), "/companies")
+
+    assert page.status_code == 200
+    html = page.text
+    assert "<title>PEJIP · Companies</title>" in html
+    assert 'class="nl on" href="/companies" aria-current="page"' in html
+    assert "Target companies · 7" in html
+    assert "Discovered in searches · 5" in html
+    assert 'Top match: <a href="/opportunities/1">VP Technology Transformation</a>' in html
+    assert "No suitable opening currently." in html
+    assert "Why this company remains relevant" in html
+    assert "Role family outside your targets" in html
+    assert 'href="/opportunities?view=all&amp;company=Company%20A"' in html
+    assert "Strategically relevant" in html
+    # High monitoring and urgent roles come first.
+    assert html.index("<h3>Company A</h3>") < html.index("<h3>Company D</h3>")
+
+
+@pytest.mark.parametrize(
+    ("view", "heading"),
+    [
+        ("matching", "Target companies · 4"),
+        ("watching", "Target companies · 4"),
+        ("relevant", "Target companies · 1"),
+        ("no-match", "Target companies · 2"),
+        ("low", "Target companies · 0"),
+        ("bogus", "Target companies · 7"),
+    ],
+)
+def test_company_views(view: str, heading: str) -> None:
+    html = _get(_sample(), f"/companies?view={view}").text
+
+    assert heading in html
+
+
+def test_company_without_signals_connections_or_industry() -> None:
+    quiet = _company(connections=None, industry=None, coverage_note="no alert in 9 days")
+    html = _get(FakeData([], None, companies=[quiet]), "/companies").text
+
+    assert "No relevant signals in the last 90 days." in html
+    assert '<div class="fit">Unknown</div><div class="fitl">Connections</div>' in html
+    assert "no alert in 9 days" in html
+    assert "Industry unknown" not in html  # targets show no industry line at all
+
+
+def test_company_with_one_unscored_match_and_a_discovered_one() -> None:
+    signal = Signal("AI expansion", "Press release", NOW - timedelta(days=2))
+    companies = [
+        _company(signals=(signal,), connections=4),
+        _company("Company Z", target=False, industry=None, relevance="LOW_RELEVANCE"),
+    ]
+    roles = [_role(1, fit=None, priority="MEDIUM")]
+    html = _get(FakeData(roles, None, companies=companies), "/companies").text
+
+    assert "Matching job</div>" in html
+    assert "Fit Unknown · Medium" in html
+    assert "AI expansion" in html
+    assert "Press release · 2d ago" in html
+    assert "Industry unknown" in html
+    assert "Low relevance" in html
+
+
+def test_companies_page_with_no_companies() -> None:
+    html = _get(FakeData([], None), "/companies").text
+
+    assert "No target company is in this view." in html
+    assert "Discovered in searches" not in html
+
+
+def test_company_rows_sort_and_state() -> None:
+    rows = views.company_rows(
+        [
+            _company("B", monitoring="HIGH"),
+            _company("A", monitoring="ODD"),
+            _company("C", monitoring="HIGH"),
+        ],
+        [_role(1, company="C", priority="IMMEDIATE"), _role(2, company="C", priority="LOW")],
+    )
+
+    assert [r.company.name for r in rows] == ["C", "B", "A"]
+    assert rows[0].state == "MATCHING_JOBS"
+    assert len(rows[0].jobs) == 1  # low-priority roles do not count as matches
+    assert rows[1].state == "NO_CURRENT_MATCH"
+    assert render._company_state("SOMETHING_NEW") == '<span class="pill p-med">Something new</span>'
+
+
+def test_sample_companies_cover_every_state() -> None:
+    rows = views.company_rows(sample_companies(NOW), sample_opportunities(NOW))
+
+    assert {r.state for r in rows} == {
+        "MATCHING_JOBS",
+        "STRATEGICALLY_RELEVANT",
+        "NO_CURRENT_MATCH",
+        "LOW_RELEVANCE",
+    }

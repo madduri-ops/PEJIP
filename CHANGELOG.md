@@ -24,6 +24,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Companies page at `/companies`: target companies with their
+  matching roles, connections and signals, why a company without an opening stays
+  relevant, and companies discovered in searches.
 - Connection matching: `pejip run` reads a LinkedIn Connections export
   (`PEJIP_CONNECTIONS`) and shows, for each role, your matured connections
   (first-degree, at the hiring company, at the role's level or above). They raise
