@@ -1,4 +1,4 @@
-# 0013: Web portal (Home, Opportunities, Opportunity detail)
+# 0013: Web portal (Home, Opportunities, Opportunity detail, Search Health)
 
 _Status: implemented (sample data). Last updated: 2026-10-05._
 
@@ -11,8 +11,8 @@ opportunity with saved views and filters, and one role's full, cited explanation
 
 ## Scope
 
-In scope: the Home, Opportunities and Opportunity detail pages from the portal mocks
-(`Main`, `Opportunities` and `Opportunity` boards on the shared mock canvas, style
+In scope: the Home, Opportunities, Opportunity detail and Search Health pages from the
+portal mocks (`Main`, `Opportunities`, `Opportunity` and `SearchHealth` boards on the shared mock canvas, style
 guide in the project files), served by the existing FastAPI app behind Google
 sign-in, reading from a data interface with synthetic sample data behind it.
 
@@ -24,8 +24,10 @@ Out of scope for now:
 - Feedback buttons (Interested, Watch, Not interested, Already applied) and "Search
   now": they need storage and a run trigger. The pages leave them out rather than
   show buttons that do nothing.
-- Companies, Watchlist, Connections, Search Health and Settings: listed in the
-  navigation as "Soon".
+- Companies, Watchlist, Connections and Settings: listed in the navigation as
+  "Soon".
+- On Search Health, search coverage by geographic scope and role family (spec 12.32)
+  and run details beyond the history table: runs do not record scopes yet.
 
 ## Design
 
@@ -61,9 +63,10 @@ flowchart LR
 | `GET /` | Home: counts, roles needing attention, new matches, changed roles, search health |
 | `GET /opportunities` | Views (`view=attention, new, high-fit, immediate, watched, network, remote, changed, all`) and filters (`priority`, `fit`, `confidence`, `company`, `work_model`); unknown values are ignored |
 | `GET /opportunities/{opportunity_id}` | One role: summary, fit bars, concerns, cited reasons, why now, who you know, description, original link; 404 page when unknown |
+| `GET /search-health` | Latest run, failed sources with their impact and last success (no raw errors, spec 12.31), every source in the latest run, recent run history |
 | `GET /portal.css` | Styles |
 
-All four require sign-in like every route except `/healthz`. `create_app(data=...)`
+All five require sign-in like every route except `/healthz`. `create_app(data=...)`
 takes any `pejip.portal.data.PortalData`:
 
 ```python
@@ -71,13 +74,15 @@ class PortalData(Protocol):
     is_sample: bool  # shows the sample-data banner
 
     def latest_run(self) -> SearchRun | None: ...
+    def recent_runs(self) -> list[SearchRun]: ...  # newest first, with per-source results
     def opportunities(self) -> list[Opportunity]: ...
 ```
 
 `Opportunity` carries what the pages need from the `jobs`, `recommendations`
 (`fit`, `confidence`, `priority`, `detail` components) and explanation records
 (`pejip.explain` points and citations), so the store-backed reader is a mapping
-from those tables.
+from those tables. `SearchRun.sources` maps from the `runs.summary["sources"]` list
+the pipeline already writes (`pejip.digest.SourceResult`, error text left out).
 
 ## Data model
 
@@ -116,4 +121,4 @@ is in use.
 
 ## Open questions
 
-- Babu has not reviewed the mocks yet; layout and wording are expected to change.
+- Babu approved the mocks on 2026-10-05; the remaining screens follow them.
