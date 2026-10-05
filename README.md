@@ -86,25 +86,46 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 ## Status
 
-The Phase 1 (FIND) specification is complete. The build policy, repository hygiene,
-documentation skeletons and foundation AWS infrastructure are in place; application
-code has not landed yet.
+The Phase 1 (FIND) specification is complete, and the first end-to-end slice is a
+command line tool: it fetches roles from configured Greenhouse and Lever company
+boards, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
+digest that explains each ranking with cited evidence. Network data, feedback,
+notifications, the API and the web UI come next. The build policy, repository
+hygiene and foundation AWS infrastructure are in place; the app is not deployed yet.
+See the [design doc](docs/design/0001-find-thin-slice.md) and the
+[changelog](CHANGELOG.md).
 
 ## Getting started
 
 Setup, local checks and the branch and pull request flow are in
-[CONTRIBUTING.md](CONTRIBUTING.md). Language-specific steps are added there as each
-part of the app lands.
+[CONTRIBUTING.md](CONTRIBUTING.md). To run a search:
+
+```sh
+pip install -e .
+cp examples/profile.example.yaml profile.yaml   # then replace with your own evidence
+export ANTHROPIC_API_KEY=...                     # from your shell, never committed
+pejip run                                        # writes output/digest-*.md
+```
+
+Which boards are searched, the title taxonomy, geography, model and scoring weights
+are in [config/search.yaml](config/search.yaml).
 
 ## Project structure
 
 | Path | What it holds |
 |---|---|
+| [`src/pejip/`](src/pejip/) | The application package (CLI, pipeline, sources, AI client, scoring) |
+| [`config/`](config/) | Search, source, AI and scoring configuration |
+| [`tests/`](tests/) | Unit, integration and system tests |
+| [`evals/`](evals/) | Golden evaluation set and its baseline |
+| [`examples/`](examples/) | Synthetic example profile |
 | [`docs/spec/`](docs/spec/) | Product and engineering build specification (primary product reference) |
 | [`docs/BUILD_POLICY.md`](docs/BUILD_POLICY.md) | Binding CI/CD and engineering policy |
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`docs/sources.md`](docs/sources.md) | Job sources we may fetch, with their terms |
+| [`docs/SECURITY.md`](docs/SECURITY.md) | Security posture and third parties that receive personal data |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
@@ -115,9 +136,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) and the [build policy](docs/BUILD_POLICY.
 
 ## Security
 
-Security posture and how to report a vulnerability will live in
-`docs/SECURITY.md` (required by the build policy, section 7). Until it lands, report
-issues privately to the owner through a GitHub security advisory on this repository.
+Security posture, the third parties that receive personal data and how to report a
+vulnerability are in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## License
 

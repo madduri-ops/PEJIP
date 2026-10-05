@@ -10,3 +10,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 
 | Doc | Status |
 |---|---|
+| [0001-find-thin-slice.md](0001-find-thin-slice.md) | Implemented |

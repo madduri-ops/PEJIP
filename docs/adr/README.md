@@ -11,3 +11,4 @@ architecture, update [docs/architecture/](../architecture/) in the same PR.
 | ADR | Title | Status |
 |---|---|---|
 | [0001](0001-aws-hosting-isolated-from-kri.md) | Host PEJIP on AWS, isolated from the KRI dashboard | Accepted |
+| [0002](0002-python-cli-first-slice.md) | Build the first FIND slice as a Python batch CLI with a portable store | Accepted |
