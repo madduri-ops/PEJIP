@@ -24,6 +24,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Watchlist page at `/watchlist`: what changed in watched jobs
+  and companies, then everything watched.
 - The portal has a Companies page at `/companies`: target companies with their
   matching roles, connections and signals, why a company without an opening stays
   relevant, and companies discovered in searches.

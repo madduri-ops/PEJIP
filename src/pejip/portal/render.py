@@ -26,7 +26,9 @@ from pejip.portal.views import (
     CompanyRow,
     Filters,
     Listing,
+    Watchlist,
     age,
+    latest_signal,
     rank,
     when,
 )
@@ -65,7 +67,7 @@ NAV = (
     ("home", "Home", "/"),
     ("opportunities", "Opportunities", "/opportunities"),
     ("companies", "Companies", "/companies"),
-    ("watchlist", "Watchlist", None),
+    ("watchlist", "Watchlist", "/watchlist"),
     ("connections", "Connections", None),
     ("search-health", "Search Health", "/search-health"),
     ("settings", "Settings", None),
@@ -217,11 +219,12 @@ def _why(o: Opportunity, compact: bool = False) -> str:
     return f'<div class="why{one}">{cells}</div>' if cells else ""
 
 
-def card(o: Opportunity, now: datetime) -> str:
+def card(o: Opportunity, now: datetime, label: str = "") -> str:
     """The opportunity card (spec 12.5), used wherever a role is listed in full."""
     hot = " hot" if o.priority == "IMMEDIATE" else ""
+    tag = f'<span class="lbl">{e(label)}</span>' if label else ""
     return (
-        f'<article class="card{hot}"><div class="row spread"><div>'
+        f'<article class="card{hot}">{tag}<div class="row spread"><div>'
         f'<a class="title" href="{opportunity_url(o)}">{e(o.title)}</a>'
         f'<div class="co">{e(o.company)}</div></div>'
         f'<div class="row">{priority_pill(o.priority)}{fit_block(o)}</div></div>'
@@ -794,4 +797,108 @@ def companies_body(listing: CompanyListing, now: datetime) -> str:
         + discovered
         + '<p class="note">Watching a company raises how closely PEJIP follows it. It never '
         "raises the Fit of its jobs.</p>"
+    )
+
+
+# ── Watchlist ────────────────────────────────────────────────────────────────
+def _changed_card(o: Opportunity, now: datetime) -> str:
+    return card(o, now, f"Watched job changed · {o.change_note or 'posting changed'}")
+
+
+def _signal_rows(rows: list[tuple[CompanyRow, Signal]], now: datetime) -> str:
+    items = ""
+    for r, newest in rows:
+        items += (
+            f'<div class="li"><div class="grow"><h3>{e(r.company.name)}</h3>'
+            f"<div><strong>{e(newest.text)}</strong></div>"
+            f'<div class="src">{e(newest.source)} · {age(newest.seen_at, now)}</div></div>'
+            f"{_company_state(r.state)}</div>"
+        )
+    return f'<div class="list">{items}</div>'
+
+
+def _watched_jobs(items: list[Opportunity]) -> str:
+    rows = "".join(
+        f'<tr><td><a class="tl" href="{opportunity_url(o)}">{e(o.title)}</a></td>'
+        f"<td>{e(o.company)}</td>"
+        f'<td><span class="tfit">{"Unknown" if o.fit is None else f"{o.fit:.0f}"}</span></td>'
+        f"<td>{priority_pill(o.priority)}</td>"
+        f"<td>{e(o.change_note or 'No change')}</td></tr>"
+        for o in items
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Role</th>'
+        '<th scope="col">Company</th><th scope="col">Fit</th><th scope="col">Priority</th>'
+        f'<th scope="col">Last change</th></tr></thead><tbody>{rows}</tbody></table></div>'
+    )
+
+
+def _watched_companies(rows: list[CompanyRow], now: datetime) -> str:
+    def signal(r: CompanyRow) -> str:
+        newest = latest_signal(r.company)
+        if newest is None:
+            return '<span class="unk">None in 90 days</span>'
+        return f"{e(newest.text)} · {age(newest.seen_at, now)}"
+
+    body = "".join(
+        f"<tr><td>{e(r.company.name)}</td><td>{e(r.company.monitoring)}</td>"
+        f'<td class="num">{len(r.jobs)}'
+        + (f" · {r.high_priority} high-priority" if r.high_priority else "")
+        + f"</td><td>{signal(r)}</td>"
+        f'<td><a href="{e(company_roles_url(r.company.name))}">See roles</a></td></tr>'
+        for r in rows
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Company</th>'
+        '<th scope="col">Monitoring</th><th scope="col">Matching jobs</th>'
+        '<th scope="col">Latest signal</th><th scope="col">Roles</th></tr></thead>'
+        f"<tbody>{body}</tbody></table></div>"
+    )
+
+
+def watchlist_body(w: Watchlist, now: datetime) -> str:
+    """Changes in watched jobs and companies first, then everything watched (12.22)."""
+    tiles = (
+        (len(w.changed_jobs), "Watched jobs changed", "#changed"),
+        (len(w.new_at_watched), "New roles at watched companies", "#new-roles"),
+        (len(w.new_signals), "Watched companies with new signals", "#signals"),
+    )
+    tile_html = "".join(
+        f'<a class="tile" href="{href}"><div class="n">{n}</div><div class="l">{label}</div></a>'
+        for n, label, href in tiles
+    )
+    changed = (
+        '<div class="stackl">' + "".join(_changed_card(o, now) for o in w.changed_jobs) + "</div>"
+        if w.changed_jobs
+        else _empty("No watched job changed since the last search.")
+    )
+    new_roles = (
+        '<div class="stackl">' + "".join(card(o, now) for o in w.new_at_watched) + "</div>"
+        if w.new_at_watched
+        else _empty("No new role at a watched company.")
+    )
+    signals = (
+        _signal_rows(w.new_signals, now)
+        if w.new_signals
+        else _empty("No new signal at a watched company this week.")
+    )
+    jobs = (
+        _watched_jobs(w.jobs)
+        if w.jobs
+        else _empty("You are not watching any job yet. Watched roles show a Watching tag.")
+    )
+    companies = (
+        _watched_companies(w.companies, now)
+        if w.companies
+        else _empty("You are not watching any company yet.")
+    )
+    return (
+        f'<section aria-label="Summary"><div class="tiles">{tile_html}</div></section>'
+        f'<div id="changed">{_section("Watched jobs that changed", changed)}</div>'
+        f'<div id="new-roles">{_section("New roles at watched companies", new_roles)}</div>'
+        f'<div id="signals">{_section("New signals at watched companies", signals)}</div>'
+        + _section(f"Watched jobs · {len(w.jobs)}", jobs)
+        + _section(f"Watched companies · {len(w.companies)}", companies)
+        + '<p class="note">Watching a company raises how closely PEJIP follows it and may '
+        "raise Application Priority. It never changes the Fit of its jobs.</p>"
     )

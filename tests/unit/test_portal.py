@@ -510,7 +510,8 @@ def test_navigation_links_live_pages_and_marks_the_rest_soon() -> None:
     assert '<a class="nl" href="/search-health">Search Health</a>' in html
     assert '<a href="/search-health">Details</a>' in html
     assert '<a class="nl" href="/companies">Companies</a>' in html
-    for label in ("Watchlist", "Connections", "Settings"):
+    assert '<a class="nl" href="/watchlist">Watchlist</a>' in html
+    for label in ("Connections", "Settings"):
         assert f'<span class="nl off">{label}<span class="soon">Soon</span></span>' in html
 
 
@@ -635,3 +636,61 @@ def test_sample_companies_cover_every_state() -> None:
         "NO_CURRENT_MATCH",
         "LOW_RELEVANCE",
     }
+
+
+# ── Watchlist ────────────────────────────────────────────────────────────────
+def test_watchlist_shows_changes_then_everything_watched() -> None:
+    page = _get(_sample(), "/watchlist")
+
+    assert page.status_code == 200
+    html = page.text
+    assert "<title>PEJIP · Watchlist</title>" in html
+    assert 'class="nl on" href="/watchlist" aria-current="page"' in html
+    assert "Watched job changed · Onsite to Remote" in html
+    # Company A is watched and posted a new Immediate role.
+    assert html.index("New roles at watched companies") < html.index("VP Technology Transformation")
+    assert "Enterprise AI investment" in html
+    assert "Watched jobs · 2" in html
+    assert "Watched companies · 4" in html
+    assert "It never changes the Fit of its jobs." in html
+
+
+def test_watchlist_when_nothing_is_watched() -> None:
+    html = _get(FakeData([_role()], None, companies=[_company()]), "/watchlist").text
+
+    assert "No watched job changed since the last search." in html
+    assert "No new role at a watched company." in html
+    assert "No new signal at a watched company this week." in html
+    assert "You are not watching any job yet." in html
+    assert "You are not watching any company yet." in html
+
+
+def test_watchlist_details() -> None:
+    old = Signal("Old news", "News report", NOW - timedelta(days=20))
+    fresh = Signal("Fresh news", "Press release", NOW - timedelta(days=1))
+    companies = [
+        _company("Company A", watching=True, signals=(old, fresh)),
+        _company("Company B", watching=True, signals=(old,)),
+        _company("Company C", watching=True),
+    ]
+    roles = [
+        _role(1, watched=True, discovery="MATERIALLY_CHANGED", fit=None, priority="HIGH"),
+        _role(2, company="Company B", discovery="PREVIOUSLY_SEEN", priority="MEDIUM"),
+    ]
+    w = views.watchlist(companies, roles, NOW)
+
+    assert [s.text for _r, s in w.new_signals] == ["Fresh news"]
+    assert w.new_at_watched == []  # neither role is a new posting
+    html = render.watchlist_body(w, NOW)
+    assert "Watched job changed · posting changed" in html
+    assert '<span class="tfit">Unknown</span>' in html
+    assert "1 · 1 high-priority" in html
+    assert "None in 90 days" in html
+    assert "Old news · 20d ago" in html
+
+
+def test_watched_job_without_change_note_in_table() -> None:
+    w = views.watchlist([], [_role(1, watched=True, discovery="PREVIOUSLY_SEEN")], NOW)
+
+    assert w.changed_jobs == []
+    assert "<td>No change</td>" in render.watchlist_body(w, NOW)

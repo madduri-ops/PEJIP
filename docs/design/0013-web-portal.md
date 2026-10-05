@@ -1,4 +1,4 @@
-# 0013: Web portal (Home, Opportunities, Opportunity detail, Companies, Search Health)
+# 0013: Web portal (Home, Opportunities, Opportunity detail, Companies, Watchlist, Search Health)
 
 _Status: implemented (sample data). Last updated: 2026-10-05._
 
@@ -11,9 +11,9 @@ opportunity with saved views and filters, and one role's full, cited explanation
 
 ## Scope
 
-In scope: the Home, Opportunities, Opportunity detail, Companies and Search Health
-pages from the portal mocks (`Main`, `Opportunities`, `Opportunity`, `Companies` and
-`SearchHealth` boards on the shared mock canvas, style
+In scope: the Home, Opportunities, Opportunity detail, Companies, Watchlist and
+Search Health pages from the portal mocks (`Main`, `Opportunities`, `Opportunity`,
+`Companies`, `Watchlist` and `SearchHealth` boards on the shared mock canvas, style
 guide in the project files), served by the existing FastAPI app behind Google
 sign-in, reading from a data interface with synthetic sample data behind it.
 
@@ -25,7 +25,10 @@ Out of scope for now:
 - Feedback buttons (Interested, Watch, Not interested, Already applied) and "Search
   now": they need storage and a run trigger. The pages leave them out rather than
   show buttons that do nothing.
-- Watchlist, Connections and Settings: listed in the navigation as "Soon".
+- Connections and Settings: listed in the navigation as "Soon".
+- On Watchlist, watched role families, "possibly closed" job status, before and
+  after values for a change, and the reason Babu gave for watching: none is stored
+  yet.
 - The company detail screen (spec 12.20), "Watch company" and the sort menu on
   Companies: "See roles" opens Opportunities filtered to the company instead.
 - On Search Health, search coverage by geographic scope and role family (spec 12.32)
@@ -66,10 +69,11 @@ flowchart LR
 | `GET /opportunities` | Views (`view=attention, new, high-fit, immediate, watched, network, remote, changed, all`) and filters (`priority`, `fit`, `confidence`, `company`, `work_model`); unknown values are ignored |
 | `GET /opportunities/{opportunity_id}` | One role: summary, fit bars, concerns, cited reasons, why now, who you know, description, original link; 404 page when unknown |
 | `GET /companies` | Target companies as cards (state, watching, monitoring priority, matching and high-priority roles, connections, cited signals, top match, where jobs come from and any coverage gap) and discovered companies as a list; views `view=all, matching, watching, relevant, no-match, low`, unknown values show all |
+| `GET /watchlist` | Changes first (watched jobs that changed, new roles at watched companies, watched companies with a signal from the last seven days), then every watched job and company |
 | `GET /search-health` | Latest run, failed sources with their impact and last success (no raw errors, spec 12.31), every source in the latest run, recent run history |
 | `GET /portal.css` | Styles |
 
-All six require sign-in like every route except `/healthz`. `create_app(data=...)`
+All seven require sign-in like every route except `/healthz`. `create_app(data=...)`
 takes any `pejip.portal.data.PortalData`:
 
 ```python
