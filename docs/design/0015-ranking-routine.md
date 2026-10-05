@@ -127,10 +127,14 @@ read by the API task role only. The key itself is never stored on AWS.
   which is outside PEJIP's 90-day purge. This is a second retention exception
   for Babu to accept. Nothing personal is committed: the queue and results
   live in the session's scratch space.
-- **AI quality (policy 12).** `python -m pejip.routine eval` runs the committed
+- **AI quality (policy 12).** `eval-prepare` and `eval-record` run the committed
   golden set through the routine path: the same prompts, the session's model,
-  and the same scorer and baseline. It must pass before the routine is switched
-  on and whenever a prompt changes. The CI replay check is unchanged.
+  and the same scorer. Like a live API run, it must hold the invariants
+  (`--gate invariants`: every case scored, every citation valid, network
+  invariance) before the routine is switched on and whenever a prompt changes;
+  the other metrics are reported, since they vary from run to run. The first run
+  (2026-10-05) held every invariant, with the other metrics within the spread of
+  live API runs (see `eval/README.md`). The CI replay check is unchanged.
 - **AI cost (policy 13).** No API spend. The routine draws on Babu's plan, so
   the cost guard does not see it. The policy wording is updated to say so.
 - **Reliability.** A missed or failed routine only delays ranking: the roles stay

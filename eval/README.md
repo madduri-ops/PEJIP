@@ -89,19 +89,23 @@ was made with, so bumping `golden_set_version` needs fresh recordings.
 
 The ranking routine (design doc 0015) does the model's part in a Claude Code
 session on Babu's plan instead of the API. The golden set runs through the same
-steps, and its answers become recordings the replay scores against the same
-baseline:
+steps, and its answers become recordings the replay scores. Like a live model run,
+it gates on the invariants (`--gate invariants`) and reports the other metrics,
+which vary from run to run:
 
 ```sh
 python -m pejip.routine --work /tmp/eval eval-prepare
 python -m pejip.routine --work /tmp/eval next      # follow it, repeat until DONE
 python -m pejip.routine --work /tmp/eval eval-record --out /tmp/eval/recordings --model <model>
 PEJIP_EVAL_RECORDINGS=/tmp/eval/recordings python -m pejip.evaluation run \
-  --scorer pejip.golden_eval:replay_scorer
+  --scorer pejip.golden_eval:replay_scorer --gate invariants
 ```
 
 The routine ranks real roles only after this passes, and again after any prompt
-change.
+change. Its first run (2026-10-05, the session on claude-opus-5-5) held every
+invariant and scored Fit in range 62.5%, confidence 79%, priority 79%, positive
+reasons 74%, concerns 81% and pairwise order 94%, within the spread of live API
+runs (Fit in range has scored 46% to 67%).
 
 ## Changing the set
 
