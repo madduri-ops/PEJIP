@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from pejip_eval.golden import DEFAULT_GOLDEN_DIR, GoldenSet, load_golden_set
-from pejip_eval.scorer import EvalInput, Prediction
+from pejip.evaluation.golden import DEFAULT_GOLDEN_DIR, GoldenSet, load_golden_set
+from pejip.evaluation.scorer import EvalInput, Prediction, Scorer
 
 
 @pytest.fixture(scope="session")
@@ -22,7 +22,7 @@ def golden_copy(tmp_path: Path) -> Path:
     return target
 
 
-def oracle_for(golden: GoldenSet):
+def oracle_for(golden: GoldenSet) -> Scorer:
     """A scorer that answers straight from the labels: the best possible result."""
     by_id = {case.id: case for case in golden.cases}
 
@@ -38,3 +38,8 @@ def oracle_for(golden: GoldenSet):
         )
 
     return score
+
+
+@pytest.fixture
+def oracle(golden: GoldenSet) -> Scorer:
+    return oracle_for(golden)

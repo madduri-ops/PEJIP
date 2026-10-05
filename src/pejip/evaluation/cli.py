@@ -1,4 +1,4 @@
-"""Command line: ``python -m pejip_eval {validate,run,ratchet}``."""
+"""Command line: ``python -m pejip.evaluation {validate,run,ratchet}``."""
 
 from __future__ import annotations
 
@@ -20,7 +20,9 @@ from .scorer import ScorerLoadError, load_scorer
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="pejip_eval", description=__doc__)
+    parser = argparse.ArgumentParser(
+        prog="python -m pejip.evaluation", description=__doc__
+    )
     parser.add_argument(
         "--golden", type=Path, default=DEFAULT_GOLDEN_DIR, help="golden set directory"
     )

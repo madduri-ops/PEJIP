@@ -106,7 +106,7 @@ part of the app lands.
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
 | [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
-| [`src/pejip_eval/`](src/pejip_eval/) | Harness that scores a ranking implementation against the golden set |
+| [`src/pejip/evaluation/`](src/pejip/evaluation/) | Harness that scores a ranking implementation against the golden set |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |

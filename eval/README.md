@@ -49,18 +49,17 @@ the real scorer runs.
 ## Commands
 
 ```sh
-pip install -r eval/requirements-dev.txt
-export PYTHONPATH=src
+export PYTHONPATH=src   # or install the project, see CONTRIBUTING.md
 
-python -m pejip_eval validate                                # check the set is well formed
-python -m pejip_eval run --scorer package.module:score       # fail below the baseline
-python -m pejip_eval run --scorer package.module:score --report eval-report.json
-python -m pejip_eval ratchet --scorer package.module:score   # raise the baseline (on main)
-python -m pytest tests/eval --cov=pejip_eval --cov-branch
+python -m pejip.evaluation validate                                # check the set is well formed
+python -m pejip.evaluation run --scorer package.module:score       # fail below the baseline
+python -m pejip.evaluation run --scorer package.module:score --report eval-report.json
+python -m pejip.evaluation ratchet --scorer package.module:score   # raise the baseline (on main)
+python -m pytest tests/unit/evaluation --cov=pejip.evaluation --cov-branch
 ```
 
-A scorer is any callable that takes a `pejip_eval.scorer.EvalInput` (case id, posting,
-network context, profile; never the labels) and returns a `pejip_eval.scorer.Prediction`.
+A scorer is any callable that takes a `pejip.evaluation.scorer.EvalInput` (case id, posting,
+network context, profile; never the labels) and returns a `pejip.evaluation.scorer.Prediction`.
 
 ## Changing the set
 

@@ -20,9 +20,8 @@ Infrastructure work in `infra/` also needs [Terraform](https://developer.hashico
 the pre-commit hooks run `terraform fmt` and `tflint`, and CI adds `terraform validate`,
 checkov and, on pull requests, `terraform plan`. See [infra/README.md](infra/README.md).
 
-The golden evaluation harness (`src/pejip_eval`) needs Python 3.11 or later:
-`pip install -r eval/requirements-dev.txt`, then `PYTHONPATH=src python -m pytest tests/eval`.
-A change to prompts, models, ranking logic or scoring weights must hold the evaluation
+The golden evaluation harness lives in `src/pejip/evaluation` with its tests in
+`tests/unit/evaluation`; `python -m pejip.evaluation validate` checks the set. A change to prompts, models, ranking logic or scoring weights must hold the evaluation
 baseline; see [eval/README.md](eval/README.md).
 
 Language-specific setup (runtimes, package installs, test commands) is added here as

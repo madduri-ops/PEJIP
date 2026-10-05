@@ -14,7 +14,7 @@ from typing import Any
 
 from .evaluate import METRICS, Report
 
-DEFAULT_BASELINE = Path(__file__).resolve().parents[2] / "eval" / "baseline.json"
+DEFAULT_BASELINE = Path(__file__).resolve().parents[3] / "eval" / "baseline.json"
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,7 @@ class Regression:
 
 def read_baseline(path: Path) -> dict[str, Any]:
     with path.open(encoding="utf-8") as fh:
-        data = json.load(fh)
+        data: dict[str, Any] = json.load(fh)
     metrics = data.get("metrics")
     if not isinstance(metrics, dict) or set(metrics) != set(METRICS):
         raise ValueError(f"{path}: 'metrics' must list exactly {', '.join(METRICS)}")

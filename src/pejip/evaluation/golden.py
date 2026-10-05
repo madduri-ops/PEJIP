@@ -8,7 +8,7 @@ from typing import Any
 
 import tomllib
 
-DEFAULT_GOLDEN_DIR = Path(__file__).resolve().parents[2] / "eval" / "golden"
+DEFAULT_GOLDEN_DIR = Path(__file__).resolve().parents[3] / "eval" / "golden"
 
 
 class GoldenSetError(ValueError):
@@ -163,12 +163,17 @@ def _load_manifest(raw: dict[str, Any], problems: list[str]) -> Manifest:
     )
 
 
+def _table(raw: dict[str, Any], key: str) -> dict[str, Any]:
+    value = raw.get(key)
+    return value if isinstance(value, dict) else {}
+
+
 def _load_case(
     raw: dict[str, Any], where: str, manifest: Manifest, problems: list[str]
 ) -> Case:
-    job_raw = raw.get("job") if isinstance(raw.get("job"), dict) else {}
-    ctx_raw = raw.get("context") if isinstance(raw.get("context"), dict) else {}
-    exp_raw = raw.get("expected") if isinstance(raw.get("expected"), dict) else {}
+    job_raw = _table(raw, "job")
+    ctx_raw = _table(raw, "context")
+    exp_raw = _table(raw, "expected")
     for section, value in (
         ("job", job_raw),
         ("context", ctx_raw),

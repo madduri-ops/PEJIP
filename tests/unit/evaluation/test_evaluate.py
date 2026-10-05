@@ -4,27 +4,27 @@ import dataclasses
 
 import pytest
 
-from pejip_eval.evaluate import METRICS, evaluate
-from pejip_eval.golden import GoldenSet
-from pejip_eval.scorer import EvalInput, Prediction
-
-from .conftest import oracle_for
+from pejip.evaluation.evaluate import METRICS, evaluate
+from pejip.evaluation.golden import GoldenSet
+from pejip.evaluation.scorer import EvalInput, Prediction, Scorer
 
 
-def test_oracle_scores_perfectly(golden: GoldenSet) -> None:
-    report = evaluate(golden, oracle_for(golden))
+def test_oracle_scores_perfectly(golden: GoldenSet, oracle: Scorer) -> None:
+    report = evaluate(golden, oracle)
     assert set(report.metrics) == set(METRICS)
     assert all(value == 1.0 for value in report.metrics.values()), report.metrics
     assert all(not r.failures() for r in report.cases)
     assert report.to_dict()["cases"][0]["failures"] == []
 
 
-def test_labels_are_never_passed_to_the_scorer(golden: GoldenSet) -> None:
+def test_labels_are_never_passed_to_the_scorer(
+    golden: GoldenSet, oracle: Scorer
+) -> None:
     seen: list[EvalInput] = []
 
     def spy(item: EvalInput) -> Prediction:
         seen.append(item)
-        return oracle_for(golden)(item)
+        return oracle(item)
 
     evaluate(golden, spy)
     assert {f.name for f in dataclasses.fields(seen[0])} == {
@@ -53,9 +53,7 @@ def test_failures_count_as_unranked(golden: GoldenSet) -> None:
     assert report.to_dict()["cases"][0]["prediction"] is None
 
 
-def test_network_leaking_into_fit_is_caught(golden: GoldenSet) -> None:
-    oracle = oracle_for(golden)
-
+def test_network_leaking_into_fit_is_caught(golden: GoldenSet, oracle: Scorer) -> None:
     def leaky(item: EvalInput) -> Prediction:
         base = oracle(item)
         return dataclasses.replace(
@@ -71,9 +69,7 @@ def test_network_leaking_into_fit_is_caught(golden: GoldenSet) -> None:
     )
 
 
-def test_probe_failure_is_not_invariant(golden: GoldenSet) -> None:
-    oracle = oracle_for(golden)
-
+def test_probe_failure_is_not_invariant(golden: GoldenSet, oracle: Scorer) -> None:
     def flaky_probe(item: EvalInput) -> Prediction:
         if item.context.connections == 15:
             raise RuntimeError("boom")
@@ -109,9 +105,9 @@ def test_wrong_answers_are_reported(golden: GoldenSet) -> None:
         assert text in failures
 
 
-def test_inverted_ranking_scores_zero_pairwise(golden: GoldenSet) -> None:
-    oracle = oracle_for(golden)
-
+def test_inverted_ranking_scores_zero_pairwise(
+    golden: GoldenSet, oracle: Scorer
+) -> None:
     def inverted(item: EvalInput) -> Prediction:
         return dataclasses.replace(oracle(item), fit=100 - oracle(item).fit)
 
@@ -126,10 +122,8 @@ def test_inverted_ranking_scores_zero_pairwise(golden: GoldenSet) -> None:
     ],
 )
 def test_citations_match_case_and_whitespace_insensitively(
-    golden: GoldenSet, citation: str
+    golden: GoldenSet, citation: str, oracle: Scorer
 ) -> None:
-    oracle = oracle_for(golden)
-
     def cites(item: EvalInput) -> Prediction:
         return dataclasses.replace(oracle(item), citations=(citation,))
 
@@ -137,7 +131,7 @@ def test_citations_match_case_and_whitespace_insensitively(
     assert g01.citations_valid
 
 
-def test_empty_denominators_count_as_perfect(golden: GoldenSet) -> None:
+def test_empty_denominators_count_as_perfect(golden: GoldenSet, oracle: Scorer) -> None:
     empty = dataclasses.replace(golden, cases=())
-    report = evaluate(empty, oracle_for(golden))
+    report = evaluate(empty, oracle)
     assert all(value == 1.0 for value in report.metrics.values())

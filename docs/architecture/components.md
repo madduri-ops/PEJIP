@@ -15,12 +15,12 @@ flowchart TB
     placeholder[No components yet]
 ```
 
-## Golden evaluation harness (`src/pejip_eval`)
+## Golden evaluation harness (`src/pejip/evaluation`)
 
 - **Responsibility:** scores any ranking implementation against the labelled golden
   set and fails CI when a metric drops below the committed baseline.
 - **Interfaces:** consumes a scorer callable (`EvalInput` in, `Prediction` out);
-  exposes `python -m pejip_eval validate | run | ratchet`.
+  exposes `python -m pejip.evaluation validate | run | ratchet`.
 - **Data:** reads `eval/golden/` (synthetic cases and profile) and
   `eval/baseline.json`; writes an optional JSON report.
 - **Design doc:** [0003: Golden evaluation set](../design/0003-golden-evaluation-set.md).

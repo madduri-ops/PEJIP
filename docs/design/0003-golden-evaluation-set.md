@@ -14,7 +14,8 @@ baseline that only goes up.
 ## Scope
 
 In scope: the labelled cases and synthetic profile, the scorer contract, metrics,
-the baseline ratchet, a CLI and its CI workflow.
+the baseline ratchet and a CLI. The Python CI pipeline runs its tests; a CI step
+that runs the scorer against the baseline lands with the scorer.
 
 Out of scope: the scorer itself (the scoring pipeline owns it and plugs in through
 the contract below), scope-inference and role-family accuracy metrics (labelled now,
@@ -48,11 +49,11 @@ flowchart LR
 
 ## Interfaces
 
-- `pejip_eval.scorer.EvalInput(case_id, job, context, profile)` in, and
+- `pejip.evaluation.scorer.EvalInput(case_id, job, context, profile)` in, and
   `Prediction(fit, confidence, priority, positive_reasons, concerns, citations)` out.
   `priority` is `EXCLUDED` when a hard filter removes the role. `citations` are exact
   snippets of the posting the explanation relies on.
-- CLI: `python -m pejip_eval validate | run | ratchet`, with `--scorer`,
+- CLI: `python -m pejip.evaluation validate | run | ratchet`, with `--scorer`,
   `--baseline`, `--report` and `--fit-tolerance`. Exit codes: 0 pass, 1 regression,
   2 invalid set, scorer or baseline.
 - `eval/baseline.json`: set version, scorer, and a value per metric.

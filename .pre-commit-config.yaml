@@ -22,11 +22,3 @@ repos:
       - id: terraform_fmt
       - id: terraform_tflint
         args: ['--args=--config=__GIT_WORKING_DIR__/infra/.tflint.hcl']
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.10
-    hooks:
-      - id: ruff-check
-        args: [--select, 'E,F,W,I,B,UP,SIM,RUF,PT,PL,C4,RET,BLE', --ignore, 'PLR2004,PLR0913']
-        files: ^(src/pejip_eval|tests/eval)/
-      - id: ruff-format
-        files: ^(src/pejip_eval|tests/eval)/

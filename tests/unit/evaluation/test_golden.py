@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from pejip_eval.golden import GoldenSet, GoldenSetError, load_golden_set
+from pejip.evaluation.golden import GoldenSet, GoldenSetError, load_golden_set
 
 
 def _edit(path: Path, old: str, new: str) -> None:
@@ -17,7 +17,8 @@ def _edit(path: Path, old: str, new: str) -> None:
 def _problems(root: Path) -> list[str]:
     with pytest.raises(GoldenSetError) as info:
         load_golden_set(root)
-    return info.value.problems
+    problems: list[str] = info.value.problems
+    return problems
 
 
 def test_committed_set_loads(golden: GoldenSet) -> None:
@@ -57,7 +58,7 @@ def test_fixtures_are_synthetic(golden: GoldenSet) -> None:
         "Synthetic"
         in Path(__file__)
         .resolve()
-        .parents[2]
+        .parents[3]
         .joinpath("eval/golden/profile.toml")
         .read_text()
     )

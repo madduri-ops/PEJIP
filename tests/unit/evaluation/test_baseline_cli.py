@@ -8,20 +8,23 @@ from pathlib import Path
 
 import pytest
 
-from pejip_eval import cli
-from pejip_eval.baseline import DEFAULT_BASELINE, Regression, read_baseline
-from pejip_eval.evaluate import METRICS
-from pejip_eval.golden import load_golden_set
-from pejip_eval.scorer import EvalInput, Prediction, ScorerLoadError, load_scorer
-
-from .conftest import oracle_for
+from pejip.evaluation import cli
+from pejip.evaluation.baseline import DEFAULT_BASELINE, Regression, read_baseline
+from pejip.evaluation.evaluate import METRICS
+from pejip.evaluation.golden import load_golden_set
+from pejip.evaluation.scorer import (
+    EvalInput,
+    Prediction,
+    Scorer,
+    ScorerLoadError,
+    load_scorer,
+)
 
 
 @pytest.fixture
-def scorers(monkeypatch: pytest.MonkeyPatch) -> str:
-    golden = load_golden_set()
+def scorers(monkeypatch: pytest.MonkeyPatch, oracle: Scorer) -> str:
     module = types.ModuleType("fake_scorers")
-    module.oracle = oracle_for(golden)  # type: ignore[attr-defined]
+    module.oracle = oracle  # type: ignore[attr-defined]
     module.bad = lambda item: Prediction(fit=50, confidence="LOW", priority="LOW")  # type: ignore[attr-defined]
     module.not_callable = 3  # type: ignore[attr-defined]
     monkeypatch.setitem(sys.modules, "fake_scorers", module)
@@ -168,7 +171,7 @@ def test_regression_str() -> None:
 
 
 def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sys, "argv", ["pejip_eval", "validate"])
+    monkeypatch.setattr(sys, "argv", ["pejip.evaluation", "validate"])
     with pytest.raises(SystemExit) as info:
-        runpy.run_module("pejip_eval", run_name="__main__")
+        runpy.run_module("pejip.evaluation", run_name="__main__")
     assert info.value.code == 0
