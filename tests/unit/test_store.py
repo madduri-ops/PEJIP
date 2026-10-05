@@ -86,6 +86,19 @@ def test_purge_removes_expired_rows_only(store: Store) -> None:
     assert data["runs"] == data["recommendations"] == []
 
 
+def test_purge_keeps_an_old_analysis_that_backs_a_recent_ranking(store: Store) -> None:
+    old = NOW - timedelta(days=120)
+    job_id = store.upsert_job(posting(), NOW).job_id
+    reused = store.add_analysis(AnalysisRecord(job_id, "h", "OK", {}, None, {}, old))
+    store.add_recommendation(
+        RecommendationRecord(job_id, reused, 80.0, "HIGH", "HIGH", {}, "v", NOW)
+    )
+
+    assert store.purge_expired(NOW, 90) == 0
+    assert store.latest_analysis(job_id) is not None
+    assert store.latest_recommendation(job_id) is not None
+
+
 def test_delete_all(store: Store) -> None:
     job_id = store.upsert_job(posting(), NOW).job_id
     store.add_analysis(AnalysisRecord(job_id, "h", "OK", {}, None, {}, NOW))

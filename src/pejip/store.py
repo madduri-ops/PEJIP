@@ -248,12 +248,21 @@ class Store:
         deleted = 0
         with self.engine.begin() as conn:
             stale_jobs = select(jobs.c.id).where(jobs.c.last_seen_at < cutoff)
-            for table in (recommendations, analyses):
-                deleted += conn.execute(
-                    delete(table).where(
-                        (table.c.created_at < cutoff) | table.c.job_id.in_(stale_jobs)
-                    )
-                ).rowcount
+            deleted += conn.execute(
+                delete(recommendations).where(
+                    (recommendations.c.created_at < cutoff)
+                    | recommendations.c.job_id.in_(stale_jobs)
+                )
+            ).rowcount
+            # An analysis is reused while the posting is unchanged, so an old one can
+            # still back rankings made inside the window; it goes with its job instead.
+            in_use = select(recommendations.c.analysis_id)
+            deleted += conn.execute(
+                delete(analyses).where(
+                    ((analyses.c.created_at < cutoff) & analyses.c.id.not_in(in_use))
+                    | analyses.c.job_id.in_(stale_jobs)
+                )
+            ).rowcount
             deleted += conn.execute(delete(jobs).where(jobs.c.last_seen_at < cutoff)).rowcount
             deleted += conn.execute(delete(runs).where(runs.c.started_at < cutoff)).rowcount
         return deleted
