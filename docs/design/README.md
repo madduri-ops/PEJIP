@@ -20,4 +20,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0008: FIND thin slice](0008-find-thin-slice.md) | Implemented |
 | [0009: Google sign-in](0009-google-sign-in.md) | Implemented |
 | [0010: Job-alert inbox](0010-job-alert-inbox.md) | Accepted |
-| [0012: Monitoring and alerts](0012-monitoring.md) | Accepted |
+| [0011: Monitoring and alerts](0011-monitoring.md) | Accepted |

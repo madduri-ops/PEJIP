@@ -1,4 +1,4 @@
-# 0012: Monitoring and alerts
+# 0011: Monitoring and alerts
 
 _Status: accepted. Last updated: 2026-10-05._
 

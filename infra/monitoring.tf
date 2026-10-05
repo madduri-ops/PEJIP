@@ -1,4 +1,4 @@
-# Search, error and spend monitoring (policy section 14, design 0012).
+# Search, error and spend monitoring (policy section 14, design 0011).
 #
 # The app already writes structured JSON logs to /ecs/pejip-prod, so search and
 # error metrics come from log metric filters rather than extra API calls in the
