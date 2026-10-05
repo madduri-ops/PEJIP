@@ -1,6 +1,6 @@
 # 0010: Job-alert inbox
 
-_Status: accepted (infrastructure); reading the inbox lands in a follow-up PR. Last updated: 2026-10-05._
+_Status: accepted; receiving is on (infrastructure), reading the inbox lands in a follow-up PR. Last updated: 2026-10-05._
 
 ## Purpose
 
