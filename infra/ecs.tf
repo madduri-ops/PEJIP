@@ -81,8 +81,9 @@ resource "aws_iam_role_policy" "ecs_execution" {
   policy = data.aws_iam_policy_document.ecs_execution.json
 }
 
-# Used by the running app. Today it only publishes PEJIP metrics (the AI cost
-# guard); data, secrets and KMS access are added with the features that need them.
+# Used by the running app: PEJIP metrics (the AI cost guard) and the job-alert
+# inbox. Other data, secrets and KMS access are added with the features that
+# need them.
 resource "aws_iam_role" "ecs_task" {
   name               = "pejip-ecs-task"
   description        = "Runtime identity of the PEJIP app"
@@ -101,6 +102,37 @@ data "aws_iam_policy_document" "ecs_task" {
       test     = "StringEquals"
       variable = "cloudwatch:namespace"
       values   = ["PEJIP"]
+    }
+  }
+
+  # The job-alert inbox (inbox.tf): read new messages and delete them once read.
+  statement {
+    sid       = "InboxList"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.inbox.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${local.inbox_prefix}*"]
+    }
+  }
+
+  statement {
+    sid       = "InboxMessages"
+    actions   = ["s3:GetObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.inbox.arn}/${local.inbox_prefix}*"]
+  }
+
+  statement {
+    sid       = "InboxDecrypt"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.pejip.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.aws_region}.amazonaws.com"]
     }
   }
 }

@@ -21,6 +21,11 @@ analyses and recommendations as personal data.
 - **At rest:** until PEJIP is deployed, it runs on Babu's own machine and relies on
   that machine's disk encryption. The deployed service will store data only in
   KMS-encrypted AWS storage under `alias/pejip` (ADR-0001).
+- **Job-alert inbox:** alert emails sent to `alerts@inbox.job-search.zephyr-mcg.com`
+  are received by Amazon SES and stored in the bucket `pejip-inbox-275704950192`,
+  encrypted with `alias/pejip`, TLS-only, and deleted after 90 days
+  ([design 0010](design/0010-job-alert-inbox.md)). AWS is already PEJIP's host,
+  so no new third party receives personal data.
 - **Retention:** each run deletes jobs, analyses, recommendations, AI usage and run
   records older than 90 days (`pejip purge` does the same on demand).
 - **Export and deletion:** `pejip export <file>` writes every stored row as JSON;

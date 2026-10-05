@@ -62,6 +62,30 @@ data "aws_iam_policy_document" "kms" {
     }
   }
 
+  # SES stores received mail in the inbox bucket, which encrypts with this key.
+  statement {
+    sid       = "SesInboxDelivery"
+    actions   = ["kms:GenerateDataKey*", "kms:Decrypt"]
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ses.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [local.account_id]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["s3.${var.aws_region}.amazonaws.com"]
+    }
+  }
+
   # CloudWatch Logs encrypts PEJIP's own log groups (app, VPC flow logs, WAF).
   statement {
     sid       = "PejipLogGroups"
