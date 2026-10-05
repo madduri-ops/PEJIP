@@ -26,7 +26,7 @@ def row(  # noqa: PLR0913 - one argument per export column
 ) -> str:
     link = url if url is not None else f"https://www.linkedin.com/in/{first}-{last}".lower()
     cells = [first, last, link, email, company, position, connected]
-    return ",".join(f'"{c}"' if "," in c else c for c in cells)
+    return ",".join(f'"{c}"' if "," in c or "\n" in c else c for c in cells)
 
 
 def export(*rows: str, notes: bool = True) -> bytes:

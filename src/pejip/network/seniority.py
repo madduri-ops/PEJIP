@@ -18,8 +18,9 @@ _RULES: tuple[tuple[str, str], ...] = (
     # A past or advisory title says nothing certain about the current position.
     (r"\b(ex|former|formerly|retired|previously)\b", UNCLEAR),
     (r"\bchief of staff\b", UNCLEAR),
-    (r"\b(assistant vice president|avp)\b", UNCLEAR),
-    (r"\b(senior|sr|executive|exec)\.? vice president\b|\b(svp|evp|esvp)\b", "SVP"),
+    # Assistant and associate VPs and directors sit below the title they name.
+    (r"\b(assistant|asst|associate|assoc) (vice president|vp|director)\b|\bavp\b", UNCLEAR),
+    (r"\b(senior|sr|executive|exec) (vice president|vp)\b|\b(svp|evp|esvp)\b", "SVP"),
     (r"\b(group )?vice president\b|\b(vp|gvp)\b", "VP"),
     (
         r"\bchief\b|\b(ceo|cto|cio|coo|cfo|cpo|cmo|ciso|cdo|cro|cso|cao|cco|cxo)\b"
@@ -44,6 +45,9 @@ _RULES: tuple[tuple[str, str], ...] = (
     ),
 )
 _COMPILED = tuple((re.compile(pattern), level) for pattern, level in _RULES)
+# "Director, Office of the CEO" or "Assistant to the President": the executive named
+# after these words is someone else, so that part of the title is ignored.
+_SOMEONE_ELSE = re.compile(r"\b(office of|to) the\b.*$")
 
 
 def normalize_title(title: str) -> str:
@@ -54,7 +58,7 @@ def normalize_title(title: str) -> str:
 
 def title_level(title: str) -> str:
     """The seniority level a title states, or ``UNCLEAR``."""
-    text = normalize_title(title)
+    text = _SOMEONE_ELSE.sub("", normalize_title(title)).strip()
     if not text:
         return UNCLEAR
     for pattern, level in _COMPILED:

@@ -46,7 +46,8 @@ class NetworkDecisions(_Strict):
 
 
 def load_decisions(path: Path | None) -> NetworkDecisions:
-    if path is None or not path.exists():
+    """The candidate's decisions; a named file that is missing is an error, not empty."""
+    if path is None:
         return NetworkDecisions()
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return NetworkDecisions.model_validate(data)

@@ -9,8 +9,10 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from pejip.ai.client import AIClient
-from pejip.config import Settings, load_config
+from pejip.config import SearchConfig, Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
 from pejip.logs import configure_logging
@@ -33,9 +35,7 @@ def _cmd_run(settings: Settings) -> int:
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
-    network = None
-    if settings.connections_path is not None:
-        _, network = load_index(config, settings.connections_path, settings.network_decisions_path)
+    network, network_problem = _network(config, settings)
     inbox = None
     if settings.inbox_bucket:
         inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
@@ -45,6 +45,8 @@ def _cmd_run(settings: Settings) -> int:
     finally:
         http.close()
         ledger.close()
+    if network_problem:
+        digest.notes.append(f"Connections were not used this run: {network_problem}.")
     settings.output_dir.mkdir(parents=True, exist_ok=True)
     path = settings.output_dir / f"digest-{digest.generated_at:%Y%m%d-%H%M%S}.md"
     path.write_text(render(digest, config.scoring.strong_match_fit), encoding="utf-8")
@@ -53,13 +55,35 @@ def _cmd_run(settings: Settings) -> int:
     return 1 if digest.status == "FAILED" else 0
 
 
+def _network(config: SearchConfig, settings: Settings) -> tuple[NetworkIndex | None, str | None]:
+    """The connections index, or the reason it is unusable; a bad file never stops a run."""
+    if settings.connections_path is None:
+        return None, None
+    try:
+        _, index = load_index(config, settings.connections_path, settings.network_decisions_path)
+    except (ExportError, OSError, ValidationError) as exc:
+        # Only the error type is logged: the message can quote the files' contents.
+        log.warning("network_unavailable", extra={"error_type": type(exc).__name__})
+        return None, _problem(exc)
+    return index, None
+
+
+def _problem(exc: Exception) -> str:
+    """A reason for the candidate, naming the file at fault."""
+    if isinstance(exc, ExportError):
+        return f"the LinkedIn export could not be read ({exc})"
+    if isinstance(exc, ValidationError):
+        return "the network decisions file has an invalid entry"
+    return f"a network file could not be opened ({type(exc).__name__})"
+
+
 def _cmd_connections(settings: Settings, path: Path) -> int:
     """Check a LinkedIn export before using it: counts and names to review, no people."""
     config = load_config(settings.config_path)
     try:
         preview, index = load_index(config, path, settings.network_decisions_path)
-    except ExportError as exc:
-        sys.stderr.write(f"Cannot read {path}: {exc}\n")
+    except (ExportError, OSError, ValidationError) as exc:
+        sys.stderr.write(f"Cannot use {path}: {_problem(exc)}\n")
         return 2
     out = [
         f"Rows read: {preview.records_parsed}",

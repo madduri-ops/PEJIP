@@ -66,8 +66,10 @@ flowchart LR
    (C-level, SVP, VP and Head of, Senior Director, Director, below Director).
    Titles with no clear level are `UNCLEAR`: Partner, Principal, Fellow,
    Distinguished, Managing Director, General Manager, Founder, Chief of Staff,
-   AVP, board and advisor roles, past titles ("Former VP") and anything
-   unrecognised.
+   assistant and associate VPs and directors, board and advisor roles, past titles
+   ("Former VP") and anything unrecognised. "Senior VP" and "Executive VP" are SVP.
+   Words after "office of the" or "to the" name someone else's office, so
+   "Director, Office of the CEO" is a Director.
 4. **Match** (`pejip.network.matching`). For a role, every connection at the
    resolved company is `MATURED` (level at or above the role's), `NOT_MATURED`, or
    `YOUR_CALL` (unclear title with no decision yet). If the analysis left the
@@ -75,19 +77,22 @@ flowchart LR
    too, every connection there is the candidate's call.
 5. **Priority** (`pejip.scoring`). A matured connection adds 10 Priority points,
    otherwise any first-degree connection adds 3 (`network_priority_boost` in
-   `config/search.yaml`, each 0 to 25). Fit never changes, the score is capped at
-   100, and the `priority_min_fit` floors still apply, so a weak-fit role stays out
-   of the top bands however well connected (spec 8.26). `YOUR_CALL` connections
+   `config/search.yaml`, each 0 to 25). Fit never changes and the score is capped
+   at 100. A role with Fit below `network_min_fit` (60) gains nothing, and the
+   `priority_min_fit` floors still apply, so a weak-fit role stays weak however well
+   connected (spec 8.26). `YOUR_CALL` connections
    add no boost until decided and add the reason `NETWORK_DECISION_NEEDED`.
 6. **Explain** (`pejip.explain`). "Who you know" lists matured connections, then
    each "Your call" question, then how many others are below the role's level, and
-   always the import date, because the data is a snapshot (spec 8.20). Each named
+   always the import date, because the data is a snapshot (spec 8.20). Past the
+   first four of each, a line counts the rest so nobody is silently dropped. Each named
    person cites `{"type": "network", "connection_id": ...}`, which
    `verify_citations` checks against the role's own matches.
 
 Decisions are keyed by company, title (normalized) and role level, never by person:
 one answer covers everyone with that title there, and a re-import that changes the
-title asks again.
+title asks again. The company in a decision is resolved like any employer name, so
+"scale ai" or an alias still matches.
 
 ## Interfaces
 
@@ -97,6 +102,9 @@ title asks again.
 - `pejip run` reads the export at `PEJIP_CONNECTIONS` and decisions at
   `PEJIP_NETWORK_DECISIONS` when they are set; the export file's modified time is
   the import date. Without them the digest says network data has not been imported.
+  A missing or unreadable export or decisions file never stops the run: the run
+  goes ahead without connections and the digest says which file is at fault. Only
+  the error type is logged, because the message can quote the file.
 - Decisions file (YAML, outside the repository; see
   [examples/network-decisions.example.yaml](../../examples/network-decisions.example.yaml)):
   `companies` maps an employer name to a tracked company or `null` (a separate
@@ -114,8 +122,12 @@ title asks again.
 
 ## Data model
 
-In memory only for now. The entities follow spec 8.18 and 8.19 so the store can
-persist them as they are:
+Imports and decisions are not stored yet; each run reads the files. One thing is
+stored: each recommendation's explanation, in the `recommendations` table, includes
+the "Who you know" lines, so the names and titles of matured and "Your call"
+connections for that role are kept with it. They follow that table's 90-day
+retention and are included in `pejip export` and removed by `pejip delete-all`. The
+entities follow spec 8.18 and 8.19 so the store can persist them as they are:
 
 | Entity | Fields |
 |---|---|
@@ -138,7 +150,10 @@ import finishes), and the decisions file becomes rows the portal writes.
 - **Security:** upload size and zip expansion are bounded; CSV is parsed with the
   standard library, and nothing from the file is executed or used in a path.
 - **Correctness:** no guessing at either fork that matters: ambiguous employers are
-  held back and unclear titles wait for a decision, both tested.
+  held back and unclear titles wait for a decision, both tested. The golden
+  evaluation set feeds each case's connection counts (strong relationships standing
+  in for matured connections) into scoring, so the boost and Fit invariance are
+  checked on every change.
 - **Performance:** linear in connections; fuzzy matching compares each distinct
   employer name with the tracked companies only.
 - **AI cost:** none; no AI calls.

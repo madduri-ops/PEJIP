@@ -150,3 +150,15 @@ def test_an_unreadable_connection_date_is_kept_as_unknown() -> None:
     preview = parse_export(export(row(connected="sometime in spring")), NOW)
     assert preview.connections[0].connected_on is None
     assert preview.undated == 1
+
+
+def test_quoted_fields_may_span_lines_and_hold_unicode_separators() -> None:
+    data = export(
+        row("Avery", position='"VP\nPlatform"'.strip('"')),
+        row("Blake", position="VP\u2028Platform"),
+        row("", ""),
+    )
+    preview = parse_export(data, NOW)
+    assert [c.position_raw for c in preview.connections] == ["VP\nPlatform", "VP\u2028Platform"]
+    # The row after a two-line record keeps its true line number.
+    assert [(r.line, r.reason) for r in preview.rejected] == [(8, "no first or last name")]

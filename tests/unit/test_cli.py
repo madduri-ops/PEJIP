@@ -186,3 +186,50 @@ def test_run_uses_connections_only_when_an_export_is_named(
     network = built[-1]["network"]
     assert isinstance(network, NetworkIndex)
     assert "Scale AI" in network.by_company
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        ("missing.csv", None, "a network file could not be opened (FileNotFoundError)"),
+        ("bad.csv", None, "the LinkedIn export could not be read (no 'First Name,"),
+        ("good.csv", "missing.yaml", "a network file could not be opened"),
+        ("good.csv", "bad.yaml", "the network decisions file has an invalid entry"),
+    ],
+)
+def test_a_bad_network_file_is_noted_and_never_stops_the_run(
+    env: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    case: tuple[str, str | None, str],
+) -> None:
+    connections, decisions, problem = case
+    (env / "bad.csv").write_text("Name,Headline\nAvery Secretname,VP\n")
+    (env / "good.csv").write_bytes(export(row()))
+    (env / "bad.yaml").write_text(
+        "titles: [{company: A, position: Secret Title, role_level: KING, matured: true}]\n"
+    )
+    built: list[dict[str, Any]] = []
+
+    class StubPipeline:
+        def __init__(self, *_args: Any, **kwargs: Any) -> None:
+            built.append(kwargs)
+
+        def run(self) -> Digest:
+            return Digest("run-1", NOW, "SUCCESS", [])
+
+    monkeypatch.setattr(cli, "Pipeline", StubPipeline)
+    monkeypatch.setenv("PEJIP_CONNECTIONS", str(env / connections))
+    if decisions:
+        monkeypatch.setenv("PEJIP_NETWORK_DECISIONS", str(env / decisions))
+    assert cli.main(["run"]) == 0
+    assert built[-1]["network"] is None
+    [digest] = list((env / "out").glob("digest-*.md"))
+    assert f"Connections were not used this run: {problem}" in digest.read_text()
+    logged = caplog.text + "".join(repr(r.__dict__) for r in caplog.records)
+    assert "Secret" not in logged
+
+
+def test_connections_refuses_a_missing_file(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["connections", str(env / "absent.csv")]) == 2
+    assert "could not be opened" in capsys.readouterr().err

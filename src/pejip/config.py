@@ -74,6 +74,8 @@ class ScoringConfig(_Strict):
     network_priority_boost: dict[
         Literal["MATURED", "CONNECTED"], Annotated[float, Field(ge=0, le=25)]
     ] = Field(default_factory=dict)
+    # Below this Fit the network adds no Priority: a weak match stays weak (spec 8.26).
+    network_min_fit: float = Field(default=0, ge=0, le=100)
 
 
 class AlertCompany(_Strict):

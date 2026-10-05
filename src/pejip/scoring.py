@@ -232,8 +232,14 @@ def _confidence(
     return max(0.0, round(score, 3)), factors
 
 
-def _network_boost(network: NetworkFacts | None, cfg: ScoringConfig) -> tuple[float, list[str]]:
-    """Priority points and reasons from the network; it never touches Fit (spec 8.25)."""
+def _network_boost(
+    network: NetworkFacts | None, fit: float | None, cfg: ScoringConfig
+) -> tuple[float, list[str]]:
+    """Priority points and reasons from the network; it never touches Fit (spec 8.25).
+
+    A role below ``network_min_fit`` keeps its reasons but gains nothing, so a weak
+    match is not lifted out of the bottom band by who the candidate knows (spec 8.26).
+    """
     if network is None:
         return 0.0, []
     boost, reasons = 0.0, []
@@ -245,6 +251,8 @@ def _network_boost(network: NetworkFacts | None, cfg: ScoringConfig) -> tuple[fl
         reasons.append("FIRST_DEGREE_CONNECTIONS")
     if network.your_call:
         reasons.append("NETWORK_DECISION_NEEDED")
+    if fit is None or fit < cfg.network_min_fit:
+        boost = 0.0
     return boost, reasons
 
 
@@ -304,7 +312,7 @@ def score_job(
     if core_gaps:
         reasons.append("CORE_REQUIREMENT_GAP")
 
-    boost, network_reasons = _network_boost(facts.network, cfg)
+    boost, network_reasons = _network_boost(facts.network, fit, cfg)
     reasons += network_reasons
 
     priority_score: float | None = None

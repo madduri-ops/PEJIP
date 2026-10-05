@@ -39,7 +39,7 @@ from pejip.evaluation.golden import DEFAULT_GOLDEN_DIR, Job
 from pejip.evaluation.scorer import EvalInput, Prediction
 from pejip.explain import build_explanation, verify_citations
 from pejip.profile import CareerProfile, Evidence, Seniority
-from pejip.scoring import JobFacts, Recommendation, score_job
+from pejip.scoring import JobFacts, NetworkFacts, Recommendation, score_job
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG_PATH = ROOT / "config" / "search.yaml"
@@ -204,6 +204,13 @@ def predict(
         comp_max=job["comp_max"],
         location_preference=geo.preference,
         as_of=EVAL_NOW,
+        # The golden set records counts, not titles; strong relationships stand in for
+        # matured connections so the network boost and Fit invariance are exercised.
+        network=NetworkFacts(
+            first_degree=item.context.connections,
+            matured=item.context.strong_relationships,
+            your_call=0,
+        ),
     )
     rec = score_job(analysis, matching, profile, facts, config.scoring)
     if rec.fit is None:

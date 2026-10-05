@@ -85,8 +85,8 @@ flowchart TB
 - **Interfaces:** `linkedin.parse_export`, `linkedin.compare_imports`,
   `companies.CompanyDirectory`, `seniority.title_level`,
   `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`.
-- **Data:** none stored yet; reads the export and decisions files named in the
-  environment.
+- **Data:** imports are not stored yet; reads the export and decisions files named in the
+  environment. The "Who you know" lines are saved inside each recommendation.
 
 ## discovery
 

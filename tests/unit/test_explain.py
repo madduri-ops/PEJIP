@@ -251,3 +251,18 @@ def test_an_unclear_role_level_is_asked_about_plainly() -> None:
         "Your call: Avery Example, VP. This role's level is unclear. Is this person at its"
         " level or more senior?"
     )
+
+
+def test_people_past_the_first_four_are_counted_not_dropped() -> None:
+    names = ["Ari", "Bo", "Cy", "Di", "Ed", "Fy"]
+    rows = [row(n, company="Co", position="SVP") for n in names]
+    rows += [row(f"P{n}", company="Co", position="Partner") for n in names[:5]]
+    texts = [p["text"] for p in network_points(signal_for("VP", *rows), "Co")]
+    assert "2 more matured connections." in texts
+    assert "1 more title needs your call." in texts
+    assert sum(t.startswith("Matured connection") for t in texts) == 4
+    rows = [row(n, company="Co", position="SVP") for n in names[:5]]
+    rows += [row(f"P{n}", company="Co", position="Partner") for n in names]
+    texts = [p["text"] for p in network_points(signal_for("VP", *rows), "Co")]
+    assert "1 more matured connection." in texts
+    assert "2 more titles need your call." in texts

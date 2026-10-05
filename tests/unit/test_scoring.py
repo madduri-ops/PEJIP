@@ -365,3 +365,17 @@ def test_network_boost_config_is_optional_and_bounded(config: SearchConfig) -> N
     for bad in ({"MATURED": -1}, {"MATURED": 50}, {"OTHER": 1}):
         with pytest.raises(ValidationError):
             ScoringConfig.model_validate({**data, "network_priority_boost": bad})
+
+
+def test_a_role_below_the_network_minimum_fit_gains_no_priority(
+    profile: CareerProfile, config: SearchConfig
+) -> None:
+    reqs, weak = all_categories("PARTIAL_MATCH")
+    args = (f.analysis(reqs), f.matching(weak, direction="LATERAL"))
+    alone = score(profile, config.scoring, *args, job=networked(None))
+    known = score(profile, config.scoring, *args, job=networked(NetworkFacts(12, 5, 0)))
+    assert alone.fit is not None
+    assert alone.fit < config.scoring.network_min_fit
+    assert known.network_boost == 0.0
+    assert known.priority_score == alone.priority_score
+    assert "MATURED_CONNECTION" in known.reason_codes

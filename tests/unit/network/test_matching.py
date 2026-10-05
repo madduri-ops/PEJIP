@@ -90,6 +90,13 @@ def test_your_call_decisions_apply_by_company_title_and_level() -> None:
     assert [m.connection.first_name for m in c_level.by_status(YOUR_CALL)] == ["Casey"]
 
 
+def test_decisions_match_however_the_company_is_written() -> None:
+    decisions = [TitleDecision("company a labs", "Principal, Technology Strategy", "VP", True)]
+    signal = NetworkIndex.build(PEOPLE, DIRECTORY, decisions).signal("Company A", "VP")
+    casey = next(m for m in signal.matches if m.connection.first_name == "Casey")
+    assert (casey.status, casey.decided) == (MATURED, True)
+
+
 def test_an_unknown_role_level_falls_back_to_the_title_then_to_the_candidate() -> None:
     index = NetworkIndex.build(PEOPLE, DIRECTORY)
     by_title = index.signal("Company A", "UNKNOWN", "Chief Technology Officer")
@@ -135,9 +142,10 @@ def test_loader_reads_config_aliases_and_decisions(config: SearchConfig, tmp_pat
     assert directory_for(no_network, decisions).resolve("Facebook").company is None
 
 
-def test_missing_or_empty_decisions_files_mean_no_decisions(tmp_path: Path) -> None:
+def test_decisions_files_none_empty_missing_and_invalid(tmp_path: Path) -> None:
     assert load_decisions(None).titles == []
-    assert load_decisions(tmp_path / "absent.yaml").companies == {}
+    with pytest.raises(FileNotFoundError):
+        load_decisions(tmp_path / "absent.yaml")
     empty = tmp_path / "empty.yaml"
     empty.write_text("")
     assert load_decisions(empty).titles == []

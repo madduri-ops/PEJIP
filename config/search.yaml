@@ -150,5 +150,6 @@ scoring:
   # company, otherwise any first-degree connection there. Fit never changes, and the
   # priority_min_fit floors still apply, so a weak-fit role stays out of the top bands.
   network_priority_boost: {MATURED: 10, CONNECTED: 3}
+  network_min_fit: 60            # below this Fit, connections add no Priority
 
 retention_days: 90

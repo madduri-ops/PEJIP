@@ -32,6 +32,8 @@ recommendations as personal data.
   git-ignored names). PEJIP never needs a LinkedIn login, drops e-mail addresses as
   it reads the file, sends no connection data to Claude or any other service, and
   logs no names or profile URLs ([design 0014](design/0014-connection-matching.md)).
+  The names and titles of the connections shown for a role are stored with that
+  role's recommendation, so they follow its 90-day retention, export and deletion.
 - **Retention:** each run deletes jobs, analyses, recommendations, AI usage and run
   records older than 90 days (`pejip purge` does the same on demand).
 - **Export and deletion:** `pejip export <file>` writes every stored row as JSON;

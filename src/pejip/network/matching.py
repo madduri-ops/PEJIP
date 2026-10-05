@@ -40,10 +40,6 @@ class TitleDecision:
     role_level: str
     matured: bool
 
-    @property
-    def key(self) -> tuple[str, str, str]:
-        return decision_key(self.company, self.position, self.role_level)
-
 
 def decision_key(company: str, position: str, role_level: str) -> tuple[str, str, str]:
     return (company, normalize_title(position), role_level)
@@ -99,7 +95,13 @@ class NetworkIndex:
         directory: CompanyDirectory,
         decisions: Iterable[TitleDecision] = (),
     ) -> NetworkIndex:
-        index = cls(directory, None, decisions={d.key: d.matured for d in decisions})
+        answers: dict[tuple[str, str, str], bool] = {}
+        for d in decisions:
+            # The file may spell the company another way ("scale ai", an alias).
+            resolved = directory.resolve(d.company)
+            company = resolved.company if resolved.status == RESOLVED else None
+            answers[decision_key(company or d.company, d.position, d.role_level)] = d.matured
+        index = cls(directory, None, decisions=answers)
         for conn in connections:
             if index.imported_at is None or conn.imported_at > index.imported_at:
                 index.imported_at = conn.imported_at

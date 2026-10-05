@@ -69,6 +69,14 @@ LEVEL_TEXT = {
 }
 
 
+def _more(total: int, one: str, many: str, tail: str = "") -> list[dict[str, Any]]:
+    """A line for the people past the first few, so nobody is silently left out."""
+    extra = total - MAX_POINTS
+    if extra <= 0:
+        return []
+    return [_point(f"{extra} more {one if extra == 1 else many}{tail}.", [])]
+
+
 def network_points(signal: NetworkSignal | None, company: str) -> list[dict[str, Any]]:
     """The "Who you know" section: matured connections, then titles that need a call."""
     if signal is None:
@@ -86,6 +94,7 @@ def network_points(signal: NetworkSignal | None, company: str) -> list[dict[str,
         )
         for m in signal.by_status(MATURED)[:MAX_POINTS]
     ]
+    points += _more(len(signal.by_status(MATURED)), "matured connection", "matured connections")
     question = (
         f"This title has no clear level. Is it comparable to {level} or more senior?"
         if level
@@ -98,6 +107,7 @@ def network_points(signal: NetworkSignal | None, company: str) -> list[dict[str,
         )
         for m in signal.by_status(YOUR_CALL)[:MAX_POINTS]
     ]
+    points += _more(len(signal.by_status(YOUR_CALL)), "title needs", "titles need", " your call")
     below = len(signal.by_status(NOT_MATURED))
     if below:
         people = "connection" if below == 1 else "connections"

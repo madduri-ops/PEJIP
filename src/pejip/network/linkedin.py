@@ -14,6 +14,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import io
+import re
 import zipfile
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -147,11 +148,12 @@ def _from_zip(data: bytes) -> bytes:
 def parse_export(data: bytes, imported_at: datetime) -> ImportPreview:
     """Parse and validate an upload into a preview; raise :class:`ExportError` if unusable."""
     text = _csv_text(data)
-    lines = text.splitlines()
-    start = next((i for i, line in enumerate(lines) if line.startswith("First Name,")), None)
-    if start is None:
+    found = re.search(r"^First Name,", text, re.MULTILINE)
+    if found is None:
         raise ExportError("no_header")
-    reader = csv.reader(lines[start:])
+    header_line = text.count("\n", 0, found.start()) + 1
+    # csv reads the file itself, so quoted fields may hold line breaks.
+    reader = csv.reader(io.StringIO(text[found.start() :], newline=""))
     header = [h.strip() for h in next(reader)]
     missing = [c for c in REQUIRED_COLUMNS if c not in header]
     if missing:
@@ -161,7 +163,8 @@ def parse_export(data: bytes, imported_at: datetime) -> ImportPreview:
     connections: dict[str, Connection] = {}
     rejected: list[RejectedRow] = []
     parsed = duplicates = undated = 0
-    for offset, row in enumerate(reader, start=start + 2):
+    for row in reader:
+        offset = header_line + reader.line_num - 1
         if not any(cell.strip() for cell in row):
             continue
         parsed += 1
