@@ -40,6 +40,7 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - Keyless Claude access: CI and the app authenticate to the Claude API through
   Workload Identity Federation (GitHub Actions OIDC, AWS STS) instead of an API key.
+- The app's ECS task role can now request identity tokens for the Claude API only.
 
 ## 0.1.0 - 2026-10-05
 
