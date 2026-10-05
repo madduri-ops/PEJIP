@@ -125,7 +125,13 @@ See [ADR-0003](../adr/0003-python-cli-first-slice.md).
 
 - Covering Babu's target companies that have no allowed public API (Google, NVIDIA,
   Meta, Micron, Microsoft, and most of OpenAI's roles): job-alert emails or a
-  licensed job-data provider. `config/search.yaml` searches Anthropic only for now.
+  licensed job-data provider. Job-alert emails are in place (design doc 0010);
+  `config/search.yaml` also searches nine Bay Area companies' public Greenhouse
+  boards for testing (Stripe, Databricks, Airbnb, Figma, Dropbox, Pinterest,
+  Instacart, Robinhood, Scale AI).
+- General job boards: Indeed and LinkedIn offer no public job-search API and forbid
+  scraping. The Muse has a keyless API whose terms allow apps that link back to
+  it, but it answered 400 to every request on 2026-10-05, so it is not added yet.
 - Model answers vary between runs (two live runs of the same code scored 67% and
   46% Fit in range), so the live job gates only the hard rules (`--gate invariants`,
   Babu's choice on 2026-10-05) and the replay of committed recordings gates the

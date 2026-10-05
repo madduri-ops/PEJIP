@@ -11,6 +11,17 @@ sources:
   # the others run their own or Workday career sites with no public API, and
   # OpenAI's Ashby feed lists only a few of its roles (checked 2026-10-05).
   - {adapter: greenhouse, company: Anthropic, board: anthropic}
+  # Bay Area companies on public Greenhouse boards, added for testing at Babu's
+  # request (2026-10-05); boards checked the same day.
+  - {adapter: greenhouse, company: Stripe, board: stripe}
+  - {adapter: greenhouse, company: Databricks, board: databricks}
+  - {adapter: greenhouse, company: Airbnb, board: airbnb}
+  - {adapter: greenhouse, company: Figma, board: figma}
+  - {adapter: greenhouse, company: Dropbox, board: dropbox}
+  - {adapter: greenhouse, company: Pinterest, board: pinterest}
+  - {adapter: greenhouse, company: Instacart, board: instacart}
+  - {adapter: greenhouse, company: Robinhood, board: robinhood}
+  - {adapter: greenhouse, company: Scale AI, board: scaleai}
 
 inbox:
   # Job-alert emails Babu signed up for with alerts@inbox.job-search.zephyr-mcg.com

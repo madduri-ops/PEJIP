@@ -14,6 +14,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 - The job search covers Anthropic, the one target company whose roles are
   available through an allowed public API; the example company boards are gone.
+- For testing, the search also covers the public Greenhouse boards of nine Bay
+  Area companies: Stripe, Databricks, Airbnb, Figma, Dropbox, Pinterest,
+  Instacart, Robinhood and Scale AI.
 
 ### Added
 
