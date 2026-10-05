@@ -25,8 +25,8 @@ tokens to jobs, and AWS STS issues web identity tokens to IAM roles
 - **Anthropic resources** (created by Babu in the Claude Console, Settings >
   Workload identity): one service account per workload (`pejip-ci`, `pejip-app`),
   one issuer per provider, and one rule per workload. Rules use the narrowest match
-  available (the exact GitHub `sub` with immutable repository IDs; the exact ECS task
-  role ARN), audience `https://api.anthropic.com`, scope `workspace:inference`
+  available (GitHub: this repository and owner ID, pull request events only; AWS: the
+  exact ECS task role ARN), audience `https://api.anthropic.com`, scope `workspace:developer`
   and a 10-minute token lifetime.
 - **Code:** `pejip.claude_auth` builds the arguments for the SDK's
   `WorkloadIdentityCredentials`, picking the source from `PEJIP_CLAUDE_IDENTITY`. A

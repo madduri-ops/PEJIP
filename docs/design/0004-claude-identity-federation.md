@@ -76,10 +76,9 @@ outputs: `claude_federation_issuer_url`, `claude_federation_policy_arn`.
 |---|---|---|
 | Issuer | `https://token.actions.githubusercontent.com`, discovery | `claude_federation_issuer_url` output, discovery |
 | Service account | `pejip-ci` | `pejip-app` |
-| Rule `subject_prefix` | `repo:madduri-ops@289717107/PEJIP@1404604379:pull_request` (exact) | the ECS task role ARN (exact) |
+| Rule match | owner `madduri-ops` (numeric ID 289717107), repository `PEJIP`, event `pull_request`, any ref | `subject_prefix` = the ECS task role ARN (exact) |
 | Rule `audience` | `https://api.anthropic.com` | `https://api.anthropic.com` |
-| Rule `claims` | `repository_id: 1404604379`, `repository_owner_id: 289717107` | none (the role ARN pins the account) |
-| Scope, lifetime | `workspace:inference`, 600 s | `workspace:inference`, 600 s |
+| Scope, lifetime | `workspace:developer`, 600 s | `workspace:developer`, 600 s |
 | Workspace | Default | Default |
 
 The CI rule matches pull request runs only, because the live evaluation runs on pull
