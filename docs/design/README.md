@@ -10,4 +10,5 @@ consequences also get an ADR in [docs/adr/](../adr/).
 
 | Doc | Status |
 |---|---|
+| [0001: CI pipeline and health endpoint](0001-ci-pipeline.md) | Implemented |
 | [0002: AI cost guard](0002-ai-cost-guard.md) | Implemented |

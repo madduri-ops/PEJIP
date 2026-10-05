@@ -1,4 +1,14 @@
+# Python
 __pycache__/
-*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
 .coverage
+.coverage.*
+coverage.json
+coverage-html/
+reports/
+.mypy_cache/
+.ruff_cache/
 .pytest_cache/

@@ -1,6 +1,6 @@
 # Components
 
-_Status: skeleton. Add a section per component as it is introduced._
+_Status: first component landed. Add a section per component as it is introduced._
 
 For each component, record:
 
@@ -11,11 +11,22 @@ For each component, record:
 
 ```mermaid
 flowchart TB
+    alb[Load balancer / health gate] -- GET /healthz --> api[API: pejip.api]
     caller[AI callers: ranking, explanations] --> guard[AI cost guard]
     guard --> ledger[(ai_spend ledger)]
     guard --> cw[CloudWatch PEJIP metrics]
     cw --> alarms[pejip-ai-spend-* alarms] --> sns[SNS: pejip-alerts]
 ```
+
+## API (`pejip.api`)
+
+- **Responsibility:** the HTTP surface of PEJIP. Today it serves only the health
+  endpoint; feature endpoints are added here.
+- **Interfaces:** `GET /healthz`; the OpenAPI document at `/openapi.json`. Run with
+  `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`).
+- **Data:** none.
+- **Design doc:** [0001: CI pipeline and health endpoint](../design/0001-ci-pipeline.md).
+
 
 ## AI cost guard
 
