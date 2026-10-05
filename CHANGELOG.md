@@ -24,6 +24,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Companies page at `/companies`: target companies with their
+  matching roles, connections and signals, why a company without an opening stays
+  relevant, and companies discovered in searches.
 - The portal has a Search Health page at `/search-health`: the latest search, any
   failed sources with their impact and last success, every source searched, and
   recent runs.

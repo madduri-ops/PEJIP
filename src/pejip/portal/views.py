@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 
-from pejip.portal.data import PRIORITY_ORDER, Opportunity
+from pejip.portal.data import PRIORITY_ORDER, Company, Opportunity
 
 HIGH_FIT = 85
 # Bands the default views show; LOW and below appear only in "All active".
@@ -129,6 +129,90 @@ def list_opportunities(items: list[Opportunity], filters: Filters) -> Listing:
     others = [o for o in shown if o not in in_view]
     counts = {v.key: sum(v.matches(o) for o in kept) for v in VIEWS}
     return Listing(view, in_view, others, counts)
+
+
+# ── Companies (spec 12.18 to 12.21) ──────────────────────────────────────────
+MONITORING_ORDER = ("HIGH", "NORMAL", "LOW")
+
+
+@dataclass(frozen=True)
+class CompanyRow:
+    """A company with its matching roles, ranked, and the state the page shows."""
+
+    company: Company
+    jobs: list[Opportunity]
+
+    @property
+    def state(self) -> str:
+        return "MATCHING_JOBS" if self.jobs else self.company.relevance
+
+    @property
+    def high_priority(self) -> int:
+        return sum(o.priority in ("IMMEDIATE", "HIGH") for o in self.jobs)
+
+
+@dataclass(frozen=True)
+class CompanyView:
+    key: str
+    label: str
+    matches: Callable[[CompanyRow], bool]
+
+
+COMPANY_VIEWS = (
+    CompanyView("all", "All", lambda _r: True),
+    CompanyView("matching", "Matching jobs", lambda r: r.state == "MATCHING_JOBS"),
+    CompanyView("watching", "Watching", lambda r: r.company.watching),
+    CompanyView(
+        "relevant", "Strategically relevant", lambda r: r.state == "STRATEGICALLY_RELEVANT"
+    ),
+    CompanyView("no-match", "No current match", lambda r: r.state == "NO_CURRENT_MATCH"),
+    CompanyView("low", "Low relevance", lambda r: r.state == "LOW_RELEVANCE"),
+)
+COMPANY_VIEW_BY_KEY = {v.key: v for v in COMPANY_VIEWS}
+
+
+@dataclass(frozen=True)
+class CompanyListing:
+    view: CompanyView
+    targets: list[CompanyRow]
+    discovered: list[CompanyRow]
+    counts: dict[str, int]
+
+
+def company_rows(companies: list[Company], items: list[Opportunity]) -> list[CompanyRow]:
+    """Each company with its shown roles; monitoring priority, then urgent roles first."""
+    ranked = rank(items)
+    rows = [
+        CompanyRow(c, [o for o in ranked if o.company == c.name and o.priority in SHOWN_BANDS])
+        for c in companies
+    ]
+    return sorted(
+        rows,
+        key=lambda r: (
+            MONITORING_ORDER.index(r.company.monitoring)
+            if r.company.monitoring in MONITORING_ORDER
+            else len(MONITORING_ORDER),
+            -r.high_priority,
+            -len(r.jobs),
+            r.company.name.lower(),
+        ),
+    )
+
+
+def list_companies(
+    companies: list[Company], items: list[Opportunity], view_key: str
+) -> CompanyListing:
+    """Targets and discovered companies in the chosen view; unknown views show all."""
+    view = COMPANY_VIEW_BY_KEY.get(view_key, COMPANY_VIEWS[0])
+    rows = company_rows(companies, items)
+    shown = [r for r in rows if view.matches(r)]
+    counts = {v.key: sum(v.matches(r) for r in rows) for v in COMPANY_VIEWS}
+    return CompanyListing(
+        view,
+        [r for r in shown if r.company.target],
+        [r for r in shown if not r.company.target],
+        counts,
+    )
 
 
 # ── Time display ─────────────────────────────────────────────────────────────

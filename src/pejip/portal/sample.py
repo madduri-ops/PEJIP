@@ -13,11 +13,13 @@ from datetime import UTC, datetime, timedelta
 
 from pejip.portal.data import (
     Citation,
+    Company,
     Connection,
     FitComponent,
     Opportunity,
     Point,
     SearchRun,
+    Signal,
     SourceStatus,
 )
 
@@ -328,6 +330,143 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
     ]
 
 
+ALERTS = "Job-alert emails"
+PARTIAL_COVERAGE = "coverage may be incomplete"
+
+
+def sample_companies(now: datetime) -> list[Company]:
+    """Target and discovered companies, matching the Companies mock."""
+    day = timedelta(days=1)
+
+    def signal(text: str, source: str, days_ago: float) -> Signal:
+        return Signal(text, source, now - days_ago * day)
+
+    return [
+        Company(
+            "Company A",
+            "Enterprise Software · AI Platforms",
+            target=True,
+            watching=True,
+            monitoring="HIGH",
+            relevance="NO_CURRENT_MATCH",
+            job_source="Careers site feed",
+            signals=(
+                signal("Enterprise AI investment", "Company announcement", 6),
+                signal("Technology modernization program", "Earnings call", 21),
+                signal("New technology leadership", "Press release", 14),
+            ),
+            connections=3,
+        ),
+        Company(
+            "Company B",
+            "Technology · AI Infrastructure",
+            target=True,
+            watching=True,
+            monitoring="HIGH",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(
+                signal("AI expansion", "Company announcement", 4),
+                signal("Platform modernization", "Engineering blog", 7),
+            ),
+            connections=7,
+        ),
+        Company(
+            "Company C",
+            "Semiconductors · Memory and Storage",
+            target=True,
+            watching=True,
+            monitoring="NORMAL",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(signal("Significant AI investment", "Investor presentation", 21),),
+            connections=0,
+        ),
+        Company(
+            "Company D",
+            "Cloud and Productivity Software",
+            target=True,
+            watching=False,
+            monitoring="NORMAL",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(signal("Recent acquisition", "Company announcement", 30),),
+            connections=12,
+        ),
+        Company(
+            "Company J",
+            "Consumer Internet · AI Research",
+            target=True,
+            watching=True,
+            monitoring="HIGH",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(
+                signal("Enterprise transformation underway", "News report", 30),
+                signal("New Bay Area office opening", "Company announcement", 14),
+            ),
+            connections=5,
+        ),
+        Company(
+            "Company K",
+            "AI Research Lab",
+            target=True,
+            watching=False,
+            monitoring="NORMAL",
+            relevance="STRATEGICALLY_RELEVANT",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(signal("Enterprise product launch", "Company announcement", 7),),
+            connections=2,
+        ),
+        Company(
+            "Company L",
+            "Social Media · Advertising Platforms",
+            target=True,
+            watching=False,
+            monitoring="LOW",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note="no alert received in 9 days",
+        ),
+        *(
+            Company(
+                f"Company {letter}",
+                None,
+                target=False,
+                watching=False,
+                monitoring="LOW",
+                relevance="NO_CURRENT_MATCH",
+                job_source="Careers site feed",
+            )
+            for letter in "EFG"
+        ),
+        Company(
+            "Company H",
+            "Financial Services · Payments",
+            target=False,
+            watching=False,
+            monitoring="LOW",
+            relevance="LOW_RELEVANCE",
+            job_source="Careers site feed",
+            low_reason="Role family outside your targets",
+        ),
+        Company(
+            "Company I",
+            None,
+            target=False,
+            watching=False,
+            monitoring="LOW",
+            relevance="NO_CURRENT_MATCH",
+            job_source="Careers site feed",
+        ),
+    ]
+
+
 SAMPLE_SOURCES = (
     *(f"Company {letter} careers site" for letter in "ABCDEFGHIJKL"),
     "Job-alert inbox",
@@ -392,3 +531,6 @@ class SampleData:
 
     def opportunities(self) -> list[Opportunity]:
         return sample_opportunities(self._clock())
+
+    def companies(self) -> list[Company]:
+        return sample_companies(self._clock())

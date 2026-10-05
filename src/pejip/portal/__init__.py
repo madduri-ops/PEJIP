@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from pejip.portal import render
 from pejip.portal.data import PortalData
-from pejip.portal.views import Filters, list_opportunities
+from pejip.portal.views import Filters, list_companies, list_opportunities
 
 STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encoding="utf-8")
 
@@ -108,6 +108,18 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
             crumb='<div class="crumb"><a href="/opportunities">Opportunities</a></div>',
         )
         return HTMLResponse(html)
+
+    @routes.get("/companies")
+    def companies(view: Annotated[str, Query(max_length=16)] = "all") -> str:
+        """Companies that matter, whether or not they are hiring today (spec 12.18)."""
+        listing = list_companies(data.companies(), data.opportunities(), view)
+        return frame(
+            active="companies",
+            heading="Companies",
+            subtitle="Companies that matter to your career, whether or not they have a "
+            "matching opening today.",
+            body=render.companies_body(listing, now_fn()),
+        )
 
     @routes.get("/search-health")
     def search_health() -> str:

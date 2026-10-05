@@ -11,15 +11,19 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import datetime
 from html import escape
+from urllib.parse import quote
 
-from pejip.portal.data import Citation, Opportunity, Point, SearchRun, SourceStatus
+from pejip.portal.data import Citation, Opportunity, Point, SearchRun, Signal, SourceStatus
 from pejip.portal.views import (
+    COMPANY_VIEWS,
     CONFIDENCE_CHOICES,
     FIT_CHOICES,
     PRIORITY_CHOICES,
     SHOWN_BANDS,
     VIEWS,
     WORK_MODEL_CHOICES,
+    CompanyListing,
+    CompanyRow,
     Filters,
     Listing,
     age,
@@ -60,7 +64,7 @@ LOW_COMPONENT = 0.85
 NAV = (
     ("home", "Home", "/"),
     ("opportunities", "Opportunities", "/opportunities"),
-    ("companies", "Companies", None),
+    ("companies", "Companies", "/companies"),
     ("watchlist", "Watchlist", None),
     ("connections", "Connections", None),
     ("search-health", "Search Health", "/search-health"),
@@ -661,4 +665,133 @@ def search_health_body(runs: list[SearchRun], now: datetime) -> str:
         + _section(f"Recent searches · {len(runs)}", _history(runs, now))
         + '<p class="note">"No jobs found" and "source failed" are different: a failed '
         "source is listed here so a quiet day is never mistaken for an empty market.</p>"
+    )
+
+
+# ── Companies ────────────────────────────────────────────────────────────────
+COMPANY_STATE = {
+    "MATCHING_JOBS": ("p-high", "Matching jobs"),
+    "STRATEGICALLY_RELEVANT": ("p-ok", "Strategically relevant"),
+    "NO_CURRENT_MATCH": ("p-med", "No current match"),
+    "LOW_RELEVANCE": ("p-med", "Low relevance"),
+}
+
+
+def company_roles_url(name: str) -> str:
+    """The Opportunities page filtered to one company, across every band."""
+    return f"/opportunities?view=all&company={quote(name, safe='')}"
+
+
+def _company_state(state: str) -> str:
+    cls, label = COMPANY_STATE.get(state, ("p-med", words(state)))
+    return f'<span class="pill {cls}">{e(label)}</span>'
+
+
+def _signals(signals: tuple[Signal, ...], now: datetime) -> str:
+    if not signals:
+        return '<p class="note">No relevant signals in the last 90 days.</p>'
+    items = "".join(
+        f"<li><div><strong>{e(s.text)}</strong>"
+        f'<div class="src">{e(s.source)} · {age(s.seen_at, now)}</div></div></li>'
+        for s in signals
+    )
+    return f'<ul class="plus-list">{items}</ul>'
+
+
+def _stat(value: object, label: str) -> str:
+    return f'<div><div class="fit">{e(value)}</div><div class="fitl">{label}</div></div>'
+
+
+def company_card(row: CompanyRow, now: datetime) -> str:
+    """A target company (spec 12.19), or why it stays relevant without a match (12.21)."""
+    c = row.company
+    watching = '<span class="state">WATCHING</span>' if c.watching else ""
+    industry = f'<div class="co">{e(c.industry)}</div>' if c.industry else ""
+    connections = "Unknown" if c.connections is None else c.connections
+    if row.jobs:
+        top = row.jobs[0]
+        fit = "Unknown" if top.fit is None else f"{top.fit:.0f}"
+        middle = (
+            '<div class="row">'
+            + _stat(len(row.jobs), "Matching jobs" if len(row.jobs) != 1 else "Matching job")
+            + _stat(row.high_priority, "High-priority")
+            + _stat(connections, "Connections")
+            + '</div><div><span class="lbl">Relevant signals</span>'
+            + _signals(c.signals, now)
+            + "</div>"
+            f'<div class="meta">Top match: <a href="{opportunity_url(top)}">{e(top.title)}</a>'
+            f" · Fit {fit} · {e(words(top.priority))}</div>"
+        )
+    else:
+        middle = (
+            '<p class="verdict">No suitable opening currently.</p>'
+            '<div class="row">'
+            + _stat(connections, "Connections")
+            + '</div><div><span class="lbl">Why this company remains relevant</span>'
+            + _signals(c.signals, now)
+            + "</div>"
+        )
+    note = f' · <span class="unk">{e(c.coverage_note)}</span>' if c.coverage_note else ""
+    return (
+        '<article class="card"><div class="row spread"><div>'
+        f"<h3>{e(c.name)}</h3>{industry}</div>"
+        f'<div class="row">{_company_state(row.state)}{watching}</div></div>'
+        f'<div class="meta">Monitoring priority: <strong>{e(c.monitoring)}</strong></div>'
+        f"{middle}"
+        f'<div class="src">Jobs from: {e(c.job_source)}{note}</div>'
+        f'<div class="actions"><a class="btn" href="{e(company_roles_url(c.name))}">'
+        "See roles</a></div></article>"
+    )
+
+
+def _discovered(rows: list[CompanyRow]) -> str:
+    items = "".join(
+        f'<div class="li"><div class="grow"><h3>{e(r.company.name)}</h3>'
+        f'<div class="muted">{e(r.company.industry or "Industry unknown")}'
+        + (f" · {e(r.company.low_reason)}" if r.company.low_reason else "")
+        + "</div></div>"
+        f"{_company_state(r.state)}"
+        f'<a href="{e(company_roles_url(r.company.name))}">See roles</a></div>'
+        for r in rows
+    )
+    return f'<div class="list">{items}</div>'
+
+
+def companies_body(listing: CompanyListing, now: datetime) -> str:
+    """Target company universe, with or without openings today (spec 12.18)."""
+
+    def view_link(key: str, label: str) -> str:
+        on = key == listing.view.key
+        attrs = ' class="btn sel" aria-current="page"' if on else ' class="btn"'
+        return (
+            f'<a{attrs} href="/companies?view={key}">'
+            f'{e(label)}<span class="c">{listing.counts[key]}</span></a>'
+        )
+
+    tiles = "".join(
+        f'<a class="tile" href="/companies?view={v.key}">'
+        f'<div class="n">{listing.counts[v.key]}</div><div class="l">{e(v.label)}</div></a>'
+        for v in COMPANY_VIEWS[1:]
+    )
+    views = "".join(view_link(v.key, v.label) for v in COMPANY_VIEWS)
+    targets = (
+        '<div class="grid2">' + "".join(company_card(r, now) for r in listing.targets) + "</div>"
+        if listing.targets
+        else _empty("No target company is in this view.")
+    )
+    discovered = (
+        _section(
+            f"Discovered in searches · {len(listing.discovered)}", _discovered(listing.discovered)
+        )
+        if listing.discovered
+        else ""
+    )
+    return (
+        f'<section aria-label="Summary"><div class="tiles">{tiles}</div></section>'
+        f'<section aria-labelledby="cviews-h"><h2 id="cviews-h">Views</h2>'
+        f'<div class="views">{views}</div></section>'
+        + _section(f"Target companies · {len(listing.targets)}", targets)
+        + discovered
+        + '<p class="note">Watching a company raises how closely PEJIP follows it. It never '
+        "raises the Fit of its jobs.</p>"
     )

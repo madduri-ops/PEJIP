@@ -111,6 +111,38 @@ class SearchRun:
     sources: tuple[SourceStatus, ...] = ()
 
 
+@dataclass(frozen=True)
+class Signal:
+    """A company development worth knowing, with where it came from (spec 12.19)."""
+
+    text: str
+    source: str
+    seen_at: datetime
+
+
+@dataclass(frozen=True)
+class Company:
+    """A company PEJIP tracks: a target Babu chose, or one discovered in searches.
+
+    Whether it has matching jobs comes from the opportunities, not from here;
+    ``relevance`` (STRATEGICALLY_RELEVANT, NO_CURRENT_MATCH or LOW_RELEVANCE) is
+    what the portal shows when it has none (spec 12.18, 12.21).
+    """
+
+    name: str
+    industry: str | None
+    target: bool
+    watching: bool
+    monitoring: str  # HIGH, NORMAL or LOW
+    relevance: str
+    job_source: str
+    coverage_note: str | None = None
+    signals: tuple[Signal, ...] = ()
+    # None until a LinkedIn connections export maps people to this company.
+    connections: int | None = None
+    low_reason: str | None = None
+
+
 class PortalData(Protocol):
     """Read-only source of everything the portal shows."""
 
@@ -126,3 +158,6 @@ class PortalData(Protocol):
 
     def opportunities(self) -> list[Opportunity]:
         """Every active opportunity, in any order."""
+
+    def companies(self) -> list[Company]:
+        """Target companies and companies discovered in searches, in any order."""
