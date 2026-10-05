@@ -43,6 +43,12 @@ def _parser() -> argparse.ArgumentParser:
             default=0.0,
             help="allowed Fit drift in network probes",
         )
+        cmd.add_argument(
+            "--workers",
+            type=_positive,
+            default=1,
+            help="cases scored at once (for scorers that call the model)",
+        )
     sub.choices["run"].add_argument(
         "--gate",
         choices=("all", "invariants"),
@@ -52,6 +58,16 @@ def _parser() -> argparse.ArgumentParser:
         + " (for live model runs)",
     )
     return parser
+
+
+_NOT_POSITIVE = "must be 1 or more"
+
+
+def _positive(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(_NOT_POSITIVE)
+    return value
 
 
 def _say(text: object, *, err: bool = False) -> None:
@@ -87,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
         _say(exc, err=True)
         return 2
 
-    report = evaluate(golden, scorer, fit_tolerance=args.fit_tolerance)
+    report = evaluate(golden, scorer, fit_tolerance=args.fit_tolerance, workers=args.workers)
     _print_report(report)
     if args.report:
         args.report.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")

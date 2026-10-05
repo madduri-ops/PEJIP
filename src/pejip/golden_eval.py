@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import tomllib
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -296,6 +297,9 @@ def make_live_scorer(
     return score
 
 
+_LIVE_LOCK = threading.Lock()
+
+
 @cache
 def _live() -> Callable[[EvalInput], Prediction]:
     # One client, spend ledger and output cache for the whole evaluation run.
@@ -306,4 +310,7 @@ def _live() -> Callable[[EvalInput], Prediction]:
 
 def live_scorer(item: EvalInput) -> Prediction:
     """Score a case by calling the model; needs Claude credentials (``pejip.claude_auth``)."""
-    return _live()(item)
+    # Cases may be scored on several threads; they must share one client and cap.
+    with _LIVE_LOCK:
+        score = _live()
+    return score(item)

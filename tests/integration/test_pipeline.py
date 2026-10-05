@@ -292,25 +292,30 @@ def test_inbox_alerts_are_ranked_and_deleted(
     assert item.job["source"] == "email_alert"
     assert item.recommendation is not None
     assert digest.notes == [
-        "Job-alert inbox: an email from alerts@careers.example.com "
-        '("Confirm your alert") listed no roles. '
-        "To confirm the alert, open: https://careers.example.com/confirm?t=1"
+        "Job-alert inbox: alerts@careers.example.com asks you to confirm an alert "
+        '("Confirm your alert"). Open: https://careers.example.com/confirm?t=1'
     ]
     assert s3.objects == {}
 
 
-def test_inbox_email_with_no_roles_or_links_is_noted(
+def test_other_email_is_deleted_and_only_counted(
     config: SearchConfig, profile: CareerProfile, store: Store
 ) -> None:
-    s3 = FakeS3({f"{INBOX_PREFIX}a": email("<p>Welcome</p>", subject="")})
+    personal = '<p>Dinner?</p><a href="https://bank.test/confirm?t=9">Confirm payment</a>'
+    s3 = FakeS3(
+        {
+            f"{INBOX_PREFIX}a": email(personal, subject="Private matter"),
+            f"{INBOX_PREFIX}b": email("<p>Welcome</p>", subject=""),
+        }
+    )
     pipeline = build(
         with_inbox(config), profile, store, Boards(()), FakeMessages(), inbox=S3Inbox(s3, "b")
     )
     digest = pipeline.run()
 
-    assert digest.notes == [
-        'Job-alert inbox: an email from alerts@careers.example.com ("no subject") listed no roles.'
-    ]
+    # Nothing about the emails themselves reaches the digest, only how many.
+    assert digest.notes == ["Job-alert inbox: 2 other emails had no roles and were deleted."]
+    assert s3.objects == {}
 
 
 def test_a_failing_inbox_does_not_stop_the_boards(
@@ -327,6 +332,24 @@ def test_a_failing_inbox_does_not_stop_the_boards(
     assert digest.sources[-1].error == "job-alert inbox read failed: ClientError"
     assert digest.sources[0].candidates == 2
     assert f"{INBOX_PREFIX}a" in s3.objects
+
+
+def test_emails_deleted_before_an_inbox_failure_are_still_counted(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    s3 = FakeS3(
+        {f"{INBOX_PREFIX}a": email("<p>Hi</p>"), f"{INBOX_PREFIX}b": email(ALERT)},
+        fail="get_object",
+        fail_after=1,
+    )
+    pipeline = build(
+        with_inbox(config), profile, store, Boards(()), FakeMessages(), inbox=S3Inbox(s3, "b")
+    )
+    digest = pipeline.run()
+
+    assert digest.sources[-1].status == "FAILED"
+    assert digest.notes == ["Job-alert inbox: 1 other email had no roles and was deleted."]
+    assert list(s3.objects) == [f"{INBOX_PREFIX}b"]
 
 
 def test_an_inbox_without_configured_companies_is_not_read(

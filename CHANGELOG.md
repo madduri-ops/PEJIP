@@ -12,6 +12,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- `python -m pejip.evaluation run` takes `--workers N` to score several golden
+  cases at once; the live model evaluation in CI uses six.
+- The live model evaluation in CI runs only on pull requests labelled
+  `live-eval`, so CI makes no paid model calls by default.
 - The job search covers Anthropic, the one target company whose roles are
   available through an allowed public API; the example company boards are gone.
 - For testing, the search also covers the public Greenhouse boards of nine Bay
@@ -28,6 +32,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   (`PEJIP_NETWORK_DECISIONS`).
 - `pejip connections <file>` checks an export before use: counts, rejected rows,
   connections per tracked company and employer names to review.
+- Monitoring: email alerts when a search run fails, a job source can't be
+  fetched, the app logs an error, or (once the daily search runs) no search has
+  finished in 26 hours, plus a `pejip` CloudWatch dashboard for search runs,
+  source failures, errors, Claude spend and every alarm.
 - Web portal at `job-search.zephyr-mcg.com`: Home, Opportunities (saved views and
   filters) and Opportunity detail pages with cited explanations, built from the
   portal mocks. They show illustrative sample data until the database is connected.
@@ -36,6 +44,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts
   from Google, NVIDIA, Meta, Micron, OpenAI and Microsoft are ranked with the rest,
   and alert sign-up checks show up in the digest with their confirm link.
+- LinkedIn job alerts forwarded to the inbox (inline or as attachments) become
+  roles with each employer's name and location. Other forwarded email is deleted
+  and only counted in the digest; a sign-up note appears only for a configured
+  job site's confirm link. LinkedIn links count only in emails from LinkedIn
+  itself, and an email in an unreadable charset is skipped instead of stopping
+  the run.
 - First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
   configured Greenhouse and Lever company boards, filters them by the search
   taxonomy and geography, analyses each with Claude, scores Fit, Confidence and

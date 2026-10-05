@@ -156,3 +156,9 @@ variable "inbox_receiving_enabled" {
   type        = bool
   default     = true
 }
+
+variable "search_run_alarms_enabled" {
+  description = "Turns on the pejip-search-stalled alarm (no search run finished in 26 hours). Enable once the daily search schedule is running."
+  type        = bool
+  default     = false
+}

@@ -72,9 +72,10 @@ python -m pejip.evaluation run --scorer pejip.golden_eval:replay_scorer
 ```
 
 `live_scorer` calls the model instead (needs Claude credentials, a few dollars per
-run; CI signs in without a key, see ADR-0004). CI runs it on pull requests that change a prompt, the AI client, the analysis
-code, `config/search.yaml`, the adapter or this set, and the "Evaluation set (live
-model)" job uploads and prints what the model returned. The model's answers vary
+run; CI signs in without a key, see ADR-0004). CI runs it only on pull requests
+labelled `live-eval`, added by hand with Babu's OK when a prompt or the model
+changes; the "Evaluation set (live model)" job then uploads and prints what the
+model returned. The model's answers vary
 from run to run (the same code has scored 46% and 67% Fit in range), so that job
 runs with `--gate invariants`: it fails only when a case goes unscored, a citation is
 invalid or network invariance breaks, and reports the other metrics. Those metrics

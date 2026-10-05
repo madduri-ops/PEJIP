@@ -26,7 +26,10 @@ recommendations as personal data.
   are received by Amazon SES and stored in the bucket `pejip-inbox-275704950192`,
   encrypted with `alias/pejip`, TLS-only, and deleted after 90 days
   ([design 0010](design/0010-job-alert-inbox.md)). AWS is already PEJIP's host,
-  so no new third party receives personal data.
+  so no new third party receives personal data. Babu forwards his Yahoo mailbox
+  there for its LinkedIn alerts, so the bucket also receives his other email:
+  `pejip run` deletes any email that lists no roles, records only how many, and
+  never logs or shows its sender, subject or content.
 - **LinkedIn connections:** the export is a local file outside the repository
   (`PEJIP_CONNECTIONS`, and the decisions file `PEJIP_NETWORK_DECISIONS`; both
   git-ignored names). PEJIP never needs a LinkedIn login, drops e-mail addresses as

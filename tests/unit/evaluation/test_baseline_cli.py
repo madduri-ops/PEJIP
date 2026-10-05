@@ -109,6 +109,24 @@ def test_run_passes_and_writes_report(baseline: Path, tmp_path: Path) -> None:
 
 
 @pytest.mark.usefixtures("scorers")
+def test_run_with_workers(baseline: Path, tmp_path: Path) -> None:
+    report = tmp_path / "report.json"
+    args = ["run", "--scorer", "fake_scorers:oracle", "--baseline", str(baseline)]
+    assert cli.main([*args, "--workers", "4", "--report", str(report)]) == 0
+    assert json.loads(report.read_text())["metrics"]["fit_in_range"] == 1.0
+
+
+@pytest.mark.parametrize("workers", ["0", "-1", "two"])
+def test_workers_must_be_a_positive_number(
+    workers: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(SystemExit) as exited:
+        cli.main(["run", "--scorer", "x:y", "--workers", workers])
+    assert exited.value.code == 2
+    assert "--workers" in capsys.readouterr().err
+
+
+@pytest.mark.usefixtures("scorers")
 def test_run_fails_below_baseline(baseline: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["run", "--scorer", "fake_scorers:bad", "--baseline", str(baseline)]) == 1
     captured = capsys.readouterr()

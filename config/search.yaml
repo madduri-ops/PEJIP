@@ -36,6 +36,12 @@ inbox:
     - {company: Micron, link_patterns: [careers.micron.com/, jobs.micron.com/, micron.eightfold.ai/]}
     - {company: OpenAI, link_patterns: [openai.com/careers, jobs.ashbyhq.com/openai]}
     - {company: Microsoft, link_patterns: [careers.microsoft.com/]}
+    # LinkedIn job alerts, auto-forwarded from Babu's Yahoo mailbox. LinkedIn is a
+    # job board: the employer and location come from the text under each role.
+    - company: LinkedIn
+      job_board: true
+      link_patterns: [linkedin.com/jobs/view, linkedin.com/comm/jobs/view]
+      job_id_pattern: 'jobs/view/\d+'
 
 network:
   # Other employer names LinkedIn profiles use for a tracked company (spec 13.3).
