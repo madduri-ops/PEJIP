@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from itertools import combinations
 from typing import Any
@@ -127,25 +128,33 @@ def _rate(hits: int, total: int) -> float:
     return round(hits / total, 4) if total else 1.0
 
 
-def evaluate(golden: GoldenSet, scorer: Scorer, *, fit_tolerance: float = 0.0) -> Report:
-    results: list[CaseResult] = []
-    for case in golden.cases:
-        item = EvalInput(case.id, case.job, case.context, golden.profile)
-        prediction, error = _call(scorer, item)
-        if prediction is None:
-            results.append(CaseResult(case.id, None, error=error))
-            continue
-        result = _judge(case, prediction)
-        if case.invariance_probe:
-            probe, _ = _call(
-                scorer,
-                dataclasses.replace(item, context=Context(PROBE_CONNECTIONS, PROBE_STRONG)),
-            )
-            result.probe_fit = probe.fit if probe else None
-            result.network_invariant = (
-                probe is not None and abs(probe.fit - prediction.fit) <= fit_tolerance
-            )
-        results.append(result)
+def _score_case(golden: GoldenSet, case: Case, scorer: Scorer, fit_tolerance: float) -> CaseResult:
+    item = EvalInput(case.id, case.job, case.context, golden.profile)
+    prediction, error = _call(scorer, item)
+    if prediction is None:
+        return CaseResult(case.id, None, error=error)
+    result = _judge(case, prediction)
+    if case.invariance_probe:
+        probe, _ = _call(
+            scorer,
+            dataclasses.replace(item, context=Context(PROBE_CONNECTIONS, PROBE_STRONG)),
+        )
+        result.probe_fit = probe.fit if probe else None
+        result.network_invariant = (
+            probe is not None and abs(probe.fit - prediction.fit) <= fit_tolerance
+        )
+    return result
+
+
+def evaluate(
+    golden: GoldenSet, scorer: Scorer, *, fit_tolerance: float = 0.0, workers: int = 1
+) -> Report:
+    """Score every case. ``workers`` cases run at once (each with its own network
+    probe), for scorers that wait on the model; results keep the golden set's order."""
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        results = list(
+            pool.map(lambda case: _score_case(golden, case, scorer, fit_tolerance), golden.cases)
+        )
 
     by_id = {case.id: case for case in golden.cases}
     scored = [r for r in results if r.prediction is not None]

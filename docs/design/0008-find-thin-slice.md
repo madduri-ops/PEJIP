@@ -135,4 +135,5 @@ See [ADR-0003](../adr/0003-python-cli-first-slice.md).
 - Model answers vary between runs (two live runs of the same code scored 67% and
   46% Fit in range), so the live job gates only the hard rules (`--gate invariants`,
   Babu's choice on 2026-10-05) and the replay of committed recordings gates the
-  rest. Making the analysis more stable from run to run is open work.
+  rest. The live job runs only on a PR labelled `live-eval`, by hand with Babu's
+  OK, so CI spends nothing on the model by default. Making the analysis more stable from run to run is open work.

@@ -212,7 +212,10 @@ notes. It is treated as personal data.
 - **Evaluation set:** a committed test set of job postings with expected rankings and
   reasons is the quality bar. A change to a prompt, model, ranking logic or scoring
   weights runs the evaluation in CI, and the PR fails if scores drop below the
-  committed baseline. Like coverage, the baseline only goes up.
+  committed baseline. Like coverage, the baseline only goes up. CI gates every PR
+  on the free replay of committed model output; the paid run against the live
+  model runs only when a PR is labelled `live-eval`, by hand with Babu's OK, when a
+  prompt or the model changes (Babu's approval, 2026-10-05, PR #42).
 - **Explanations cite evidence:** every "why this role" explanation cites the
   specific facts it relies on (posting text, company data, profile fields), and each
   citation resolves to stored source data. An explanation with an unsupported claim
