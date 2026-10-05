@@ -1,4 +1,4 @@
-# 0001: AI cost guard
+# 0002: AI cost guard
 
 _Status: implemented. Last updated: 2026-10-05._
 

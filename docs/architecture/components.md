@@ -26,4 +26,4 @@ flowchart TB
   Publishes `PEJIP/AISpendMonthToDateUSD` and `PEJIP/AICallCostUSD` to CloudWatch.
 - **Data:** the `ai_spend` SQLite table (feature, model, tokens, cost; no personal
   data) and the price table `src/pejip/cost/pricing.json`.
-- **Design doc:** [0001: AI cost guard](../design/0001-ai-cost-guard.md).
+- **Design doc:** [0002: AI cost guard](../design/0002-ai-cost-guard.md).
