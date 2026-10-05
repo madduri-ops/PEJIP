@@ -90,11 +90,13 @@ The Phase 1 (FIND) specification is complete, and the first end-to-end slice is 
 command line tool: it fetches roles from configured Greenhouse and Lever company
 boards, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence. Network data, feedback,
-notifications, feature API endpoints and the web UI come next. The build policy, repository
-hygiene, the Python CI pipeline, a health endpoint, the golden evaluation set for
-rankings and foundation AWS infrastructure are in place; the app is not deployed yet.
-See the [design doc](docs/design/0008-find-thin-slice.md) and the
-[changelog](CHANGELOG.md).
+notifications, feature API endpoints and the web UI come next. The build policy,
+repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
+set for rankings and foundation AWS infrastructure are in place. The hosting stack
+and continuous deploy for `job-search.zephyr-mcg.com` are defined
+([ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)); running the job
+search there needs a persistent store. See the
+[design doc](docs/design/0008-find-thin-slice.md) and the [changelog](CHANGELOG.md).
 
 ## Getting started
 
@@ -130,6 +132,7 @@ are in [config/search.yaml](config/search.yaml).
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Security posture and third parties that receive personal data |
 | [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
+| [`Dockerfile`](Dockerfile) | Production container image, deployed by the Deploy workflow |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
 

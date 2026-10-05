@@ -65,6 +65,23 @@ baseline.
 Tests and examples use synthetic data only. Never commit a real `profile.yaml`,
 database or digest; `.gitignore` excludes them.
 
+### Container image
+
+The production image is built from the root `Dockerfile` (see
+[ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)). The `hadolint`
+pre-commit hook lints it and needs Docker. To check it the way CI does:
+
+```sh
+docker build -t pejip:local .
+docker run --rm --read-only --user 10001 -p 8000:8000 pejip:local   # http://127.0.0.1:8000/healthz
+```
+
+Pull requests that change `src/`, `pyproject.toml`, the `Dockerfile` or
+`.dockerignore` build, smoke test and scan the image in the `Container image` check.
+Merges to `main` that change them deploy to production through the Deploy workflow.
+
+Language-specific setup for any other part of the app is added here as it lands.
+
 ## Making a change
 
 1. Cut a short-lived branch from `main`, one branch per change.
@@ -106,7 +123,10 @@ Versions follow [semantic versioning](https://semver.org/) and are tagged
   (or Actions > Release > Run workflow). It checks `CHANGELOG.md` against
   `pyproject.toml`, tags `main`'s head `vX.Y.Z` and publishes a GitHub Release with
   that version's notes.
-- **Rolling back:** a failed post-deploy health gate rolls back automatically. The
-  one-command manual rollback (`gh workflow run rollback.yml`) arrives with the deploy
-  workflow; see the design doc's Rollback section. CI's **Rollback drill** job
-  exercises a rollback to the previous release on every app change.
+- **Rolling back:** a failed post-deploy health gate rolls back automatically. To
+  put production back on an earlier release by hand, run
+  `gh workflow run rollback.yml` (the release before the live one) or
+  `gh workflow run rollback.yml -f version=X.Y.Z` (or Actions > Rollback > Run
+  workflow). It redeploys that release's image through the Deploy workflow and its
+  health gate. CI's **Rollback drill** job exercises a rollback to the previous
+  release on every app change.

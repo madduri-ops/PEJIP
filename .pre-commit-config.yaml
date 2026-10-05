@@ -33,6 +33,11 @@ repos:
     hooks:
       - id: ruff-check
       - id: ruff-format
+  # Runs in Docker, so it needs Docker locally (see CONTRIBUTING.md).
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.14.0
+    hooks:
+      - id: hadolint-docker
   # Uses the mypy from `pip install -e '.[dev]'` so it sees the app's dependencies.
   - repo: local
     hooks:

@@ -123,6 +123,8 @@ flowchart TB
 - **Interfaces:** `GET /healthz`; the OpenAPI document at `/openapi.json`. Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`).
 - **Data:** none.
+- **Deployment:** the image's default command; runs as ECS service `pejip-prod`
+  behind `pejip-alb` ([0005: App hosting and deploy](../design/0005-app-hosting-and-deploy.md)).
 - **Design doc:** [0001: CI pipeline and health endpoint](../design/0001-ci-pipeline.md).
 
 

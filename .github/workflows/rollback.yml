@@ -1,0 +1,67 @@
+# Rollback (docs/BUILD_POLICY.md section 15, docs/design/0006-releases-and-rollback.md).
+# Puts production back on an earlier release with one command:
+#
+#     gh workflow run rollback.yml                     # the release before the live one
+#     gh workflow run rollback.yml -f version=0.1.0    # a named release
+#
+# It picks the release's container image (by commit SHA, already in ECR) and
+# redeploys it through the Deploy workflow, which runs the same health gate and
+# puts the service back if that fails. The next merge to main deploys again, so
+# the rollback holds until a fix merges.
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release to roll back to, e.g. 0.1.0 (blank for the release before the live one)
+        type: string
+        required: false
+        default: ''
+
+# Not the Deploy workflow's own group (deploy-refs/heads/main): sharing it
+# would make this run wait on the deploy it calls.
+concurrency:
+  group: rollback
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  target:
+    name: Pick the release
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.target.outputs.version }}
+      image: ${{ steps.target.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      # Continuous deploy keeps main's image live, so main's head is the release
+      # to move away from; --by-image ignores commits that built no new image.
+      - id: target
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python -m ci.release rollback-target --by-image --version "${VERSION}" --head "${GITHUB_SHA}" \
+            | tee -a "${GITHUB_OUTPUT}"
+      - env:
+          VERSION: ${{ steps.target.outputs.version }}
+          IMAGE: ${{ steps.target.outputs.sha }}
+        run: echo "Rolling back to v${VERSION} (image ${IMAGE})" >> "${GITHUB_STEP_SUMMARY}"
+
+  deploy:
+    name: Redeploy the release
+    needs: target
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image_tag: ${{ needs.target.outputs.image }}
+    permissions:
+      contents: read
+      id-token: write

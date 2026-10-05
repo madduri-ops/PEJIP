@@ -21,6 +21,15 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   deletion of stored data.
 - The ranking pipeline is scored against the golden evaluation set in CI, from
   recorded model output on every change and live when prompts or AI code change.
+- One-command production rollback: `gh workflow run rollback.yml` redeploys the
+  previous (or a named) release through the deploy health gate.
+- Each release's container image is tagged with its version and kept, so it stays
+  available to roll back to.
+- Hosting for `https://job-search.zephyr-mcg.com` in Terraform: VPC, load balancer
+  with WAF and HTTPS certificate, ECS Fargate service, service alarms and a daily
+  retention purge schedule (off until the app has a database).
+- Production container image, scanned on every pull request, and continuous deploy
+  on `main` with a health gate, automatic rollback and email on the result.
 
 ### Security
 

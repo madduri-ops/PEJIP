@@ -1,8 +1,6 @@
 # 0006: Releases and rollback
 
-_Status: implemented (versioning, changelog, releases, CI rollback drill); the
-one-command production rollback lands with the deploy workflow. Last updated:
-2026-10-05._
+_Status: implemented. Last updated: 2026-10-05._
 
 ## Purpose
 
@@ -22,14 +20,15 @@ In scope:
 - `.github/workflows/release.yml`: run on `main`, tags the release and publishes its
   GitHub Release.
 - `ci/rollback_drill.py` and the **Rollback drill** CI job.
+- `.github/workflows/rollback.yml`: the one-command production rollback.
 
 Out of scope here, and where it lands:
 
-- Building and pushing images, the ECS service, the post-deploy health gate and the
-  automatic rollback when it fails: the deploy workflow (app hosting and deploy).
-- `.github/workflows/rollback.yml`, the one-command production rollback: added in
-  the PR after the deploy workflow merges, because it calls that workflow (see
-  [Rollback](#rollback)).
+- The automatic rollback when the post-deploy health gate fails: inside the Deploy
+  workflow (ECS circuit breaker with rollback, then putting the service back on the
+  previous task definition if any later step fails).
+- Building and pushing images, the ECS rollout and its health gate: the Deploy
+  workflow ([ADR-0005](../adr/0005-app-hosting-and-continuous-deploy.md)), which `rollback.yml` calls.
 - Database migrations: none exist yet. When the first one lands, the drill is
   extended to run the previous release against the database migrated by the
   current build (see [Non-functional considerations](#non-functional-considerations)).
@@ -74,38 +73,56 @@ image can run in the same job; and no one needs push rights for tags.
 
 ### Rollback
 
-Continuous deploy ships every merge to `main`, so the live build is `main`'s head.
-The rollback target is therefore:
+Continuous deploy ships every main commit that changes the image (the Deploy
+workflow's push paths: `src/`, `pyproject.toml`, `Dockerfile`, `.dockerignore`,
+`deploy.yml`), tagging the image in ECR with that commit's full SHA. So:
 
-- the release named by the operator, or else
-- the newest release tag whose commit is not the live commit: the newest release when
-  `main` is ahead of it, or the release before it when `main` is exactly a release.
+- a commit's **image commit** is the last commit at or before it that touched those
+  paths (`python -m ci.release image-commit SHA`); and
+- the live image is the image commit of `main`'s head.
 
-`python -m ci.release rollback-target [--version X.Y.Z] --head SHA` prints the
-target's `version` and commit `sha` in `GITHUB_OUTPUT` form.
+The rollback target is the release named by the operator, or else the newest
+release whose image commit is not the live one. Comparing image commits means a
+docs-only commit after a release doesn't count as a new build, so the default is
+always a release that changes what runs.
+`python -m ci.release rollback-target --by-image [--version X.Y.Z] --head SHA` prints
+the target's `version` and image commit `sha` in `GITHUB_OUTPUT` form.
 
-Interface with the deploy workflow (proposed to the app hosting and deploy work; it confirms or adjusts this in its PR):
+The one documented command is the Rollback workflow, `workflow_dispatch` on `main`:
 
-- Every image pushed from `main` is tagged with its full commit SHA (ECR tags are
-  immutable), so a release's image is found from its tag's commit without retagging.
-- The deploy workflow accepts `workflow_call` with an `image_tag` input, deploys that
-  existing image and runs the post-deploy health gate. A failed health gate rolls back
-  automatically inside the deploy workflow (ECS deployment circuit breaker with
-  rollback, or redeploying the previous task definition).
-- `rollback.yml` (follow-up PR) is `workflow_dispatch` on `main` with an optional
-  `version` input. It runs `rollback-target`, then calls the deploy workflow with the
-  target's commit SHA. That is the one documented command:
+```sh
+gh workflow run rollback.yml                     # the release before the live one
+gh workflow run rollback.yml -f version=0.1.0    # a named release
+```
 
-  ```sh
-  gh workflow run rollback.yml            # previous release
-  gh workflow run rollback.yml -f version=0.1.0
-  ```
+```mermaid
+sequenceDiagram
+    participant O as Operator
+    participant R as Rollback workflow
+    participant D as Deploy workflow
+    participant E as ECS pejip-prod
+    O->>R: gh workflow run rollback.yml [-f version]
+    R->>R: rollback-target --by-image (release, image SHA)
+    R->>D: workflow_call image_tag = image SHA
+    D->>D: image exists in ECR? (else fail)
+    D->>E: new task definition revision, roll service
+    D->>D: health gate: /healthz ok and version = release
+    D-->>E: on failure, back to the previous revision
+    D-->>O: email result
+```
 
-  The next merge to `main` deploys again, so a rollback holds until the fix merges.
-- The ECR lifecycle policy (deploy work) keeps the last 100 images tagged `v*` and
-  the last 10 of the rest. With the deploy workflow, the Release workflow gains a step
-  that adds `vX.Y.Z` to the release's SHA-tagged image (re-putting its manifest with
-  the deploy role), so release images survive and stay available to roll back to.
+- `rollback.yml` must not use the Deploy workflow's own concurrency group
+  (`deploy-refs/heads/main`), or it would wait on the deploy it calls; it uses
+  `rollback`. It grants the called workflow `id-token: write` for the main-only
+  deploy role.
+- The next merge to `main` that changes the image deploys again, so a rollback holds
+  until the fix merges.
+- **Keeping release images:** the ECR lifecycle policy keeps the last 100 images
+  tagged `v*` and the last 10 of the rest. The Release workflow's **Tag the release
+  image** job (once `DEPLOY_ENABLED` is on) finds the release's image commit, waits
+  for a deploy of it still in flight, and adds the `vX.Y.Z` tag by re-putting the same
+  manifest, so the digest is unchanged and the image outlives the 10-image window.
+  Releases cut before deploys were enabled (v0.1.0) have no image to roll back to.
 
 ### Rollback drill
 
@@ -125,7 +142,8 @@ A failure in any step fails the job, which is a required check.
 ## Interfaces
 
 - `python -m ci.release check | version | prepare X.Y.Z | check-tag vX.Y.Z | notes X.Y.Z |
-  rollback-target [--version X.Y.Z] [--head SHA] [--fallback-parent]`; exit code 1 and
+  image-commit SHA | rollback-target [--version X.Y.Z] [--head SHA]
+  [--fallback-parent | --by-image]`; exit code 1 and
   a `::error::` annotation on any broken rule.
 - `python -m ci.rollback_drill --current PY --previous PY --previous-version X.Y.Z
   [--port 8000] [--timeout 30]`.

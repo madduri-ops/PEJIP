@@ -4,9 +4,11 @@
 #     gh workflow run release.yml
 #
 # It checks CHANGELOG.md and pyproject.toml agree, then tags main's head
-# vX.Y.Z and publishes a GitHub Release with that version's notes. Running from
-# main (not on a tag push) means only gated code is released, and is what lets a
-# later step use the main-only deploy role.
+# vX.Y.Z and publishes a GitHub Release with that version's notes. Once deploys
+# are on, it also tags the release's container image vX.Y.Z in ECR, which the
+# lifecycle policy keeps, so the release stays available to roll back to.
+# Running from main (not on a tag push) means only gated code is released, and is
+# what lets the image step use the main-only deploy role.
 name: Release
 
 on:
@@ -26,6 +28,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -56,3 +60,51 @@ jobs:
         run: >-
           gh release create "v${VERSION}" --target "${GITHUB_SHA}"
           --title "v${VERSION}" --notes-file release-notes.md
+
+  image:
+    name: Tag the release image
+    needs: release
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      REPOSITORY: pejip
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      # The image is tagged with the last commit that changed what goes into it.
+      - id: image
+        run: echo "sha=$(python -m ci.release image-commit "${GITHUB_SHA}")" >> "${GITHUB_OUTPUT}"
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-west-2
+      # Waits for a deploy of that commit still in flight, then adds the version
+      # tag to the same manifest (no rebuild, so the digest is unchanged).
+      - name: Add the version tag to the image
+        env:
+          IMAGE_SHA: ${{ steps.image.outputs.sha }}
+        run: |
+          for _ in $(seq 1 60); do
+            if aws ecr describe-images --repository-name "${REPOSITORY}" \
+                --image-ids "imageTag=${IMAGE_SHA}" > /dev/null 2>&1; then
+              read -r media_type < <(aws ecr batch-get-image --repository-name "${REPOSITORY}" \
+                --image-ids "imageTag=${IMAGE_SHA}" --query 'images[0].imageManifestMediaType' --output text)
+              manifest=$(aws ecr batch-get-image --repository-name "${REPOSITORY}" \
+                --image-ids "imageTag=${IMAGE_SHA}" --query 'images[0].imageManifest' --output text)
+              aws ecr put-image --repository-name "${REPOSITORY}" --image-tag "v${VERSION}" \
+                --image-manifest "${manifest}" --image-manifest-media-type "${media_type}" > /dev/null
+              echo "Tagged ${REPOSITORY}:${IMAGE_SHA} as v${VERSION}"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::No image ${REPOSITORY}:${IMAGE_SHA} in ECR after 20 minutes; was that commit deployed?"
+          exit 1
