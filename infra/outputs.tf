@@ -56,3 +56,24 @@ output "google_redirect_uri" {
   description = "Add as an authorized redirect URI on the Google OAuth client."
   value       = "https://${var.domain_name}/oauth2/idpresponse"
 }
+
+output "inbox_address" {
+  description = "Forward job-alert emails here."
+  value       = local.inbox_address
+}
+
+output "inbox_dns_records" {
+  description = "Add both at the zephyr-mcg.com registrar so SES can verify the domain and receive its mail."
+  value = [
+    {
+      name  = "_amazonses.${var.inbox_domain}"
+      type  = "TXT"
+      value = aws_ses_domain_identity.inbox.verification_token
+    },
+    {
+      name  = var.inbox_domain
+      type  = "MX"
+      value = "10 inbound-smtp.${var.aws_region}.amazonaws.com"
+    },
+  ]
+}
