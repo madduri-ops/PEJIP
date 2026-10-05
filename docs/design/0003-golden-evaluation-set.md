@@ -14,8 +14,9 @@ baseline that only goes up.
 ## Scope
 
 In scope: the labelled cases and synthetic profile, the scorer contract, metrics,
-the baseline ratchet and a CLI. The Python CI pipeline runs its tests; a CI step
-that runs the scorer against the baseline lands with the scorer.
+the baseline ratchet, a CLI and the `Golden evaluation set` CI job (a required
+check) that validates the set. The step that runs the scorer against the baseline
+lands in that job with the scorer.
 
 Out of scope: the scorer itself (the scoring pipeline owns it and plugs in through
 the contract below), scope-inference and role-family accuracy metrics (labelled now,

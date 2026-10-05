@@ -1,0 +1,347 @@
+# Application CI (docs/BUILD_POLICY.md sections 1-4, ADR-0002).
+# Stages: lint, then unit tests, then integration + system + SAST + dependency
+# audit in parallel, then DAST; the coverage gate combines every test stage.
+# Every gate fails the build. Scanners that only report (bandit, grype, ZAP) feed
+# ci/severity_gate.py, which blocks on high and critical findings.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.12'
+  GITLEAKS_VERSION: 8.30.1
+  TF_VERSION: 1.13.3
+  TFLINT_VERSION: v0.64.0
+  ZAP_IMAGE: ghcr.io/zaproxy/zaproxy:stable
+
+jobs:
+  # Docs-only changes skip the app stages. Skipped jobs count as passed for
+  # required checks, so this job is itself required: if it fails, nothing passes.
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'tests/**'
+              - 'ci/**'
+              - 'pyproject.toml'
+              - '.coverage-baseline.json'
+              - 'eval/**'
+              - '.github/workflows/ci.yml'
+
+  # Hooks and the secrets scan run on every change, docs included.
+  hooks:
+    name: Pre-commit hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+      - uses: terraform-linters/setup-tflint@v6
+        with:
+          tflint_version: ${{ env.TFLINT_VERSION }}
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      # The tflint hook downloads its AWS ruleset; authenticate to avoid rate limits.
+      - run: pre-commit run --all-files --show-diff-on-failure
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+  secrets:
+    name: Secrets scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks (checksum verified)
+        working-directory: ${{ runner.temp }}
+        run: |
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl -sSfLO "${base}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -sSfLO "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          sha256sum --check --ignore-missing "gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          tar -xzf "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" gitleaks
+          echo "${RUNNER_TEMP}" >> "${GITHUB_PATH}"
+      # Full history; any finding blocks.
+      - run: gitleaks git --redact --verbose --report-format sarif --report-path gitleaks.sarif .
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitleaks-report
+          path: gitleaks.sarif
+          if-no-files-found: ignore
+
+  lint:
+    name: Lint
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      # Ruff has no warning level, so the lint warning threshold is zero.
+      - run: ruff check --output-format=github .
+      - run: ruff format --check .
+      - run: mypy
+
+  unit:
+    name: Unit tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: pytest tests/unit --cov --cov-report= --junitxml=reports/unit.xml
+        env:
+          COVERAGE_FILE: .coverage.unit
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit
+          path: |
+            .coverage.unit*
+            reports/
+          include-hidden-files: true
+
+  # Golden evaluation set (policy section 12, docs/design/0003-golden-evaluation-set.md).
+  # Validates the labelled set; the scoring pipeline adds its
+  # `python -m pejip.evaluation run --scorer ...` step here, which fails below
+  # eval/baseline.json.
+  eval:
+    name: Golden evaluation set
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: python -m pejip.evaluation validate
+
+  integration:
+    name: Integration tests
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: pytest tests/integration --cov --cov-report= --junitxml=reports/integration.xml
+        env:
+          COVERAGE_FILE: .coverage.integration
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-integration
+          path: |
+            .coverage.integration*
+            reports/
+          include-hidden-files: true
+
+  # Builds the wheel, checks it ships no dev, demo or test code, then runs the
+  # system and API smoke tests against the installed wheel, not the source tree.
+  system:
+    name: System tests
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: python -m build --wheel --outdir dist
+      - run: python -m ci.check_wheel dist/*.whl
+      - run: pip install --force-reinstall --no-deps dist/*.whl
+      - run: pytest tests/system --cov --cov-report= --junitxml=reports/system.xml
+        env:
+          COVERAGE_FILE: .coverage.system
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-system
+          path: |
+            .coverage.system*
+            reports/
+          include-hidden-files: true
+      - uses: actions/upload-artifact@v7
+        with:
+          name: wheel
+          path: dist/
+
+  sast:
+    name: SAST
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      # Report mode keeps every finding in the artifact; the next step is the gate.
+      - run: bandit -c pyproject.toml -r src ci -f json -o bandit-report.json --exit-zero
+      - run: python -m ci.severity_gate bandit bandit-report.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sast-report
+          path: bandit-report.json
+          if-no-files-found: ignore
+
+  dependency-audit:
+    name: Dependency audit
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      # Audit the exact resolved environment, runtime and dev dependencies alike.
+      - run: mkdir audit && pip freeze --exclude-editable > audit/requirements.txt
+      # Report mode keeps every finding in the artifact; the next step is the gate.
+      - uses: anchore/scan-action@v7
+        with:
+          path: audit
+          fail-build: false
+          output-format: json
+          output-file: grype-report.json
+      - run: python -m ci.severity_gate grype grype-report.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dependency-audit-report
+          path: |
+            grype-report.json
+            audit/requirements.txt
+          if-no-files-found: ignore
+
+  # Baseline scan plus active API scan of every route in the OpenAPI document,
+  # against the installed app served the way production serves it.
+  dast:
+    name: DAST
+    needs: [integration, system, sast, dependency-audit]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: wheel
+          path: dist
+      - run: pip install dist/*.whl
+      - name: Start the app
+        run: |
+          nohup python -m pejip.api > server.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -sSf http://127.0.0.1:8000/healthz && exit 0
+            sleep 1
+          done
+          cat server.log
+          exit 1
+      # -I stops ZAP failing on its own warning levels; scan errors still fail.
+      # The severity gate below decides, blocking on high risk.
+      - name: ZAP API scan
+        run: |
+          mkdir -p zap && chmod 777 zap
+          docker run --rm --network host -v "${PWD}/zap:/zap/wrk:rw" "${ZAP_IMAGE}" \
+            zap-api-scan.py -t http://127.0.0.1:8000/openapi.json -f openapi \
+            -J zap-report.json -r zap-report.html -I
+      - run: python -m ci.severity_gate zap zap/zap-report.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: dast-report
+          path: |
+            zap/
+            server.log
+          if-no-files-found: ignore
+
+  # Combines unit, integration and system coverage and enforces 100% line,
+  # 95% branch and the committed baseline, which can never be lowered.
+  coverage:
+    name: Coverage gate
+    needs: [unit, integration, system]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-*
+          merge-multiple: true
+      - run: coverage combine
+      - run: coverage report
+      - run: coverage html -d coverage-html
+      - run: coverage json -o coverage.json
+      - name: Coverage gate and ratchet
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          args=()
+          if [ -n "${BASE_REF}" ] && git cat-file -e "origin/${BASE_REF}:.coverage-baseline.json" 2>/dev/null; then
+            git show "origin/${BASE_REF}:.coverage-baseline.json" > base-baseline.json
+            args=(--base-baseline base-baseline.json)
+          fi
+          python -m ci.coverage_gate "${args[@]}"
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: |
+            coverage-html/
+            coverage.json
+          if-no-files-found: ignore

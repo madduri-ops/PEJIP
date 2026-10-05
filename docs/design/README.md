@@ -10,4 +10,5 @@ consequences also get an ADR in [docs/adr/](../adr/).
 
 | Doc | Status |
 |---|---|
-| [0003: Golden evaluation set](0003-golden-evaluation-set.md) | implemented |
+| [0001: CI pipeline and health endpoint](0001-ci-pipeline.md) | Implemented |
+| [0003: Golden evaluation set](0003-golden-evaluation-set.md) | Implemented |

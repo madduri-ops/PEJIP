@@ -23,7 +23,20 @@
       "type": "required_status_checks",
       "parameters": {
         "strict_required_status_checks_policy": true,
-        "required_status_checks": []
+        "required_status_checks": [
+          { "context": "Detect changes", "integration_id": 15368 },
+          { "context": "Pre-commit hooks", "integration_id": 15368 },
+          { "context": "Secrets scan", "integration_id": 15368 },
+          { "context": "Lint", "integration_id": 15368 },
+          { "context": "Unit tests", "integration_id": 15368 },
+          { "context": "Integration tests", "integration_id": 15368 },
+          { "context": "System tests", "integration_id": 15368 },
+          { "context": "SAST", "integration_id": 15368 },
+          { "context": "Dependency audit", "integration_id": 15368 },
+          { "context": "DAST", "integration_id": 15368 },
+          { "context": "Coverage gate", "integration_id": 15368 },
+          { "context": "Golden evaluation set", "integration_id": 15368 }
+        ]
       }
     }
   ]

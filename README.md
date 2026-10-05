@@ -87,8 +87,9 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 ## Status
 
 The Phase 1 (FIND) specification is complete. The build policy, repository hygiene,
-documentation skeletons, foundation AWS infrastructure and the golden evaluation set
-for rankings are in place; application code has not landed yet.
+documentation skeletons and foundation AWS infrastructure are in place, along with
+the Python CI pipeline, a health endpoint and the golden evaluation set for rankings;
+feature code has not landed yet.
 
 ## Getting started
 
@@ -105,8 +106,10 @@ part of the app lands.
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`src/pejip/`](src/pejip/) | Application code (Python package) |
+| [`tests/`](tests/) | Unit, integration and system tests |
+| [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) |
 | [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
-| [`src/pejip/evaluation/`](src/pejip/evaluation/) | Harness that scores a ranking implementation against the golden set |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
