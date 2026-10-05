@@ -20,8 +20,34 @@ Infrastructure work in `infra/` also needs [Terraform](https://developer.hashico
 the pre-commit hooks run `terraform fmt` and `tflint`, and CI adds `terraform validate`,
 checkov and, on pull requests, `terraform plan`. See [infra/README.md](infra/README.md).
 
-Language-specific setup (runtimes, package installs, test commands) is added here as
-each part of the app lands.
+### Python
+
+The app is Python 3.12 in `src/pejip/` (see
+[ADR-0002](docs/adr/0002-python-toolchain-and-ci-gates.md)). Install it with its dev
+tools into a virtual environment; the pre-commit `mypy` hook uses this install:
+
+```sh
+python3.12 -m venv .venv && . .venv/bin/activate
+pip install -e '.[dev]'
+```
+
+Run what CI runs:
+
+```sh
+ruff check . && ruff format --check . && mypy          # lint
+COVERAGE_FILE=.coverage.unit pytest tests/unit --cov --cov-report=
+COVERAGE_FILE=.coverage.integration pytest tests/integration --cov --cov-report=
+COVERAGE_FILE=.coverage.system pytest tests/system --cov --cov-report=
+coverage combine && coverage json -o coverage.json && python -m ci.coverage_gate
+```
+
+Tests go in `tests/unit/`, `tests/integration/` or `tests/system/`; the directory
+decides the CI stage. Coverage must stay at 100% line and at or above the branch
+baseline in `.coverage-baseline.json`. When your change raises coverage, run
+`python -m ci.coverage_gate --update` and commit the new baseline; it can never be
+lowered. Run the API locally with `python -m pejip.api` (http://127.0.0.1:8000/healthz).
+
+Language-specific setup for any other part of the app is added here as it lands.
 
 ## Making a change
 

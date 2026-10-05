@@ -10,3 +10,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 
 | Doc | Status |
 |---|---|
+| [0001: CI pipeline and health endpoint](0001-ci-pipeline.md) | Implemented |
