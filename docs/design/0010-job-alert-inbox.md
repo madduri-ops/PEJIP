@@ -67,12 +67,20 @@ flowchart LR
   Its text is the title, and the text after it (up to six short lines) is the
   location and the description. Links that name an action ("View job", "Apply")
   or a confirmation are not roles.
+- A job board's alerts (LinkedIn) list many employers' roles. For a company
+  marked `job_board`, the employer and location come from the line under each
+  link ("Acme · San Jose, CA", or the next line), and `job_id_pattern` cuts the
+  role id out of the link so tracking variants stay one role. PEJIP never opens
+  LinkedIn links.
+- Alerts Babu forwards by hand are read too, whether forwarded inline or as an
+  attached message (`message/rfc822`).
 - The roles then go through the same title and geography filter, analysis and
   scoring as board postings. An alert carries little text, so analysis usually
   rates Confidence low until the linked page can be read.
-- An email that lists no roles, such as a sign-up check, becomes a digest note
-  with its sender, subject and any confirm or verify links, so Babu can finish the
-  sign-up from the digest. PEJIP never opens those links itself.
+- A configured site's sign-up check becomes a digest note with its sender,
+  subject and confirm link, so Babu can finish the sign-up from the digest. PEJIP
+  never opens those links itself. Any other email without roles is deleted and
+  only counted (see the LinkedIn section below).
 - Messages are never logged, only counts. A failure to list, read or delete marks
   the inbox FAILED in the digest's search health; the boards still run, and an
   unread message stays in the bucket for the next run.
@@ -109,6 +117,24 @@ one day.
   documented in `inbox.tf`.
 - **Cost:** SES receiving is $0.10 per 1,000 emails plus a little S3; a few
   alerts a day costs well under $1 a month.
+
+### LinkedIn alerts from Babu's mailbox
+
+Babu gets LinkedIn job alerts at his personal Yahoo address. On 2026-10-05 Babu
+chose Yahoo Mail Plus auto-forwarding (decision card), which forwards his whole
+mailbox. So the reader treats every email without roles as private: it is deleted,
+only counted in the digest, and its sender and subject are never shown or logged.
+A sign-up check is surfaced only when its confirm link points at a configured
+site. The options were:
+
+- Forwarding chosen alerts by hand to the alerts address (recommended): only
+  what Babu picks reaches PEJIP.
+- Making the alerts address LinkedIn's primary email: automatic, but every
+  LinkedIn email, including password resets, would land in PEJIP's bucket.
+- Yahoo auto-forwarding: needs the paid Yahoo Mail Plus and copies the whole
+  mailbox, not just LinkedIn mail, so it is a privacy problem.
+- Yahoo IMAP with a stored app password: ruled out, as the build policy forbids
+  long-lived credentials.
 
 ## Alternatives considered
 

@@ -2,7 +2,10 @@
 
 SES stores each email received at ``alerts@inbox.job-search.zephyr-mcg.com`` whole
 (MIME) in an encrypted bucket. A run lists the new messages, turns every link to a
-configured company's careers pages into a posting, and deletes the message.
+configured company's careers pages (or a configured job board's role pages) into a
+posting, and deletes the message. Alerts forwarded from Babu's mailbox work too, inline or
+as attached messages. That forwarding brings his other mail as well, so an email
+with no roles is deleted unread unless it is a configured site's sign-up check.
 
 Nothing here fetches the career sites: a posting carries only what the alert said
 (title, the text beside the link, the link itself). Messages are never logged
@@ -43,6 +46,8 @@ _NOT_A_ROLE = re.compile(f"{_GENERIC_TEXT.pattern}|{_CONFIRM_TEXT.pattern}", re.
 _URL = re.compile(r"https?://[^\s<>\"')\]]+")
 # Query parameters that only track the click; dropping them keeps one id per role.
 _TRACKING = re.compile(r"^(utm_.*|src|source|ref|refid|trk|tracking.*|mc_.*|_hs.*|cid|eid)$", re.I)
+# How job boards write "Employer · Location" under a role.
+_EMPLOYER_SEPARATOR = re.compile(r"\s*[\u00b7\u2022|]\s*")
 
 
 class InboxError(FetchError):
@@ -203,15 +208,37 @@ def _canonical(url: str) -> str:
     return urlunsplit(("https", parts.netloc.lower(), parts.path.rstrip("/"), urlencode(query), ""))
 
 
-def _company_for(url: str, companies: list[AlertCompany]) -> str | None:
+def _company_for(url: str, companies: list[AlertCompany]) -> AlertCompany | None:
     parts = urlsplit(url)
     host, path = parts.netloc.lower(), parts.path.lower()
     for company in companies:
         for pattern in company.link_patterns:
             p_host, _, p_path = pattern.lower().partition("/")
-            if (host == p_host or host.endswith(f".{p_host}")) and path.startswith(f"/{p_path}"):
-                return company.company
+            prefix = "/" + p_path.strip("/")
+            in_path = prefix in ("/", path) or path.startswith(f"{prefix}/")
+            if (host == p_host or host.endswith(f".{p_host}")) and in_path:
+                return company
     return None
+
+
+def _role_key(url: str, company: AlertCompany) -> str:
+    if company.job_id_pattern:
+        match = re.search(company.job_id_pattern, url)
+        if match:
+            host = urlsplit(url).netloc.lower()
+            return f"https://{host}/{match.group(0).lstrip('/')}"
+    return _canonical(url)
+
+
+def _employer(context: list[str]) -> tuple[str, str, list[str]] | None:
+    """Employer, location and the rest, from the lines after a job board's link."""
+    if not context:
+        return None
+    employer, _, location = _EMPLOYER_SEPARATOR.sub(" \u00b7 ", context[0]).partition(" \u00b7 ")
+    rest = context[1:]
+    if not location and rest:
+        location, rest = rest[0], rest[1:]
+    return employer.strip(), location.strip(), rest
 
 
 def _clean_lines(lines: list[str]) -> list[str]:
@@ -220,28 +247,40 @@ def _clean_lines(lines: list[str]) -> list[str]:
 
 
 def _postings(links: list[_Link], companies: list[AlertCompany]) -> Iterator[Posting]:
-    roles: dict[str, tuple[str, str, list[str]]] = {}
+    seen: set[str] = set()
     for link in links:
         url = _unwrap(link.url)
         company = _company_for(url, companies)
         title = link.text.strip()[:MAX_TITLE_CHARS]
         if company is None or not title or _NOT_A_ROLE.search(title):
             continue
-        key = _canonical(url)
-        if key not in roles:
-            roles[key] = (company, title, _clean_lines(link.after))
-    for key, (company, title, context) in roles.items():
-        location = context[0] if context else ""
-        lines = [f"{title} at {company}, from a job-alert email.", *context]
+        key = _role_key(url, company)
+        if key in seen:
+            continue
+        seen.add(key)
+        context = _clean_lines(link.after)
+        extra = {"origin": "job_alert_email"}
+        if company.job_board:
+            found = _employer(context)
+            if found is None or not found[0]:
+                continue
+            employer, location, context = found
+            extra["job_board"] = company.company
+            lines = [f"{title} at {employer}, from a {company.company} job-alert email."]
+            lines += [location, *context] if location else context
+        else:
+            employer = company.company
+            location = context[0] if context else ""
+            lines = [f"{title} at {employer}, from a job-alert email.", *context]
         yield Posting(
             source=SOURCE,
             source_job_id=key[-255:],
-            company=company,
+            company=employer,
             title=title,
             location=location,
             description="\n".join(lines),
             url=key,
-            extra={"origin": "job_alert_email"},
+            extra=extra,
         )
 
 
@@ -253,12 +292,28 @@ def _body(message: EmailMessage) -> tuple[str, bool]:
     return str(content), part.get_content_subtype() == "html"
 
 
+def _messages(message: EmailMessage) -> Iterator[EmailMessage]:
+    """The email itself and any emails attached to it (an alert forwarded as an attachment)."""
+    yield message
+    for part in message.iter_attachments():
+        if part.get_content_type() == "message/rfc822":
+            yield from _messages(cast(EmailMessage, part.get_content()))
+
+
 def parse_alert(raw: bytes, companies: list[AlertCompany]) -> AlertMessage:
     """Turn one raw email into the roles it lists."""
     message = message_from_bytes(raw, policy=policy.default)
-    body, is_html = _body(message)
-    links = _html_links(body) if is_html else _text_links(body)
-    confirm = [_unwrap(link.url) for link in links if _CONFIRM_TEXT.search(link.text)]
+    links: list[_Link] = []
+    for part in _messages(message):
+        body, is_html = _body(part)
+        links += _html_links(body) if is_html else _text_links(body)
+    # Only a configured site's sign-up check counts; the inbox may also receive
+    # Babu's other mail (forwarded from Yahoo), which is never surfaced.
+    confirm = [
+        url
+        for url in (_unwrap(link.url) for link in links if _CONFIRM_TEXT.search(link.text))
+        if _company_for(url, companies) is not None
+    ]
     return AlertMessage(
         sender=parseaddr(str(message.get("From", "")))[1],
         subject=" ".join(str(message.get("Subject", "")).split()),

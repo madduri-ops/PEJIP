@@ -133,6 +133,7 @@ class Pipeline:
     ) -> SourceResult:
         """Turn new job-alert emails into roles, then delete them (design doc 0010)."""
         result = SourceResult("Job-alert inbox (email)", "OK")
+        ignored = 0
         try:
             for key in inbox.message_keys():
                 alert = parse_alert(inbox.read(key), companies)
@@ -142,19 +143,25 @@ class Pipeline:
                         result.candidates += 1
                         upsert = self.store.upsert_job(posting, now)
                         seen.append((upsert.job_id, upsert.discovery))
-                if not alert.postings:
-                    notes.append(_unread_note(alert.sender, alert.subject, alert.confirm_links))
+                if alert.confirm_links:
+                    notes.append(_confirm_note(alert.sender, alert.subject, alert.confirm_links))
+                elif not alert.postings:
+                    ignored += 1
                 inbox.delete(key)
         except FetchError as exc:
             result.status, result.error = "FAILED", str(exc)
             log.warning("source_failed", extra={"source": result.name})
             return result
+        if ignored:
+            # A count only: these may be Babu's personal emails (policy section 10).
+            notes.append(f"Job-alert inbox: {ignored} other emails had no roles and were deleted.")
         log.info(
             "source_fetched",
             extra={
                 "source": result.name,
                 "fetched": result.fetched,
                 "candidates": result.candidates,
+                "ignored_emails": ignored,
             },
         )
         return result
@@ -239,10 +246,8 @@ class Pipeline:
         }
 
 
-def _unread_note(sender: str, subject: str, confirm_links: list[str]) -> str:
-    """A digest line for an inbox email that listed no roles, such as a sign-up check."""
-    note = f"Job-alert inbox: an email from {sender or 'an unknown sender'} "
-    note += f'("{subject or "no subject"}") listed no roles.'
-    if confirm_links:
-        note += " To confirm the alert, open: " + ", ".join(confirm_links)
+def _confirm_note(sender: str, subject: str, confirm_links: list[str]) -> str:
+    """A digest line for a job site's sign-up check, so Babu can finish signing up."""
+    note = f"Job-alert inbox: {sender or 'a job site'} asks you to confirm an alert "
+    note += f'("{subject or "no subject"}"). Open: ' + ", ".join(confirm_links)
     return note
