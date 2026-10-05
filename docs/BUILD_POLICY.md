@@ -83,7 +83,10 @@ dashboard. The full decision is [ADR-0001](adr/0001-aws-hosting-isolated-from-kr
   public access blocked, S3 native locking.
 - **Deploy identity:** GitHub Actions assumes `pejip-github-deploy` (trusts only
   `main` of `madduri-ops/PEJIP`) to deploy, and `pejip-github-plan` (pull requests,
-  read only) for `terraform plan`. Both are scoped to `pejip` resource ARNs. Role
+  read only) for `terraform plan`. Both are scoped to `pejip` resource ARNs. Trust
+  matches GitHub's OIDC `sub` claim with immutable IDs
+  (`repo:madduri-ops@289717107/PEJIP@1404604379:...`), so a renamed or re-created
+  repository cannot assume them. Role
   ARNs are GitHub Actions variables; no AWS keys exist in GitHub or the repo.
 - **Images:** ECR repository `pejip` with immutable tags (commit SHA and release
   version), scan on push, last 10 images kept.

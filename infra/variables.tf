@@ -28,6 +28,18 @@ variable "github_repo" {
   default     = "PEJIP"
 }
 
+variable "github_owner_id" {
+  description = "Numeric GitHub ID of the owner. GitHub puts it in the OIDC sub claim, so a renamed or re-created account can't match."
+  type        = string
+  default     = "289717107"
+}
+
+variable "github_repo_id" {
+  description = "Numeric GitHub ID of the PEJIP repository, as it appears in the OIDC sub claim."
+  type        = string
+  default     = "1404604379"
+}
+
 variable "kms_key_id" {
   description = "ID of the bootstrap KMS key behind alias/pejip (ADR-0001). Imported, not created."
   type        = string

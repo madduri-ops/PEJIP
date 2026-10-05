@@ -22,6 +22,9 @@ the service alarms land with the first app code, when there is something to run.
 The state bucket `pejip-tfstate-275704950192` and KMS key `alias/pejip` were created
 from CloudShell on 2026-10-04, and the `Project` cost allocation tag was activated.
 
+The first `terraform apply` ran from CloudShell on 2026-10-04 (2 imported, 10 added,
+1 changed), and the GitHub variables and secret below were set the same day.
+
 ## Applying
 
 Until the CD workflow lands, Babu applies from AWS CloudShell in `us-west-2`:
