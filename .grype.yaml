@@ -1,0 +1,14 @@
+# Image scan exceptions (docs/BUILD_POLICY.md section 3). Every entry is a high or
+# critical finding with no fixed version available anywhere, accepted by Babu in
+# the PR that added it. Each is pinned to the exact package version, so an
+# upgraded or different package is scanned normally, and any other high or
+# critical finding still blocks. Remove an entry as soon as a fix ships.
+ignore:
+  # zlib in the python:3.12-alpine base. No fixed Alpine package exists yet
+  # (grype fix state empty, 2026-10-05). Python needs zlib, and every Alpine
+  # line ships 1.3.2. Accepted in PR #21. Review weekly with Dependabot's base
+  # image updates.
+  - vulnerability: CVE-2026-85091
+    package:
+      name: zlib
+      version: 1.3.2-r0

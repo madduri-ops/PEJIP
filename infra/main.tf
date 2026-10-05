@@ -10,6 +10,11 @@ locals {
 
   ecs_service_arn   = "arn:aws:ecs:${var.aws_region}:${local.account_id}:service/${local.name}/${local.name}"
   ecs_task_role_arn = "arn:aws:iam::${local.account_id}:role/pejip-ecs-*"
+
+  task_family_arn = "arn:aws:ecs:${var.aws_region}:${local.account_id}:task-definition/${local.name}"
+
+  log_group_name      = "/ecs/${local.name}"
+  flow_log_group_name = "/vpc/${local.name}/flow-logs"
 }
 
 data "aws_caller_identity" "current" {}

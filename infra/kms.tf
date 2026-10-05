@@ -61,4 +61,26 @@ data "aws_iam_policy_document" "kms" {
       values   = [local.account_id]
     }
   }
+
+  # CloudWatch Logs encrypts PEJIP's own log groups (app, VPC flow logs, WAF).
+  statement {
+    sid       = "PejipLogGroups"
+    actions   = ["kms:Encrypt", "kms:Decrypt", "kms:ReEncrypt*", "kms:GenerateDataKey*", "kms:Describe*"]
+    resources = ["*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["logs.${var.aws_region}.amazonaws.com"]
+    }
+
+    condition {
+      test     = "ArnLike"
+      variable = "kms:EncryptionContext:aws:logs:arn"
+      values = [
+        "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:${local.log_group_name}",
+        "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:${local.flow_log_group_name}",
+        "arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:aws-waf-logs-pejip",
+      ]
+    }
+  }
 }

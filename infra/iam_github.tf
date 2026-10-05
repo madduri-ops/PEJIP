@@ -76,6 +76,27 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["*"]
   }
 
+  # The workflow tags each revision it registers with Project = PEJIP, since
+  # provider default_tags don't reach revisions registered outside Terraform.
+  statement {
+    sid       = "EcsTagTaskDefinitions"
+    actions   = ["ecs:TagResource"]
+    resources = ["${local.task_family_arn}:*"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "ecs:CreateAction"
+      values   = ["RegisterTaskDefinition"]
+    }
+  }
+
+  # Deploy success and failure emails (policy section 6).
+  statement {
+    sid       = "NotifyDeploys"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.alerts.arn]
+  }
+
   statement {
     sid       = "PassPejipTaskRoles"
     actions   = ["iam:PassRole"]
@@ -200,6 +221,74 @@ data "aws_iam_policy_document" "plan" {
     sid       = "ReadBudget"
     actions   = ["budgets:ListTagsForResource", "budgets:ViewBudget"]
     resources = ["arn:aws:budgets::${local.account_id}:budget/pejip-*"]
+  }
+
+  # EC2, load balancer and ECS task definition descriptions have
+  # no resource-level permissions; AWS requires "*". All are read only.
+  statement {
+    sid = "ReadHostingDescriptions"
+    actions = [
+      "ec2:DescribeFlowLogs",
+      "ec2:DescribeInternetGateways",
+      "ec2:DescribeNetworkAcls",
+      "ec2:DescribeRouteTables",
+      "ec2:DescribeSecurityGroupRules",
+      "ec2:DescribeSecurityGroups",
+      "ec2:DescribeSubnets",
+      "ec2:DescribeVpcs",
+      "ecs:DescribeTaskDefinition",
+      "elasticloadbalancing:DescribeListenerAttributes",
+      "elasticloadbalancing:DescribeListeners",
+      "elasticloadbalancing:DescribeLoadBalancerAttributes",
+      "elasticloadbalancing:DescribeLoadBalancers",
+      "elasticloadbalancing:DescribeRules",
+      "elasticloadbalancing:DescribeTags",
+      "elasticloadbalancing:DescribeTargetGroupAttributes",
+      "elasticloadbalancing:DescribeTargetGroups",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid       = "ReadVpcAttributes"
+    actions   = ["ec2:DescribeVpcAttribute"]
+    resources = ["arn:aws:ec2:${var.aws_region}:${local.account_id}:vpc/*"]
+  }
+
+  statement {
+    sid       = "ReadCertificates"
+    actions   = ["acm:DescribeCertificate", "acm:ListTagsForCertificate"]
+    resources = ["arn:aws:acm:${var.aws_region}:${local.account_id}:certificate/*"]
+  }
+
+  statement {
+    sid       = "ReadLogGroups"
+    actions   = ["logs:DescribeLogGroups"]
+    resources = ["arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:*"]
+  }
+
+  statement {
+    sid       = "ReadEcs"
+    actions   = ["ecs:DescribeClusters", "ecs:DescribeServices", "ecs:ListTagsForResource"]
+    resources = ["arn:aws:ecs:${var.aws_region}:${local.account_id}:*/${local.name}*"]
+  }
+
+  statement {
+    sid       = "ReadLogGroupTags"
+    actions   = ["logs:ListTagsForResource", "logs:ListTagsLogGroup"]
+    resources = ["arn:aws:logs:${var.aws_region}:${local.account_id}:log-group:*pejip*"]
+  }
+
+  statement {
+    sid       = "ReadWaf"
+    actions   = ["wafv2:GetLoggingConfiguration", "wafv2:GetWebACL", "wafv2:GetWebACLForResource", "wafv2:ListTagsForResource"]
+    resources = ["arn:aws:wafv2:${var.aws_region}:${local.account_id}:regional/*/pejip-*/*", "arn:aws:elasticloadbalancing:${var.aws_region}:${local.account_id}:loadbalancer/app/pejip-*/*"]
+  }
+
+  statement {
+    sid       = "ReadSchedules"
+    actions   = ["scheduler:GetSchedule", "scheduler:ListTagsForResource"]
+    resources = ["arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/default/pejip-*"]
   }
 }
 

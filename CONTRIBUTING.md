@@ -52,6 +52,21 @@ The golden evaluation set lives in `eval/` and its harness in `src/pejip/evaluat
 set. A change to prompts, models, ranking logic or scoring weights must hold the
 evaluation baseline; see [eval/README.md](eval/README.md).
 
+### Container image
+
+The production image is built from the root `Dockerfile` (see
+[ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)). The `hadolint`
+pre-commit hook lints it and needs Docker. To check it the way CI does:
+
+```sh
+docker build -t pejip:local .
+docker run --rm --read-only --user 10001 -p 8000:8000 pejip:local   # http://127.0.0.1:8000/healthz
+```
+
+Pull requests that change `src/`, `pyproject.toml`, the `Dockerfile` or
+`.dockerignore` build, smoke test and scan the image in the `Container image` check.
+Merges to `main` that change them deploy to production through the Deploy workflow.
+
 Language-specific setup for any other part of the app is added here as it lands.
 
 ## Making a change

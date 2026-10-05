@@ -13,3 +13,4 @@ architecture, update [docs/architecture/](../architecture/) in the same PR.
 | [0001](0001-aws-hosting-isolated-from-kri.md) | Host PEJIP on AWS, isolated from the KRI dashboard | Accepted |
 | [0002](0002-python-toolchain-and-ci-gates.md) | Python toolchain and CI gates | Proposed |
 | [0004](0004-keyless-claude-access.md) | Keyless Claude access through Workload Identity Federation | Accepted |
+| [0005](0005-app-hosting-and-continuous-deploy.md) | Serve PEJIP from Fargate behind a WAF-fronted ALB, deployed by GitHub Actions | Accepted |

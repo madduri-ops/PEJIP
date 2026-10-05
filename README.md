@@ -88,8 +88,10 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 The Phase 1 (FIND) specification is complete. The build policy, repository hygiene,
 documentation skeletons and foundation AWS infrastructure are in place, along with
-the Python CI pipeline, a health endpoint and the golden evaluation set for rankings;
-feature code has not landed yet.
+the Python CI pipeline, a health endpoint and the golden evaluation set for rankings.
+The hosting stack and continuous deploy for `job-search.zephyr-mcg.com` are defined
+([ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)); feature code has
+not landed yet.
 
 ## Getting started
 
@@ -112,6 +114,7 @@ part of the app lands.
 | [`CHANGELOG.md`](CHANGELOG.md) | Changes in each release; versions are tagged `vMAJOR.MINOR.PATCH` |
 | [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
+| [`Dockerfile`](Dockerfile) | Production container image, deployed by the Deploy workflow |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
 

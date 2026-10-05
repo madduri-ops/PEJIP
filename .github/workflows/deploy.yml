@@ -1,0 +1,278 @@
+# Container image and continuous deploy (docs/BUILD_POLICY.md sections 5, 6
+# and 15, ADR-0005).
+#
+# Pull requests: build the image, run it read-only and hit /healthz, then scan it
+# (grype) with ci/severity_gate.py blocking on high and critical findings.
+# main: the same, then push the image to ECR by commit SHA, register a new
+# pejip-prod task definition revision, roll the service, wait for ECS to report
+# it stable on the new revision, then poll the public /healthz. If anything after
+# the rollout starts fails, the service is put back on the previous revision.
+# Babu gets an email through pejip-alerts on success and on failure.
+#
+# Deploys only run once the repository variable DEPLOY_ENABLED is "true", which
+# is set after the first `terraform apply` of the hosting stack (infra/README.md).
+#
+# Redeploying an image already in ECR (rollback): call this workflow, or run it
+# by hand, with `image_tag` set to that image's full commit SHA. Nothing is built;
+# the deploy job and its health gate run as usual. The releases rollback workflow
+# calls it this way (docs/design/0006-releases-and-rollback.md).
+name: Deploy
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'pyproject.toml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Full commit SHA of an image already in ECR to redeploy (blank builds and deploys this commit)
+        type: string
+        required: false
+        default: ''
+  workflow_call:
+    inputs:
+      image_tag:
+        description: Full commit SHA of an image already in ECR to redeploy
+        type: string
+        required: true
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  # A deploy is never cancelled halfway; a newer push waits its turn.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-west-2
+  REGISTRY: 275704950192.dkr.ecr.us-west-2.amazonaws.com
+  REPOSITORY: pejip
+  CLUSTER: pejip-prod
+  SERVICE: pejip-prod
+  TASK_FAMILY: pejip-prod
+  ALERTS_TOPIC_ARN: arn:aws:sns:us-west-2:275704950192:pejip-alerts
+
+jobs:
+  # Required check. On pull requests that can't change the image (docs, infra,
+  # tests) it passes without building, so it must stay a single job: a skipped
+  # job would also count as passed even if change detection had failed.
+  image:
+    name: Container image
+    if: ${{ !inputs.image_tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            image:
+              - 'src/**'
+              - 'pyproject.toml'
+              - 'Dockerfile'
+              - '.dockerignore'
+              - '.github/workflows/deploy.yml'
+      - id: build
+        if: github.event_name != 'pull_request' || steps.filter.outputs.image == 'true'
+        run: echo "needed=true" >> "${GITHUB_OUTPUT}"
+      - if: steps.build.outputs.needed
+        run: docker build --pull -t pejip:ci .
+      # Run it the way ECS does: read-only root filesystem, non-root user.
+      - name: Smoke test the container
+        if: steps.build.outputs.needed
+        run: |
+          docker run -d --name pejip --read-only --user 10001 -p 8000:8000 pejip:ci
+          for _ in $(seq 1 30); do
+            if curl -sSf http://127.0.0.1:8000/healthz; then
+              docker rm -f pejip
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs pejip
+          exit 1
+      # Report mode keeps every finding in the artifact; the severity gate decides.
+      - if: steps.build.outputs.needed
+        uses: anchore/scan-action@v7
+        with:
+          image: pejip:ci
+          fail-build: false
+          output-format: json
+          output-file: grype-image-report.json
+      - if: steps.build.outputs.needed
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - if: steps.build.outputs.needed
+        run: python -m ci.severity_gate grype grype-image-report.json
+      # On a blocked scan, show whether a fixed version exists for each blocker.
+      - name: Show fix availability for blocking findings
+        if: failure() && steps.build.outputs.needed
+        run: |
+          jq -r '.matches[] | select(.vulnerability.severity | test("High|Critical"))
+            | "\(.vulnerability.id) \(.artifact.name) \(.artifact.version) fix=\(.vulnerability.fix.state) \(.vulnerability.fix.versions | join(","))"' \
+            grype-image-report.json | sort -u
+      - if: always() && steps.build.outputs.needed
+        uses: actions/upload-artifact@v7
+        with:
+          name: container-scan-report
+          path: grype-image-report.json
+          if-no-files-found: ignore
+      - if: steps.build.outputs.needed && github.event_name != 'pull_request'
+        run: docker save pejip:ci | gzip > pejip-image.tar.gz
+      - if: steps.build.outputs.needed && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v7
+        with:
+          name: pejip-image
+          path: pejip-image.tar.gz
+          retention-days: 1
+
+  deploy:
+    name: Deploy to production
+    needs: image
+    # Runs after a successful build, or with no build when redeploying image_tag.
+    if: >-
+      !cancelled()
+      && (needs.image.result == 'success' || (needs.image.result == 'skipped' && inputs.image_tag))
+      && github.event_name != 'pull_request'
+      && github.ref == 'refs/heads/main'
+      && vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE_TAG: ${{ inputs.image_tag || github.sha }}
+      REDEPLOY: ${{ inputs.image_tag && 'true' || '' }}
+      APP_URL: ${{ vars.APP_URL || 'https://job-search.zephyr-mcg.com' }}
+    steps:
+      - uses: actions/checkout@v7
+      - if: ${{ !env.REDEPLOY }}
+        uses: actions/download-artifact@v8
+        with:
+          name: pejip-image
+      - if: ${{ !env.REDEPLOY }}
+        run: gunzip -c pejip-image.tar.gz | docker load
+      - uses: aws-actions/configure-aws-credentials@v6
+        id: aws
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Tags are immutable, so a re-run of the same commit reuses its image. A
+      # redeploy must name an image that is already there.
+      - name: Push the image to ECR
+        run: |
+          image="${REGISTRY}/${REPOSITORY}:${IMAGE_TAG}"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "${REGISTRY}"
+          if aws ecr describe-images --repository-name "${REPOSITORY}" --image-ids "imageTag=${IMAGE_TAG}" >/dev/null 2>&1; then
+            echo "${image} already in ECR"
+          elif [ -n "${REDEPLOY}" ]; then
+            echo "${image} is not in ECR; nothing to redeploy"
+            exit 1
+          else
+            docker tag pejip:ci "${image}"
+            docker push "${image}"
+          fi
+          echo "IMAGE=${image}" >> "${GITHUB_ENV}"
+
+      # The health gate checks that the live app reports this version.
+      - name: Read the image's version
+        run: |
+          if [ -n "${REDEPLOY}" ]; then docker pull -q "${IMAGE}"; fi
+          version=$(docker run --rm "${IMAGE}" python -c 'import pejip; print(pejip.__version__)')
+          echo "EXPECTED_VERSION=${version}" >> "${GITHUB_ENV}"
+          echo "Image ${IMAGE} is version ${version}"
+
+      - name: Record the running revision
+        id: previous
+        run: |
+          read -r task_definition desired < <(aws ecs describe-services --cluster "${CLUSTER}" --services "${SERVICE}" \
+            --query 'services[0].[taskDefinition,desiredCount]' --output text)
+          echo "task_definition=${task_definition}" >> "${GITHUB_OUTPUT}"
+          echo "desired=${desired}" >> "${GITHUB_OUTPUT}"
+          echo "Running ${task_definition} with ${desired} task(s)"
+
+      # Copies the latest revision (which carries any Terraform change to the task
+      # shape) and swaps in the new image.
+      - name: Register the new task definition
+        id: register
+        run: |
+          aws ecs describe-task-definition --task-definition "${TASK_FAMILY}" --query taskDefinition \
+            | jq --arg image "${IMAGE}" '
+                .containerDefinitions[0].image = $image
+                | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities,
+                      .registeredAt, .registeredBy, .deregisteredAt)' > task-definition.json
+          arn=$(aws ecs register-task-definition --cli-input-json file://task-definition.json \
+            --tags key=Project,value=PEJIP key=Application,value=pejip key=Environment,value=prod \
+                   key=ManagedBy,value=GitHubActions key=Owner,value=Babu "key=Commit,value=${IMAGE_TAG}" \
+            --query taskDefinition.taskDefinitionArn --output text)
+          echo "task_definition=${arn}" >> "${GITHUB_OUTPUT}"
+          echo "Registered ${arn}"
+
+      - name: Roll the service
+        env:
+          NEW_TASK_DEFINITION: ${{ steps.register.outputs.task_definition }}
+          PREVIOUS_DESIRED: ${{ steps.previous.outputs.desired }}
+        run: |
+          desired=$(( PREVIOUS_DESIRED > 0 ? PREVIOUS_DESIRED : 1 ))
+          aws ecs update-service --cluster "${CLUSTER}" --service "${SERVICE}" \
+            --task-definition "${NEW_TASK_DEFINITION}" --desired-count "${desired}" >/dev/null
+          aws ecs wait services-stable --cluster "${CLUSTER}" --services "${SERVICE}"
+          # The circuit breaker can roll back on its own and still settle as
+          # "stable", so check the new revision is the one that completed.
+          read -r running state < <(aws ecs describe-services --cluster "${CLUSTER}" --services "${SERVICE}" \
+            --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition,rolloutState]" --output text)
+          echo "Primary deployment: ${running} (${state})"
+          [ "${running}" = "${NEW_TASK_DEFINITION}" ] && [ "${state}" = "COMPLETED" ]
+
+      - name: Post-deploy health gate
+        run: |
+          for attempt in $(seq 1 30); do
+            body=$(curl -sS --fail --max-time 5 "${APP_URL}/healthz" || true)
+            if jq -e --arg v "${EXPECTED_VERSION}" '.status == "ok" and .version == $v' <<< "${body}" >/dev/null 2>&1; then
+              echo "Healthy on attempt ${attempt}: ${body}"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "${APP_URL}/healthz did not report ok with version ${EXPECTED_VERSION} within 5 minutes"
+          exit 1
+
+      - name: Roll back to the previous revision
+        if: failure() && steps.register.outcome == 'success'
+        env:
+          PREVIOUS_TASK_DEFINITION: ${{ steps.previous.outputs.task_definition }}
+          PREVIOUS_DESIRED: ${{ steps.previous.outputs.desired }}
+        run: |
+          aws ecs update-service --cluster "${CLUSTER}" --service "${SERVICE}" \
+            --task-definition "${PREVIOUS_TASK_DEFINITION}" --desired-count "${PREVIOUS_DESIRED}" >/dev/null
+          aws ecs wait services-stable --cluster "${CLUSTER}" --services "${SERVICE}"
+          echo "Rolled back to ${PREVIOUS_TASK_DEFINITION} with ${PREVIOUS_DESIRED} task(s)"
+
+      - name: Email the result
+        # Failures before AWS sign-in still reach Babu as GitHub's own failure email.
+        if: always() && steps.aws.outcome == 'success'
+        env:
+          RESULT: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "${RESULT}" = "success" ]; then
+            subject="PEJIP deploy succeeded (${IMAGE_TAG:0:7})"
+            message="Commit ${IMAGE_TAG} is live at ${APP_URL}."
+          else
+            subject="PEJIP deploy FAILED (${IMAGE_TAG:0:7})"
+            message="Deploying commit ${IMAGE_TAG} failed; the service was put back on the previous revision if the rollout had started."
+          fi
+          aws sns publish --topic-arn "${ALERTS_TOPIC_ARN}" --subject "${subject}" \
+            --message "${message}"$'\n\n'"Run: ${RUN_URL}" >/dev/null

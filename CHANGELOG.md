@@ -10,6 +10,14 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
+### Added
+
+- Hosting for `https://job-search.zephyr-mcg.com` in Terraform: VPC, load balancer
+  with WAF and HTTPS certificate, ECS Fargate service, service alarms and a daily
+  retention purge schedule (off until the app has a database).
+- Production container image, scanned on every pull request, and continuous deploy
+  on `main` with a health gate, automatic rollback and email on the result.
+
 ### Security
 
 - Keyless Claude access: CI and the app authenticate to the Claude API through
