@@ -1,0 +1,6 @@
+# Only pyproject.toml, README.md and src/ are copied into the build stage.
+*
+!pyproject.toml
+!README.md
+!src/
+**/__pycache__

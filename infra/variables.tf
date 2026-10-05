@@ -68,3 +68,61 @@ variable "ai_monthly_cap_usd" {
     error_message = "The AI spend cap must be positive."
   }
 }
+
+variable "domain_name" {
+  description = "Public hostname PEJIP is served on. DNS is at Babu's registrar, so its records are added by hand from the Terraform outputs."
+  type        = string
+  default     = "job-search.zephyr-mcg.com"
+}
+
+variable "vpc_cidr" {
+  description = "CIDR of pejip-vpc (ADR-0001). Must not overlap KRI's 10.0.0.0/16."
+  type        = string
+  default     = "10.20.0.0/16"
+}
+
+variable "availability_zones" {
+  description = "Availability zones for the public subnets. The ALB needs two. Listed here rather than looked up so terraform plan needs no extra read permissions."
+  type        = list(string)
+  default     = ["us-west-2a", "us-west-2b"]
+
+  validation {
+    condition     = length(var.availability_zones) >= 2
+    error_message = "The load balancer needs subnets in at least two availability zones."
+  }
+}
+
+variable "container_port" {
+  description = "Port the API listens on inside the container (PEJIP_PORT)."
+  type        = number
+  default     = 8000
+}
+
+variable "task_cpu" {
+  description = "Fargate task CPU units."
+  type        = number
+  default     = 256
+}
+
+variable "task_memory" {
+  description = "Fargate task memory in MiB."
+  type        = number
+  default     = 512
+}
+
+variable "log_retention_days" {
+  description = "Retention for PEJIP log groups. Capped at the 90-day data retention of policy section 10."
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.log_retention_days <= 90
+    error_message = "Logs may not be kept longer than the 90-day retention in policy section 10."
+  }
+}
+
+variable "purge_schedule_enabled" {
+  description = "Turns on the daily `pejip purge` task. Enable once the deployed image has the purge command and the app has a persistent database."
+  type        = bool
+  default     = false
+}

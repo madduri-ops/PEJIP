@@ -22,3 +22,22 @@ output "ai_spend_alarm_names" {
   description = "CloudWatch alarms that email at 50% to 100% of the monthly AI spend cap."
   value       = sort([for alarm in aws_cloudwatch_metric_alarm.ai_spend : alarm.alarm_name])
 }
+
+output "certificate_validation_records" {
+  description = "Add each as a CNAME at the zephyr-mcg.com registrar so ACM can issue the certificate."
+  value = [for o in aws_acm_certificate.app.domain_validation_options : {
+    name  = o.resource_record_name
+    type  = o.resource_record_type
+    value = o.resource_record_value
+  }]
+}
+
+output "alb_dns_name" {
+  description = "Point a CNAME for the hostname (job-search) at this name at the registrar."
+  value       = aws_lb.app.dns_name
+}
+
+output "app_url" {
+  description = "Public URL the Deploy workflow's health gate polls."
+  value       = "https://${var.domain_name}"
+}
