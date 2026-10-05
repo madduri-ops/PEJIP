@@ -1,0 +1,217 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Preferred 'hands-on architecture depth' may imply some technical hands-on expectation, though it is not stated as a duty of the role.",
+      "The posting is brief, so the cross-functional leadership expectations of the role are not detailed."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "VP",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Vice President, Cloud & Enterprise Technology",
+    "positive_scope_signals": [
+      {
+        "quote": "lead a 180-person organization through six directors"
+      },
+      {
+        "quote": "$95M\nbudget"
+      },
+      {
+        "quote": "reporting to the CIO"
+      },
+      {
+        "quote": "managed managers"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "lead the migration of our data centers to the public\ncloud",
+        "text": "Lead migration of data centers to the public cloud"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "own enterprise technology services (collaboration, identity, end-user\ncomputing)",
+        "text": "Own enterprise technology services including collaboration, identity, end-user computing"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "lead a 180-person organization through six directors",
+        "text": "Lead a 180-person organization through six directors"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "with a $95M\nbudget",
+        "text": "Own a $95M budget"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the CIO",
+        "text": "Reports to the CIO"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "You have led large cloud migration programs",
+        "text": "Track record leading large cloud migration programs"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "enterprise technology organizations\nin financial services",
+        "text": "Experience leading enterprise technology organizations in financial services"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "managed managers",
+        "text": "Experience managing managers"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "SUPPORTING",
+        "quote": "reported to executive leadership",
+        "text": "Experience reporting to executive leadership"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "PREFERRED",
+        "id": "R10",
+        "importance": "SUPPORTING",
+        "quote": "Hands-on architecture depth in at least one major cloud provider is preferred.",
+        "text": "Hands-on architecture depth in at least one major cloud provider"
+      }
+    ],
+    "role_family": "Technology / IT Infrastructure Leadership",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E3"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile describes enterprise technology transformation but does not mention migrating data centers to the public cloud.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E3"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "The candidate owned technology operations such as incident, release and vendor management, which is adjacent to enterprise technology services, but collaboration, identity and end-user computing are not mentioned.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate led an organization of up to 320 people as a manager of managers, exceeding a 180-person organization.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate's largest budget of $140M exceeds the $95M requirement.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate has executive exposure to the CIO, though a direct CIO reporting line is not stated.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "Large program leadership is shown, but none of the evidence specifically describes cloud migration programs.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate's industries include fintech, which is adjacent to financial services, though leading an enterprise technology organization in that sector is not explicit.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate is explicitly a manager of managers across 18 years in leadership.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate reported quarterly to the executive team and has exposure to the CIO, CTO, COO and board audit committee.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not describe hands-on architecture depth in any cloud provider.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:38:09.668620+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:38:21.654974+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

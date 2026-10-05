@@ -1,0 +1,198 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Location listed as San Francisco Bay Area while hybrid office is Sunnyvale; required in-office frequency not stated.",
+      "Equity amount not specified."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "VP",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Vice President, Developer Productivity",
+    "positive_scope_signals": [
+      {
+        "quote": "reporting to the CTO"
+      },
+      {
+        "quote": "for 2,000 engineers"
+      },
+      {
+        "quote": "You will lead a 200-person organization through seven directors"
+      },
+      {
+        "quote": "own a $70M budget"
+      },
+      {
+        "quote": "set the multi-year platform strategy with the executive team"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will lead the internal developer platform, build and CI\nsystems, developer experience and engineering metrics for 2,000 engineers.",
+        "text": "Lead the internal developer platform, build and CI systems, developer experience and engineering metrics"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R2",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the CTO",
+        "text": "Report to the CTO"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "You will lead a 200-person organization through seven directors",
+        "text": "Lead a 200-person organization through seven directors"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "own a $70M budget",
+        "text": "Own a $70M budget"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "set the multi-year platform strategy with the executive team",
+        "text": "Set multi-year platform strategy with the executive team"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "You have led developer platform or engineering productivity organizations at\nenterprise scale",
+        "text": "Experience leading developer platform or engineering productivity organizations at enterprise scale"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "managed managers",
+        "text": "Experience managing managers"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "delivered measurable gains in delivery\nspeed and reliability",
+        "text": "Track record of measurable gains in delivery speed and reliability"
+      }
+    ],
+    "role_family": "Engineering - Developer Platform / Productivity",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ADVANCES",
+    "career_direction_evidence_ids": [
+      "E4",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E4",
+          "E3"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Launched an internal developer platform that cut lead time for 1,100 engineers and owned release governance, though build/CI systems and engineering metrics ownership are not explicitly described.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Has executive exposure to the CTO, though a direct reporting line to the CTO is not stated.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led organizations of up to 320 people as a manager of managers, exceeding the 200-person scope.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Largest budget of $140M and a $140M portfolio exceed the $70M requirement.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2",
+          "E4"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led a three-year enterprise transformation with executive reporting and launched a developer platform, adjacent to multi-year platform strategy.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E4",
+          "E3"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Delivered an enterprise-scale developer platform for 1,100 engineers and ran technology operations for a 320-person engineering org, though not explicitly as head of a dedicated productivity organization.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Profile states manager of managers across 18 years of leadership.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E4",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Cut median lead time from 9 days to 2 days and owned incident management and release governance.",
+        "requirement_id": "R8"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:37:14.097075+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:37:21.008113+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}
