@@ -15,3 +15,4 @@ flowchart LR
 
 | Store | Holds | Owner component | Retention |
 |---|---|---|---|
+| `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |

@@ -17,3 +17,8 @@ output "alerts_topic_arn" {
   description = "SNS topic every PEJIP alarm and budget notifies."
   value       = aws_sns_topic.alerts.arn
 }
+
+output "ai_spend_alarm_names" {
+  description = "CloudWatch alarms that email at 50% to 100% of the monthly AI spend cap."
+  value       = sort([for alarm in aws_cloudwatch_metric_alarm.ai_spend : alarm.alarm_name])
+}
