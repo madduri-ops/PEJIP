@@ -17,6 +17,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Job-alert inbox: `alerts@inbox.job-search.zephyr-mcg.com` receives career-site job
+  alerts through Amazon SES into an encrypted bucket kept for 90 days.
 - First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
   configured Greenhouse and Lever company boards, filters them by the search
   taxonomy and geography, analyses each with Claude, scores Fit, Confidence and

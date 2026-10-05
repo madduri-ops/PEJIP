@@ -19,3 +19,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0007: Keyless Claude access](0007-claude-identity-federation.md) | Accepted |
 | [0008: FIND thin slice](0008-find-thin-slice.md) | Implemented |
 | [0009: Google sign-in](0009-google-sign-in.md) | Implemented |
+| [0010: Job-alert inbox](0010-job-alert-inbox.md) | Accepted |

@@ -144,3 +144,15 @@ variable "sign_in_session_seconds" {
     error_message = "The sign-in session must be between 5 minutes and 7 days."
   }
 }
+
+variable "inbox_domain" {
+  description = "Domain whose mail SES receives for the job-alert inbox; its MX record points at SES."
+  type        = string
+  default     = "inbox.job-search.zephyr-mcg.com"
+}
+
+variable "inbox_receiving_enabled" {
+  description = "Activates the pejip-inbox receipt rule set. SES allows one active rule set per account and region, so enable only after checking nothing else in the account uses SES receiving here (infra/README.md)."
+  type        = bool
+  default     = false
+}

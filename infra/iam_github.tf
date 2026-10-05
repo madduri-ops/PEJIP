@@ -302,6 +302,38 @@ data "aws_iam_policy_document" "plan" {
     resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter/pejip/google-oauth/*"]
   }
 
+  # The job-alert inbox (inbox.tf). Bucket configuration only, never messages.
+  statement {
+    sid = "ReadInboxBucket"
+    actions = [
+      "s3:GetAccelerateConfiguration",
+      "s3:GetBucketAcl",
+      "s3:GetBucketCORS",
+      "s3:GetBucketLogging",
+      "s3:GetBucketObjectLockConfiguration",
+      "s3:GetBucketOwnershipControls",
+      "s3:GetBucketPolicy",
+      "s3:GetBucketPublicAccessBlock",
+      "s3:GetBucketRequestPayment",
+      "s3:GetBucketTagging",
+      "s3:GetBucketVersioning",
+      "s3:GetBucketWebsite",
+      "s3:GetEncryptionConfiguration",
+      "s3:GetLifecycleConfiguration",
+      "s3:GetReplicationConfiguration",
+      "s3:ListBucket",
+    ]
+    resources = ["arn:aws:s3:::pejip-inbox-${var.aws_account_id}"]
+  }
+
+  # SES receipt rule and identity reads have no resource-level permissions;
+  # AWS requires "*". All are read only.
+  statement {
+    sid       = "ReadSesReceiving"
+    actions   = ["ses:DescribeActiveReceiptRuleSet", "ses:DescribeReceiptRule", "ses:DescribeReceiptRuleSet", "ses:GetIdentityVerificationAttributes"]
+    resources = ["*"]
+  }
+
   statement {
     sid       = "ReadSchedules"
     actions   = ["scheduler:GetSchedule", "scheduler:ListTagsForResource"]

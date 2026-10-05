@@ -20,6 +20,7 @@ section 5.1.
 | `auth.tf` | Google sign-in: reads the OAuth client from SSM, keeps `/healthz` open, lets the ALB reach Google ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md)) |
 | `ecs.tf` | ECS cluster and service `pejip-prod`, task definition, roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
 | `schedule.tf` | `pejip-purge-daily` schedule running `pejip purge` (created disabled) and its `pejip-scheduler` role |
+| `inbox.tf` | Job-alert inbox: SES receiving for `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket `pejip-inbox-275704950192` (90-day expiry) ([design](../docs/design/0010-job-alert-inbox.md)) |
 | `alarms.tf` | 5xx, unhealthy target, tasks-below-desired, CPU and memory alarms to `pejip-alerts` |
 
 The hosting decisions (public subnets without NAT, WAF rules, DNS at the registrar,
@@ -69,6 +70,21 @@ Pull requests that touch `infra/` run lint, checkov and `terraform plan` in the
    `https://job-search.zephyr-mcg.com/healthz`.
 
 After that every merge to `main` that changes the app deploys on its own.
+
+## Job-alert inbox (once)
+
+1. Check that nothing else in the account receives mail through SES here. SES
+   allows one active receipt rule set per account and region, and activating
+   PEJIP's would switch off any other:
+   `aws ses describe-active-receipt-rule-set --region us-west-2`
+   Go on only if it prints nothing (or `pejip-inbox`).
+2. Change the default of `inbox_receiving_enabled` in `variables.tf` to `true`
+   in a pull request, so every later plan and apply keeps the rule set active,
+   then `terraform apply` once it has merged.
+3. Print the DNS records with `terraform output inbox_dns_records` and add both at
+   the registrar: the TXT record (domain verification) and the MX record.
+4. Sign up for each career site's job alerts with
+   `terraform output inbox_address`.
 
 ## Google sign-in
 

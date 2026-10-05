@@ -48,8 +48,10 @@ the `pejip-monthly` budget, and the hosting stack from
 [ADR-0005](../adr/0005-app-hosting-and-continuous-deploy.md): `pejip-vpc` with two
 public subnets, ALB and WAF `pejip-alb` with the certificate for
 `job-search.zephyr-mcg.com` (DNS records added by hand at the registrar), ECS
-cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule and the
-service alarms. Tasks sit in the public subnets without a NAT gateway; their
+cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule, the
+service alarms, and the job-alert inbox: SES receives
+`alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket
+`pejip-inbox-275704950192` ([design 0010](../design/0010-job-alert-inbox.md)). Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The ALB signs every request in with Google
 except `/healthz`, and the app admits only Babu's address
 ([ADR-0006](../adr/0006-google-sign-in-at-the-load-balancer.md)). The Deploy workflow builds and scans the image
