@@ -122,9 +122,67 @@ variable "log_retention_days" {
 }
 
 variable "purge_schedule_enabled" {
-  description = "Turns on the daily `pejip purge` task. Enable once the deployed image has the purge command and the app has a persistent database."
+  description = "Turns on the daily `pejip purge` task."
   type        = bool
-  default     = false
+  default     = true
+}
+
+variable "run_schedule_enabled" {
+  description = "Turns on the daily `pejip run` that finds, ranks and emails the digest."
+  type        = bool
+  default     = true
+}
+
+variable "run_schedule" {
+  description = "When the daily search runs: an EventBridge Scheduler cron expression in run_schedule_timezone."
+  type        = string
+  default     = "cron(0 6 * * ? *)"
+}
+
+variable "run_schedule_timezone" {
+  description = "Time zone for run_schedule. Babu is in the Bay Area."
+  type        = string
+  default     = "America/Los_Angeles"
+}
+
+variable "run_task_cpu" {
+  description = "Fargate CPU units for the daily run (it parses every job board, so it gets more than the API)."
+  type        = number
+  default     = 512
+}
+
+variable "run_task_memory" {
+  description = "Fargate memory in MiB for the daily run."
+  type        = number
+  default     = 1024
+}
+
+variable "claude_organization_id" {
+  description = "Anthropic organization UUID (not a secret; also in the CI workflows)."
+  type        = string
+  default     = "a477af3f-5a3d-4ce5-baf6-dce8ef60bcba"
+}
+
+variable "claude_app_rule_id" {
+  description = "Claude Console federation rule (fdrl_...) for the app's ECS task role. Empty keeps Claude off and roles unranked."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.claude_app_rule_id == "" || can(regex("^fdrl_[A-Za-z0-9]+$", var.claude_app_rule_id))
+    error_message = "claude_app_rule_id must be empty or an fdrl_... ID."
+  }
+}
+
+variable "claude_app_service_account_id" {
+  description = "Claude Console service account (svac_...) the app's rule signs in as. Empty keeps Claude off."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.claude_app_service_account_id == "" || can(regex("^svac_[A-Za-z0-9]+$", var.claude_app_service_account_id))
+    error_message = "claude_app_service_account_id must be empty or an svac_... ID."
+  }
 }
 
 variable "sign_in_email" {
@@ -155,10 +213,4 @@ variable "inbox_receiving_enabled" {
   description = "Activates the pejip-inbox receipt rule set. SES allows one active rule set per account and region; on 2026-10-05 nothing else in this account used SES receiving in us-west-2. Re-check before adding another rule set (infra/README.md)."
   type        = bool
   default     = true
-}
-
-variable "search_run_alarms_enabled" {
-  description = "Turns on the pejip-search-stalled alarm (no search run finished in 26 hours). Enable once the daily search schedule is running."
-  type        = bool
-  default     = false
 }

@@ -21,5 +21,6 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0009: Google sign-in](0009-google-sign-in.md) | Implemented |
 | [0010: Job-alert inbox](0010-job-alert-inbox.md) | Accepted |
 | [0011: Monitoring and alerts](0011-monitoring.md) | Accepted |
+| [0012: Daily run and storage on AWS](0012-daily-run-and-storage.md) | Accepted |
 | [0013: Web portal](0013-web-portal.md) | Implemented (sample data) |
 | [0014: Connection matching](0014-connection-matching.md) | Implemented |

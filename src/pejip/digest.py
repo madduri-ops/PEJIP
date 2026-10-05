@@ -97,6 +97,11 @@ def _fit(item: DigestItem) -> float:
     return float(rec["fit"]) if rec and rec["fit"] is not None else -1.0
 
 
+def needs_attention(digest: Digest) -> int:
+    """How many roles land in "Requires your attention"."""
+    return sum(_priority(i) in SECTION_ORDER for i in digest.items)
+
+
 def render(digest: Digest, strong_match_fit: float) -> str:
     items = sorted(digest.items, key=_fit, reverse=True)
     attention = [i for i in items if _priority(i) in SECTION_ORDER]

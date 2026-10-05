@@ -32,9 +32,14 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   (`PEJIP_NETWORK_DECISIONS`).
 - `pejip connections <file>` checks an export before use: counts, rejected rows,
   connections per tracked company and employer names to review.
+- PEJIP searches on its own every morning at 6am Pacific on AWS, keeps its results
+  in an encrypted SQLite database on EFS, and emails Babu the digest. Data past 90
+  days is purged daily.
+- On AWS the career profile is read from the encrypted SSM parameter
+  `/pejip/profile`. Until it exists, or until Claude access is set up for the app,
+  roles are still found and emailed, listed as unranked with the reason.
 - Monitoring: email alerts when a search run fails, a job source can't be
-  fetched, the app logs an error, or (once the daily search runs) no search has
-  finished in 26 hours, plus a `pejip` CloudWatch dashboard for search runs,
+  fetched, the app logs an error, or no search has finished in 26 hours, plus a `pejip` CloudWatch dashboard for search runs,
   source failures, errors, Claude spend and every alarm.
 - Web portal at `job-search.zephyr-mcg.com`: Home, Opportunities (saved views and
   filters) and Opportunity detail pages with cited explanations, built from the

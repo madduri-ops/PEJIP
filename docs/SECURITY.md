@@ -20,8 +20,12 @@ recommendations as personal data.
   `PEJIP_DATABASE_URL` (SQLite by default, git-ignored). Digests are written to
   `PEJIP_OUTPUT_DIR` (git-ignored).
 - **At rest:** until PEJIP is deployed, it runs on Babu's own machine and relies on
-  that machine's disk encryption. The deployed service will store data only in
-  KMS-encrypted AWS storage under `alias/pejip` (ADR-0001).
+  that machine's disk encryption. On AWS, run data, the AI spend ledger and
+  digests are on the EFS file system `pejip-prod-data`, encrypted with
+  `alias/pejip`, TLS-only, mountable only by the app's task role, with no backups
+  so nothing outlives the 90-day window ([ADR-0007](adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md)).
+  The career profile is the SecureString SSM parameter `/pejip/profile`, encrypted
+  with `alias/pejip` and stored by Babu, never by Terraform or in the repository.
 - **Job-alert inbox:** alert emails sent to `alerts@inbox.job-search.zephyr-mcg.com`
   are received by Amazon SES and stored in the bucket `pejip-inbox-275704950192`,
   encrypted with `alias/pejip`, TLS-only, and deleted after 90 days
@@ -51,6 +55,7 @@ recommendations as personal data.
 | Service | What is sent | Why | Not sent |
 |---|---|---|---|
 | Anthropic API (Claude) | Job posting text, and from the profile only the headline, target seniority, career direction and evidence items (`CareerProfile.ai_view`) | Job analysis and requirement-to-evidence matching | Name, e-mail, compensation preferences, anything else in the profile |
+| Google (Gmail), through Amazon SNS email | The daily digest: roles, rankings and explanations that cite profile evidence IDs and posting quotes, sent from the encrypted `pejip-digest` topic to Babu's own address | Babu reads the digest in their own mailbox ([ADR-0007](adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md)). Emailed copies are outside PEJIP's 90-day purge: they stay until Babu deletes them. Babu accepted this exception to policy section 10 on 2026-10-05, choosing the full digest over a summary-only email | The profile itself, contact details, compensation preferences |
 | Google (sign-in) | Nothing from PEJIP: Babu signs in to their own Google account, and the load balancer receives their e-mail address and Google ID back ([ADR-0006](adr/0006-google-sign-in-at-the-load-balancer.md)) | Only Babu can use `job-search.zephyr-mcg.com` | Any career data |
 
 | Google Fonts | Nothing from PEJIP: the browser fetches the IBM Plex font files for the portal pages, with no referrer | The portal's typefaces | Any page content or career data |

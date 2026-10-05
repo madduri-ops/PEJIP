@@ -24,6 +24,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'config/**'
       - 'pyproject.toml'
       - 'Dockerfile'
       - '.dockerignore'
@@ -80,6 +81,7 @@ jobs:
           filters: |
             image:
               - 'src/**'
+              - 'config/**'
               - 'pyproject.toml'
               - 'Dockerfile'
               - '.dockerignore'

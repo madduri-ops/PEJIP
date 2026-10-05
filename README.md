@@ -104,8 +104,9 @@ connected ([design 0013](docs/design/0013-web-portal.md)). The build policy,
 repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
 set for rankings and foundation AWS infrastructure are in place. The hosting stack
 and continuous deploy for `job-search.zephyr-mcg.com` are defined
-([ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)); running the job
-search there needs a persistent store. See the
+([ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)), and the search
+runs there every morning, keeps its results in an encrypted database and emails the
+digest ([ADR-0007](docs/adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md)). See the
 [design doc](docs/design/0008-find-thin-slice.md) and the [changelog](CHANGELOG.md).
 
 ## Getting started

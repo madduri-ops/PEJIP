@@ -78,6 +78,26 @@ output "inbox_dns_records" {
   ]
 }
 
+output "digest_topic_arn" {
+  description = "SNS topic the daily run emails the digest through. Babu confirms its subscription email once."
+  value       = aws_sns_topic.digest.arn
+}
+
+output "profile_parameter_name" {
+  description = "SSM SecureString (key alias/pejip) that holds Babu's career profile YAML. Stored by hand, never by Terraform."
+  value       = local.profile_parameter
+}
+
+output "public_subnet_ids" {
+  description = "Subnets PEJIP tasks run in (for starting a run by hand, infra/README.md)."
+  value       = aws_subnet.public[*].id
+}
+
+output "tasks_security_group_id" {
+  description = "Security group PEJIP tasks use (for starting a run by hand, infra/README.md)."
+  value       = aws_security_group.tasks.id
+}
+
 output "dashboard_url" {
   description = "The pejip CloudWatch dashboard: search runs, source failures, errors, Claude spend and every PEJIP alarm."
   value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards/dashboard/${aws_cloudwatch_dashboard.main.dashboard_name}"

@@ -14,13 +14,14 @@ from pydantic import ValidationError
 from pejip.ai.client import AIClient
 from pejip.config import SearchConfig, Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
+from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import render
 from pejip.logs import configure_logging
 from pejip.network.linkedin import ExportError
 from pejip.network.loader import load_index
 from pejip.network.matching import YOUR_CALL, NetworkIndex
 from pejip.pipeline import Pipeline
-from pejip.profile import load_profile
+from pejip.profile import CareerProfile, load_profile, load_profile_parameter, make_ssm_client
 from pejip.retention import purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
@@ -29,9 +30,28 @@ from pejip.store import Store
 log = logging.getLogger("pejip")
 
 
+def _load_profile(settings: Settings) -> CareerProfile | None:
+    if settings.profile_parameter:
+        client = make_ssm_client(settings.aws_region)
+        return load_profile_parameter(client, settings.profile_parameter)
+    return load_profile(settings.profile_path)
+
+
+def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
+    """Why roles can't be ranked, naming every missing piece at once."""
+    missing = []
+    if profile is None:
+        missing.append(
+            f"no career profile is stored yet (SSM parameter {settings.profile_parameter})"
+        )
+    if not settings.ai_enabled:
+        missing.append("Claude access is not set up for this workload yet")
+    return " and ".join(missing) or "ranking is not set up"
+
+
 def _cmd_run(settings: Settings) -> int:
     config = load_config(settings.config_path)
-    profile = load_profile(settings.profile_path)
+    profile = _load_profile(settings)
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
@@ -40,8 +60,17 @@ def _cmd_run(settings: Settings) -> int:
     if settings.inbox_bucket:
         inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
     try:
-        ai = AIClient(config.ai, CostGuard(ledger))
-        digest = Pipeline(config, profile, store, ai, http, inbox=inbox, network=network).run()
+        ai = AIClient(config.ai, CostGuard(ledger)) if settings.ai_enabled else None
+        digest = Pipeline(
+            config,
+            profile,
+            store,
+            ai,
+            http,
+            inbox=inbox,
+            network=network,
+            unranked_reason=_unranked_reason(settings, profile),
+        ).run()
     finally:
         http.close()
         ledger.close()
@@ -49,9 +78,17 @@ def _cmd_run(settings: Settings) -> int:
         digest.notes.append(f"Connections were not used this run: {network_problem}.")
     settings.output_dir.mkdir(parents=True, exist_ok=True)
     path = settings.output_dir / f"digest-{digest.generated_at:%Y%m%d-%H%M%S}.md"
-    path.write_text(render(digest, config.scoring.strong_match_fit), encoding="utf-8")
+    text = render(digest, config.scoring.strong_match_fit)
+    path.write_text(text, encoding="utf-8")
     log.info("digest_written", extra={"path": str(path), "status": digest.status})
-    _purge_output(settings, config.retention_days)
+    try:
+        if settings.digest_topic_arn:
+            client = make_sns_client(settings.aws_region)
+            send_digest(client, settings.digest_topic_arn, digest, text, kept_at=str(path))
+            log.info("digest_sent", extra={"status": digest.status})
+    finally:
+        # Retention holds even when the email fails (policy section 10).
+        _purge_output(settings, config.retention_days)
     return 1 if digest.status == "FAILED" else 0
 
 

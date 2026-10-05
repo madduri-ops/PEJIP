@@ -140,6 +140,23 @@ def load_config(path: Path) -> SearchConfig:
     return SearchConfig.model_validate(data)
 
 
+_TRUE = frozenset({"1", "true", "yes", "on"})
+_FALSE = frozenset({"0", "false", "no", "off"})
+
+
+def _flag(env: dict[str, str], name: str, *, default: bool) -> bool:
+    """A boolean setting; an unrecognised value fails instead of guessing."""
+    value = env.get(name, "").strip().lower()
+    if not value:
+        return default
+    if value in _TRUE:
+        return True
+    if value in _FALSE:
+        return False
+    msg = f"{name} must be one of {sorted(_TRUE | _FALSE)}, got {value!r}"
+    raise ValueError(msg)
+
+
 @dataclass(frozen=True)
 class Settings:
     """Runtime locations, taken from the environment."""
@@ -153,6 +170,9 @@ class Settings:
     aws_region: str | None = None
     connections_path: Path | None = None
     network_decisions_path: Path | None = None
+    profile_parameter: str | None = None
+    digest_topic_arn: str | None = None
+    ai_enabled: bool = True
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -170,6 +190,12 @@ class Settings:
             # kept outside the repository (design doc 0014).
             connections_path=_optional_path(e.get("PEJIP_CONNECTIONS")),
             network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
+            # In AWS the profile is an encrypted SSM parameter, not a file.
+            profile_parameter=e.get("PEJIP_PROFILE_PARAMETER") or None,
+            # Where `pejip run` emails the digest (an SNS topic), when set.
+            digest_topic_arn=e.get("PEJIP_DIGEST_TOPIC_ARN") or None,
+            # Off until the workload can sign in to Claude; roles are then unranked.
+            ai_enabled=_flag(e, "PEJIP_AI_ENABLED", default=True),
         )
 
 

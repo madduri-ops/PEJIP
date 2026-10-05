@@ -16,3 +16,4 @@ architecture, update [docs/architecture/](../architecture/) in the same PR.
 | [0004](0004-keyless-claude-access.md) | Keyless Claude access through Workload Identity Federation | Accepted |
 | [0005](0005-app-hosting-and-continuous-deploy.md) | Serve PEJIP from Fargate behind a WAF-fronted ALB, deployed by GitHub Actions | Accepted |
 | [0006](0006-google-sign-in-at-the-load-balancer.md) | Require Google sign-in at the load balancer, with an allow-list check in the app | Accepted |
+| [0007](0007-sqlite-on-efs-and-a-scheduled-daily-run.md) | Keep PEJIP's data in SQLite on encrypted EFS, written by a scheduled daily run | Accepted |

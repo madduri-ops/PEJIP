@@ -60,8 +60,9 @@ Alarms (all email through `pejip-alerts` on entering ALARM):
 | `pejip-search-stalled` | No run finished SUCCESS or PARTIAL for 26 hours; also emails when it clears |
 
 `pejip-search-stalled` treats missing data as breaching, so it would fire from
-the moment it exists. It is created only when `search_run_alarms_enabled = true`,
-which is set once the daily search schedule is live.
+the moment it exists. It is created only while the daily run schedule is on
+(`run_schedule_enabled`, [design 0012](0012-daily-run-and-storage.md)). Until the
+first run after it is created, it reads as stalled; starting a run by hand clears it.
 
 The dashboard has six widgets: search runs per day by outcome, a Logs Insights
 table of source failures by source, Claude spend this month against the cap,
@@ -74,7 +75,8 @@ error lines (time, event, error type, run id) and the state of every PEJIP alarm
 - Log events the filters depend on: `run_finished` with `status`,
   `source_failed`, and the `level` field. `tests/unit/test_monitoring_events.py`
   fails if an event is renamed in the code without updating the filters.
-- Terraform variable `search_run_alarms_enabled` (default `false`).
+- Terraform variable `run_schedule_enabled` (schedule.tf, default `true`) also
+  creates the stalled-run alarm.
 - Terraform output `dashboard_url`.
 - The GitHub plan role can read dashboards and metric filters.
 

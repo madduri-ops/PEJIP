@@ -1,16 +1,18 @@
 """Master Career Profile (spec 8.2 to 8.11).
 
 The profile is personal data. It lives in a local YAML file outside the repository
-(see ``PEJIP_PROFILE``) and only the evidence items and career direction are sent to
-the AI provider (``ai_view``), never contact details.
+(see ``PEJIP_PROFILE``), or in AWS in a SecureString SSM parameter encrypted with
+``alias/pejip`` (see ``PEJIP_PROFILE_PARAMETER``). Only the evidence items and
+career direction are sent to the AI provider (``ai_view``), never contact details.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, Protocol, cast
 
 import yaml
+from botocore.exceptions import ClientError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Seniority = Literal[
@@ -81,5 +83,36 @@ class CareerProfile(_Strict):
 
 
 def load_profile(path: Path) -> CareerProfile:
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return CareerProfile.model_validate(data)
+    return parse_profile(path.read_text(encoding="utf-8"))
+
+
+def parse_profile(text: str) -> CareerProfile:
+    return CareerProfile.model_validate(yaml.safe_load(text))
+
+
+class SsmClient(Protocol):
+    """The one SSM call the profile needs (a boto3 SSM client satisfies it)."""
+
+    def get_parameter(self, **kwargs: Any) -> dict[str, Any]: ...
+
+
+def make_ssm_client(region: str | None) -> SsmClient:
+    """A boto3 SSM client using the task role's credentials (no keys in config)."""
+    import boto3  # noqa: PLC0415  (only runs where the profile is a parameter)
+
+    return cast(SsmClient, boto3.client("ssm", region_name=region))
+
+
+def load_profile_parameter(client: SsmClient, name: str) -> CareerProfile | None:
+    """The profile stored in SSM, or None when Babu has not stored one yet.
+
+    Any other failure (no permission, a malformed profile) raises, so a broken
+    setup fails the run loudly instead of quietly ranking nothing.
+    """
+    try:
+        response = client.get_parameter(Name=name, WithDecryption=True)
+    except ClientError as exc:
+        if exc.response.get("Error", {}).get("Code") == "ParameterNotFound":
+            return None
+        raise
+    return parse_profile(response["Parameter"]["Value"])

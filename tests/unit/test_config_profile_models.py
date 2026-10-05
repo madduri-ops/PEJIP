@@ -46,6 +46,22 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
     network = Settings.from_env({"PEJIP_CONNECTIONS": "c.csv", "PEJIP_NETWORK_DECISIONS": "d.yaml"})
     assert network.connections_path == Path("c.csv")
     assert network.network_decisions_path == Path("d.yaml")
+    assert (defaults.profile_parameter, defaults.digest_topic_arn) == (None, None)
+    assert defaults.ai_enabled
+    aws = Settings.from_env(
+        {
+            "PEJIP_PROFILE_PARAMETER": "/pejip/profile",
+            "PEJIP_DIGEST_TOPIC_ARN": "arn:aws:sns:us-west-2:111111111111:pejip-digest",
+            "PEJIP_AI_ENABLED": "False",
+        }
+    )
+    assert aws.profile_parameter == "/pejip/profile"
+    assert aws.digest_topic_arn == "arn:aws:sns:us-west-2:111111111111:pejip-digest"
+    assert not aws.ai_enabled
+    for value, expected in (("off", False), ("0", False), ("no", False), ("ON", True), ("1", True)):
+        assert Settings.from_env({"PEJIP_AI_ENABLED": value}).ai_enabled is expected
+    with pytest.raises(ValueError, match="PEJIP_AI_ENABLED must be one of"):
+        Settings.from_env({"PEJIP_AI_ENABLED": "maybe"})
     inbox = Settings.from_env({"PEJIP_INBOX_BUCKET": "b", "AWS_REGION": "us-west-2"})
     assert (inbox.inbox_bucket, inbox.aws_region) == ("b", "us-west-2")
     custom = Settings.from_env(

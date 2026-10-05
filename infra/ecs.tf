@@ -4,8 +4,9 @@
 # Deploy workflow owns which image runs: it copies the latest pejip-prod task
 # definition, swaps in the image it just pushed, registers that revision and
 # points the service at it. So the service ignores task_definition and
-# desired_count drift, and Terraform's own revision names a placeholder tag that
-# never runs (the service starts at zero tasks; the first deploy scales it to one).
+# desired_count drift. Terraform's own revisions reuse the image the service is
+# running now, because the daily schedules always start the family's latest
+# revision: an apply must never leave them on an image that doesn't exist.
 
 resource "aws_ecs_cluster" "main" {
   name = local.name
@@ -81,9 +82,9 @@ resource "aws_iam_role_policy" "ecs_execution" {
   policy = data.aws_iam_policy_document.ecs_execution.json
 }
 
-# Used by the running app: PEJIP metrics (the AI cost guard) and the job-alert
-# inbox. Other data, secrets and KMS access are added with the features that
-# need them.
+# Used by the running app: PEJIP metrics (the AI cost guard), the job-alert
+# inbox, the data file system (efs.tf), the career profile parameter and the
+# digest topic (digest.tf).
 resource "aws_iam_role" "ecs_task" {
   name               = "pejip-ecs-task"
   description        = "Runtime identity of the PEJIP app"
@@ -135,6 +136,58 @@ data "aws_iam_policy_document" "ecs_task" {
       values   = ["s3.${var.aws_region}.amazonaws.com"]
     }
   }
+
+  # The data file system (efs.tf), only through its access point.
+  statement {
+    sid       = "DataFileSystem"
+    actions   = ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite"]
+    resources = [aws_efs_file_system.data.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "elasticfilesystem:AccessPointArn"
+      values   = [aws_efs_access_point.data.arn]
+    }
+  }
+
+  # Babu's career profile, a SecureString Babu stores by hand (never in
+  # Terraform, so it never reaches the state file).
+  statement {
+    sid       = "CareerProfile"
+    actions   = ["ssm:GetParameter"]
+    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}"]
+  }
+
+  statement {
+    sid       = "CareerProfileDecrypt"
+    actions   = ["kms:Decrypt"]
+    resources = [aws_kms_key.pejip.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["ssm.${var.aws_region}.amazonaws.com"]
+    }
+  }
+
+  # Emails the digest (digest.tf). The topic is encrypted with the PEJIP key.
+  statement {
+    sid       = "SendDigest"
+    actions   = ["sns:Publish"]
+    resources = [aws_sns_topic.digest.arn]
+  }
+
+  statement {
+    sid       = "SendDigestEncrypt"
+    actions   = ["kms:Decrypt", "kms:GenerateDataKey*"]
+    resources = [aws_kms_key.pejip.arn]
+
+    condition {
+      test     = "StringEquals"
+      variable = "kms:ViaService"
+      values   = ["sns.${var.aws_region}.amazonaws.com"]
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "ecs_task" {
@@ -173,6 +226,46 @@ resource "aws_vpc_security_group_egress_rule" "tasks_https" {
   to_port           = 443
 }
 
+# The image the service runs right now (set by the Deploy workflow). Read by
+# name, so it adds no dependency on the service resource below.
+data "aws_ecs_service" "live" {
+  service_name = local.name
+  cluster_arn  = "arn:aws:ecs:${var.aws_region}:${local.account_id}:cluster/${local.name}"
+}
+
+data "aws_ecs_container_definition" "live" {
+  task_definition = data.aws_ecs_service.live.task_definition
+  container_name  = "pejip"
+}
+
+locals {
+  data_dir          = "/data"
+  profile_parameter = "/pejip/profile"
+
+  # What `pejip run` and `pejip purge` read (design doc 0012). The API ignores them.
+  run_environment = [
+    { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
+    { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },
+    { name = "PEJIP_OUTPUT_DIR", value = "${local.data_dir}/output" },
+    { name = "PEJIP_INBOX_BUCKET", value = aws_s3_bucket.inbox.id },
+    { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
+    { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
+  ]
+
+  # Keyless Claude access (ADR-0004). Until the app's federation rule exists in
+  # the Claude Console, Claude is switched off and roles are listed unranked.
+  claude_ready = var.claude_app_rule_id != "" && var.claude_app_service_account_id != ""
+  claude_environment = local.claude_ready ? [
+    { name = "PEJIP_AI_ENABLED", value = "true" },
+    { name = "PEJIP_CLAUDE_IDENTITY", value = "aws-sts" },
+    { name = "ANTHROPIC_ORGANIZATION_ID", value = var.claude_organization_id },
+    { name = "ANTHROPIC_FEDERATION_RULE_ID", value = var.claude_app_rule_id },
+    { name = "ANTHROPIC_SERVICE_ACCOUNT_ID", value = var.claude_app_service_account_id },
+    ] : [
+    { name = "PEJIP_AI_ENABLED", value = "false" },
+  ]
+}
+
 resource "aws_ecs_task_definition" "app" {
   family                   = local.name
   requires_compatibilities = ["FARGATE"]
@@ -187,16 +280,38 @@ resource "aws_ecs_task_definition" "app" {
     cpu_architecture        = "X86_64"
   }
 
+  volume {
+    name = "data"
+
+    efs_volume_configuration {
+      file_system_id     = aws_efs_file_system.data.id
+      transit_encryption = "ENABLED"
+
+      authorization_config {
+        access_point_id = aws_efs_access_point.data.id
+        iam             = "ENABLED"
+      }
+    }
+  }
+
+  # Task-local scratch space (Fargate ephemeral storage, encrypted by AWS).
+  volume {
+    name = "tmp"
+  }
+
+  # Tasks mount the data file system at start, so its mount targets must exist.
+  depends_on = [aws_efs_mount_target.data]
+
   container_definitions = jsonencode([{
     name      = "pejip"
-    image     = "${aws_ecr_repository.app.repository_url}:bootstrap"
+    image     = data.aws_ecs_container_definition.live.image
     essential = true
     # The image's default command serves the API (python -m pejip.api).
     portMappings = [{
       containerPort = var.container_port
       protocol      = "tcp"
     }]
-    environment = [
+    environment = concat([
       { name = "PEJIP_HOST", value = "0.0.0.0" },
       { name = "PEJIP_PORT", value = tostring(var.container_port) },
       { name = "PEJIP_ENVIRONMENT", value = var.environment },
@@ -204,6 +319,12 @@ resource "aws_ecs_task_definition" "app" {
       # balancer's tokens to trust.
       { name = "PEJIP_AUTH_ALLOWED_EMAIL", value = local.sign_in_email },
       { name = "PEJIP_AUTH_ALB_ARN", value = aws_lb.app.arn },
+    ], local.run_environment, local.claude_environment)
+    # The data file system (efs.tf) and a scratch /tmp, since the root
+    # filesystem is read-only.
+    mountPoints = [
+      { sourceVolume = "data", containerPath = local.data_dir, readOnly = false },
+      { sourceVolume = "tmp", containerPath = "/tmp", readOnly = false },
     ]
     readonlyRootFilesystem = true
     user                   = "10001"

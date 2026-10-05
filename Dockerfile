@@ -21,7 +21,8 @@ FROM python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PEJIP_HOST=0.0.0.0 \
-    PEJIP_PORT=8000
+    PEJIP_PORT=8000 \
+    PEJIP_CONFIG=/etc/pejip/search.yaml
 
 # OS packages are upgraded first so security fixes published after the base
 # image was built are picked up (the image scan blocks on high and critical).
@@ -32,6 +33,15 @@ RUN --mount=type=bind,from=build,source=/dist,target=/dist \
     && pip install --no-cache-dir /dist/*.whl \
     && pip uninstall --yes pip \
     && adduser -S -D -H -u 10001 -s /sbin/nologin pejip
+
+# The search configuration `pejip run` reads. It holds no personal data; the
+# career profile comes from SSM at run time (docs/design/0012-daily-run-and-storage.md).
+COPY config/search.yaml /etc/pejip/search.yaml
+
+# Fargate copies a VOLUME's image permissions (here /tmp's 1777) into the
+# task-local volume mounted there, so the app user can write temp files even
+# though the root filesystem is read-only.
+VOLUME ["/tmp"]
 
 USER 10001
 EXPOSE 8000
