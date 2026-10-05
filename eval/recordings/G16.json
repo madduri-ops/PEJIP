@@ -1,0 +1,248 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Insurance industry domain experience is implied by company context but not stated as a requirement.",
+      "Unclear whether the 50-person organization exists already or is built from scratch."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "ENTERPRISE",
+    "inferred_seniority": "VP",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Vice President, AI Enablement & Transformation",
+    "positive_scope_signals": [
+      {
+        "quote": "enterprise-wide AI adoption"
+      },
+      {
+        "quote": "reporting to the Chief Operating Officer"
+      },
+      {
+        "quote": "build a 50-person organization"
+      },
+      {
+        "quote": "own a $30M investment portfolio"
+      },
+      {
+        "quote": "report progress to the board's technology committee"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will lead\nenterprise-wide AI adoption",
+        "text": "Lead enterprise-wide AI adoption"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "set the AI transformation roadmap",
+        "text": "Set the AI transformation roadmap"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "stand up AI\ngovernance and model risk review",
+        "text": "Stand up AI governance and model risk review"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "move use cases from pilot to production across operations, finance and customer service",
+        "text": "Move AI use cases from pilot to production across operations, finance and customer service"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "You will build a 50-person organization of program leaders, AI product managers and\ngovernance specialists",
+        "text": "Build a 50-person organization of program leaders, AI product managers and governance specialists"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "own a $30M investment portfolio",
+        "text": "Own a $30M investment portfolio"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "report progress to the board's technology committee",
+        "text": "Report progress to the board's technology committee"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R8",
+        "importance": "SUPPORTING",
+        "quote": "reporting to the Chief Operating Officer",
+        "text": "Reports to the Chief Operating Officer"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "CORE",
+        "quote": "You have led enterprise technology or AI transformation",
+        "text": "Experience leading enterprise technology or AI transformation"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R10",
+        "importance": "IMPORTANT",
+        "quote": "built governance programs\nand organizations",
+        "text": "Experience building governance programs and organizations"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R11",
+        "importance": "IMPORTANT",
+        "quote": "can partner with executive stakeholders",
+        "text": "Ability to partner with executive stakeholders"
+      }
+    ],
+    "role_family": "AI Transformation / Enterprise Technology Leadership",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E5"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E5",
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Stood up an AI enablement program with production use cases across finance and support, and led enterprise-wide technology transformation, though AI adoption was not stated as enterprise-wide.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E5",
+          "E1"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Led an AI enablement program and a multi-year enterprise transformation, but setting an AI roadmap is not explicitly stated.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E5"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Directly stood up model risk review and usage policy as part of an AI enablement program.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E5"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Delivered 25 production AI use cases across finance and support.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led organizations up to 320 people as a manager of managers and built a Transformation Management Office, though building an AI-specific org of this composition is not stated.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Managed a $140M, 60-program portfolio, exceeding the $30M scope.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Has exposure to the board audit committee and reported value to the executive team, but not to a board technology committee.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Has executive exposure to the COO, though a direct reporting line is not stated.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E5"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led a three-year enterprise technology transformation across 14 business units and an AI enablement program.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E5",
+          "E6"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Built a Transformation Management Office, AI model risk governance and a compliance program.",
+        "requirement_id": "R10"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Has executive exposure to the CIO, CTO, COO and board audit committee, with quarterly reporting to the executive team.",
+        "requirement_id": "R11"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:35:51.243131+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:35:59.362731+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Title says 'Head of' but the 70% hands-on coding and a six-person team indicate a senior IC / team-lead level role rather than an executive one.",
+      "Reporting line is not stated, so it is unclear where the role sits in the organization."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "TEAM",
+    "inferred_seniority": "BELOW_DIRECTOR",
+    "missing_information": [
+      "REPORTING_LINE",
+      "BUDGET",
+      "ORG_SCOPE"
+    ],
+    "negative_signals": [
+      {
+        "code": "HANDS_ON_CODING",
+        "quote": "Expect to spend about\n70% of your time writing code in Go and Terraform"
+      },
+      {
+        "code": "HANDS_ON_CODING",
+        "quote": "review pull requests daily"
+      },
+      {
+        "code": "INDIVIDUAL_CONTRIBUTOR",
+        "quote": "being in the on-call rotation"
+      },
+      {
+        "code": "OTHER",
+        "quote": "You will lead a team of six platform engineers"
+      }
+    ],
+    "normalized_title": "Head of Platform Engineering",
+    "positive_scope_signals": [
+      {
+        "quote": "own\nour AWS infrastructure end to end"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "Expect to spend about\n70% of your time writing code in Go and Terraform, running our Kubernetes clusters",
+        "text": "Spend roughly 70% of time hands-on coding in Go and Terraform and running Kubernetes clusters"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "IMPORTANT",
+        "quote": "being in the on-call rotation",
+        "text": "Participate in on-call rotation"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "You will lead a team of six platform engineers",
+        "text": "Lead a team of six platform engineers"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "review pull requests daily",
+        "text": "Review pull requests daily"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "own\nour AWS infrastructure end to end",
+        "text": "Own AWS infrastructure end to end"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "Must have deep, current production experience\nwith Kubernetes, Go and service meshes",
+        "text": "Deep, current production experience with Kubernetes, Go and service meshes"
+      }
+    ],
+    "role_family": "Engineering / Platform & Infrastructure",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "AWAY",
+    "career_direction_evidence_ids": [
+      "E4",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The evidence describes leadership and transformation work but says nothing about hands-on coding in Go or Terraform or running Kubernetes clusters.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E3"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Owning incident management for an engineering organization is loosely related to on-call, but the evidence does not show personal participation in a rotation.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E4",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate launched an internal developer platform and has led organizations of up to 320 people as a manager of managers, well beyond a six-person team.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The evidence does not mention reviewing pull requests or any daily code review.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E7"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "The candidate owned technology operations and worked in cloud infrastructure, but the evidence never mentions AWS or end-to-end infrastructure ownership.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The evidence does not mention production experience with Kubernetes, Go or service meshes.",
+        "requirement_id": "R6"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:33:18.708183+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:33:28.119049+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

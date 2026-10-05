@@ -1,0 +1,234 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Whether the role has direct ownership of technology delivery teams versus a governance/PMO function alongside the CIO and CTO is not fully specified."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "ENTERPRISE",
+    "inferred_seniority": "VP",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Vice President, Enterprise Technology Transformation",
+    "positive_scope_signals": [
+      {
+        "quote": "enterprise-wide, multi-year transformation roadmap across all eight business units"
+      },
+      {
+        "quote": "own a $90M transformation portfolio"
+      },
+      {
+        "quote": "the executive team and the board"
+      },
+      {
+        "quote": "(manager of managers)"
+      },
+      {
+        "quote": "reporting to the Chief Operating Officer"
+      },
+      {
+        "quote": "120-person organization"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "lead an\nenterprise-wide, multi-year transformation roadmap across all eight business units",
+        "text": "Lead an enterprise-wide, multi-year transformation roadmap across all eight business units"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "own a $90M transformation portfolio",
+        "text": "Own a $90M transformation portfolio"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "build the Transformation Management Office\nthat tracks value delivered to the executive team and the board",
+        "text": "Build the Transformation Management Office reporting value to executive team and board"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "lead a 120-person organization of program directors, transformation leads\nand portfolio analysts (manager of managers)",
+        "text": "Lead a 120-person organization as manager of managers"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the Chief Operating Officer",
+        "text": "Reports to the Chief Operating Officer"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "partner with the CIO and CTO on operating-model redesign",
+        "text": "Partner with CIO and CTO on operating-model redesign"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "drive cross-functional leadership across a matrixed organization",
+        "text": "Drive cross-functional leadership in a matrixed organization"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "CORE",
+        "quote": "15+ years leading large-scale transformation in enterprise software\nor financial technology",
+        "text": "15+ years leading large-scale transformation in enterprise software or financial technology"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R9",
+        "importance": "IMPORTANT",
+        "quote": "a track record of portfolio governance and executive communication",
+        "text": "Track record of portfolio governance and executive communication"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R10",
+        "importance": "IMPORTANT",
+        "quote": "experience building organizations from the ground up",
+        "text": "Experience building organizations from the ground up"
+      }
+    ],
+    "role_family": "Transformation / Enterprise Technology Leadership",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E1"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led a three-year enterprise technology transformation across 14 business units, exceeding the eight-unit scope.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Tracked a $140M, 60-program portfolio, larger than the $90M required.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Built and ran a Transformation Management Office with quarterly value reporting to the executive team and had board audit committee exposure, though direct board value reporting is not stated.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led organizations of up to 320 people as a manager of managers, exceeding the 120-person scope.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Has executive exposure to the COO, though a direct COO reporting line is not stated.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Has executive exposure to the CIO and CTO and consolidated 9 delivery organizations, indicating operating-model change work.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E5"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Drove transformation across 14 business units and an AI program spanning finance and support, reflecting cross-functional leadership.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Has 18 years in leadership across enterprise software and fintech, though only part of that is explicitly large-scale transformation.",
+        "requirement_id": "R8"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Governed a 60-program portfolio with quarterly value reporting to executives and exposure to the CIO, CTO, COO and board audit committee.",
+        "requirement_id": "R9"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E5",
+          "E4"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Built a Transformation Management Office, stood up an AI enablement program and launched a developer platform from scratch.",
+        "requirement_id": "R10"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:31:05.677965+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:31:20.449683+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

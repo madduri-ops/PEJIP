@@ -1,0 +1,164 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Reporting line is not specified; 'report progress to executive leadership' may describe status reporting rather than the direct manager.",
+      "Unclear whether the role has direct reports or a team, or operates through influence and program governance.",
+      "Breadth of 'technology organization' (enterprise-wide vs. a single function) is not stated."
+    ],
+    "analysis_confidence": "MEDIUM",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "VP",
+    "missing_information": [
+      "COMPENSATION",
+      "TEAM_SIZE",
+      "BUDGET",
+      "REPORTING_LINE",
+      "ORG_SCOPE"
+    ],
+    "negative_signals": [],
+    "normalized_title": "Vice President, Technology Transformation",
+    "positive_scope_signals": [
+      {
+        "quote": "lead\nthe modernization of our technology organization and operating model"
+      },
+      {
+        "quote": "govern the portfolio of change programs"
+      },
+      {
+        "quote": "report progress to executive leadership"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "lead\nthe modernization of our technology organization and operating model",
+        "text": "Lead modernization of the technology organization and operating model"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "drive the transformation roadmap",
+        "text": "Drive the transformation roadmap"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "govern the portfolio of change programs",
+        "text": "Govern the portfolio of change programs"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R4",
+        "importance": "SUPPORTING",
+        "quote": "report progress to executive leadership",
+        "text": "Report progress to executive leadership"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "PREFERRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "Experience leading enterprise technology transformation in financial services is\npreferred",
+        "text": "Experience leading enterprise technology transformation"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "PREFERRED",
+        "id": "R6",
+        "importance": "SUPPORTING",
+        "quote": "in financial services is\npreferred",
+        "text": "Financial services industry experience"
+      }
+    ],
+    "role_family": "Technology Transformation",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E1",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led an enterprise technology transformation consolidating 9 delivery organizations and owned technology operations for a 320-person engineering organization.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Drove a three-year transformation across 14 business units and ran the Transformation Management Office.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Built and ran a TMO tracking a 60-program, $140M portfolio.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Provided quarterly value reporting to the executive team and had exposure to the CIO, CTO, COO and the board audit committee.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E1"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Led a three-year enterprise technology transformation across 14 business units.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Industries include fintech, which is adjacent to but not the same as financial services.",
+        "requirement_id": "R6"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:34:45.877922+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:34:51.041845+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

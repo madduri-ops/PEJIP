@@ -1,0 +1,174 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "VP title but scope is a small sales team of four account executives; seniority may be title inflation typical of consulting sales roles",
+      "Reporting line not stated",
+      "Work model (remote/hybrid/onsite) not stated beyond Bay Area location and heavy travel"
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "TEAM",
+    "inferred_seniority": "VP",
+    "missing_information": [
+      "REPORTING_LINE",
+      "WORK_MODEL",
+      "BUDGET"
+    ],
+    "negative_signals": [
+      {
+        "code": "QUOTA_CARRYING",
+        "quote": "You will carry a $25M annual sales quota"
+      },
+      {
+        "code": "SALES_HEAVY",
+        "quote": "own\nthe sales pipeline from prospecting to close"
+      },
+      {
+        "code": "QUOTA_CARRYING",
+        "quote": "uncapped commission"
+      },
+      {
+        "code": "OTHER",
+        "quote": "Travel up to 40% to client sites."
+      }
+    ],
+    "normalized_title": "VP, Digital Transformation Solutions (Enterprise Sales)",
+    "positive_scope_signals": [
+      {
+        "quote": "lead a team of four account executives"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will carry a $25M annual sales quota",
+        "text": "Carry a $25M annual sales quota"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "grow\nour West Coast enterprise accounts",
+        "text": "Grow West Coast enterprise accounts"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "own\nthe sales pipeline from prospecting to close",
+        "text": "Own the sales pipeline from prospecting to close"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "lead a team of four account executives",
+        "text": "Lead a team of four account executives"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "You have a\nrecord of exceeding quota selling transformation services to Fortune 500 buyers.",
+        "text": "Track record of exceeding quota selling transformation services to Fortune 500 buyers"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "selling transformation services to Fortune 500 buyers",
+        "text": "Domain experience in digital transformation services"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "SUPPORTING",
+        "quote": "Travel up to 40% to client sites.",
+        "text": "Travel up to 40% to client sites"
+      }
+    ],
+    "role_family": "Sales / Business Development",
+    "work_model": "UNKNOWN"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "AWAY",
+    "career_direction_evidence_ids": [],
+    "matches": [
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile contains no evidence of carrying a sales quota.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not describe growing enterprise accounts or any regional sales territory.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile contains no evidence of owning a sales pipeline from prospecting to close.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "The candidate has led organizations as a manager of managers, but there is no evidence of leading account executives.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile contains no evidence of exceeding quota or selling to Fortune 500 buyers.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2",
+          "E5"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate led enterprise technology and AI transformation from the delivery side, which gives adjacent domain experience in transformation services.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention travel or willingness to travel.",
+        "requirement_id": "R7"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:33:36.907571+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:33:42.765544+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Unclear whether the team of five are direct reports or include managers.",
+      "Degree of hands-on platform administration versus team leadership is not specified.",
+      "Number of days per week required onsite in Emeryville is not stated."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "TEAM",
+    "inferred_seniority": "DIRECTOR",
+    "missing_information": [
+      "BUDGET"
+    ],
+    "negative_signals": [
+      {
+        "code": "OTHER",
+        "quote": "deep hands-on experience\nwith marketing automation platforms"
+      }
+    ],
+    "normalized_title": "Director of Marketing Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "report to the CMO"
+      },
+      {
+        "quote": "You will lead a team of five"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "own our\nmarketing automation stack (Marketo, Salesforce)",
+        "text": "Own the marketing automation stack (Marketo, Salesforce)"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "campaign operations, lead scoring\nand attribution reporting",
+        "text": "Own campaign operations, lead scoring and attribution reporting"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "You will lead a team of five",
+        "text": "Lead a team of five"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "report to the CMO",
+        "text": "Reports to the CMO"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "You have five or more years in marketing operations",
+        "text": "Five or more years in marketing operations"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "deep hands-on experience\nwith marketing automation platforms",
+        "text": "Deep hands-on experience with marketing automation platforms"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "INFERRED",
+        "id": "R7",
+        "importance": "SUPPORTING",
+        "quote": "(Marketo, Salesforce)",
+        "text": "Experience with Marketo and Salesforce"
+      }
+    ],
+    "role_family": "Marketing Operations",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "AWAY",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E3"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Owning technology operations and vendor management for an engineering organization is only loosely related to owning a marketing automation stack.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention campaign operations, lead scoring or attribution reporting.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate has led organizations of up to 320 people as a manager of managers, well beyond a team of five.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "The candidate has executive exposure to the CIO, CTO and COO, but no CMO reporting line is mentioned.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile describes technology operations and transformation work and does not mention marketing operations tenure.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "No evidence addresses hands-on experience with marketing automation platforms.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "Marketo and Salesforce experience is not mentioned in the profile.",
+        "requirement_id": "R7"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:37:49.125448+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:38:00.356721+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}
