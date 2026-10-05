@@ -122,8 +122,9 @@ See [ADR-0003](../adr/0003-python-cli-first-slice.md).
 
 ## Open questions
 
-- Which company boards Babu wants searched; `config/search.yaml` starts with six
-  examples.
+- Covering Babu's target companies that have no allowed public API (Google, NVIDIA,
+  Meta, Micron, Microsoft, and most of OpenAI's roles): job-alert emails or a
+  licensed job-data provider. `config/search.yaml` searches Anthropic only for now.
 - Model answers vary between runs (two live runs of the same code scored 67% and
   46% Fit in range), so the live job gates only the hard rules (`--gate invariants`,
   Babu's choice on 2026-10-05) and the replay of committed recordings gates the

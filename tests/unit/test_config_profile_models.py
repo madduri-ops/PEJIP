@@ -15,7 +15,7 @@ def test_config_loads_and_validates(config: SearchConfig) -> None:
     assert config.ai.max_jobs_per_run == 40
     assert config.retention_days == 90
     assert sum(config.scoring.fit_weights.values()) == 100
-    assert {s.adapter for s in config.sources} == {"greenhouse", "lever"}
+    assert [(s.adapter, s.company) for s in config.sources] == [("greenhouse", "Anthropic")]
 
 
 def test_config_rejects_unknown_fields(config: SearchConfig) -> None:

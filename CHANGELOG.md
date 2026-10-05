@@ -10,6 +10,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
+### Changed
+
+- The job search covers Anthropic, the one target company whose roles are
+  available through an allowed public API; the example company boards are gone.
+
 ### Added
 
 - First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
