@@ -12,6 +12,20 @@ sources:
   # OpenAI's Ashby feed lists only a few of its roles (checked 2026-10-05).
   - {adapter: greenhouse, company: Anthropic, board: anthropic}
 
+inbox:
+  # Job-alert emails Babu signed up for with alerts@inbox.job-search.zephyr-mcg.com
+  # (design doc 0010). A link in an alert becomes a role only when it points at one
+  # of these careers pages (host/path prefix; subdomains match). The linked pages
+  # are not fetched. Patterns are the sites' public job URLs as of 2026-10-05;
+  # adjust them if an alert's links point elsewhere.
+  companies:
+    - {company: Google, link_patterns: [careers.google.com/, www.google.com/about/careers]}
+    - {company: NVIDIA, link_patterns: [nvidia.wd5.myworkdayjobs.com/]}
+    - {company: Meta, link_patterns: [metacareers.com/]}
+    - {company: Micron, link_patterns: [careers.micron.com/, jobs.micron.com/, micron.eightfold.ai/]}
+    - {company: OpenAI, link_patterns: [openai.com/careers, jobs.ashbyhq.com/openai]}
+    - {company: Microsoft, link_patterns: [careers.microsoft.com/]}
+
 fetch:
   user_agent: "PEJIP/0.1 (personal job research; +https://github.com/madduri-ops/PEJIP)"
   min_interval_seconds: 1.0      # per source host

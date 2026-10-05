@@ -6,6 +6,7 @@ digest. Detail is in [design doc 0008](../design/0008-find-thin-slice.md).
 ```mermaid
 flowchart LR
     boards[(Greenhouse and Lever boards)] -->|PoliteClient| fetch[Fetch]
+    inbox[(S3 job-alert inbox)] -->|read, parse, delete| fetch
     fetch --> filter[Title + geography filter]
     filter -->|upsert by fingerprint| jobs[(jobs)]
     jobs -->|new or changed content| analyse[JOB_ANALYSIS]

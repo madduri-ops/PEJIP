@@ -33,8 +33,9 @@ def test_run_writes_the_digest(
     env: Path, monkeypatch: pytest.MonkeyPatch, status: str, code: int
 ) -> None:
     class StubPipeline:
-        def __init__(self, *args: Any) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             self.args = args
+            self.kwargs = kwargs
 
         def run(self) -> Digest:
             return Digest("run-1", NOW, status, [])
@@ -60,6 +61,34 @@ def test_purge_export_and_delete(env: Path, capsys: pytest.CaptureFixture[str]) 
 
 
 @pytest.mark.usefixtures("env")
+def test_run_reads_the_inbox_only_when_a_bucket_is_named(monkeypatch: pytest.MonkeyPatch) -> None:
+    built: list[dict[str, Any]] = []
+
+    class StubPipeline:
+        def __init__(self, *_args: Any, **kwargs: Any) -> None:
+            built.append(kwargs)
+
+        def run(self) -> Digest:
+            return Digest("run-1", NOW, "SUCCESS", [])
+
+    regions: list[str | None] = []
+
+    def fake_client(region: str | None) -> object:
+        regions.append(region)
+        return object()
+
+    monkeypatch.setattr(cli, "Pipeline", StubPipeline)
+    monkeypatch.setattr(cli, "make_s3_client", fake_client)
+    assert cli.main(["run"]) == 0
+    assert built[-1]["inbox"] is None
+    monkeypatch.setenv("PEJIP_INBOX_BUCKET", "inbox-bucket")
+    monkeypatch.setenv("AWS_REGION", "us-west-2")
+    assert cli.main(["run"]) == 0
+    assert built[-1]["inbox"] is not None
+    assert regions == ["us-west-2"]
+
+
+@pytest.mark.usefixtures("env")
 def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.argv", ["pejip", "purge"])
     with pytest.raises(SystemExit) as exit_info:
@@ -72,8 +101,9 @@ def test_old_digests_are_deleted_and_recent_ones_kept(
     env: Path, monkeypatch: pytest.MonkeyPatch, command: str
 ) -> None:
     class StubPipeline:
-        def __init__(self, *args: Any) -> None:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
             self.args = args
+            self.kwargs = kwargs
 
         def run(self) -> Digest:
             return Digest("run-1", NOW, "SUCCESS", [])

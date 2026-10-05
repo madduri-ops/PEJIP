@@ -88,7 +88,7 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 The Phase 1 (FIND) specification is complete, and the first end-to-end slice is a
 command line tool: it fetches roles from configured Greenhouse and Lever company
-boards, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
+boards and from career-site job-alert emails sent to PEJIP's own inbox, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence. Network data, feedback,
 notifications, feature API endpoints and the web UI come next. The build policy,
 repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
