@@ -191,14 +191,20 @@ def _step(folder: Path, role_id: str, feature: str, text: str, problem: str | No
     return Step(role_id, feature, instructions, output, problem)
 
 
-def next_step(work: Path) -> Step | None:
+def next_step(work: Path, role_id: str | None = None) -> Step | None:
     """The first step still to do, with its instructions written; None when all are done.
 
     An answer already written is checked first. If it fails validation, the same
-    step comes back with the reason, so the session can correct it.
+    step comes back with the reason, so the session can correct it. ``role_id``
+    limits it to one role, so several helpers can work on different roles at once.
     """
     profile = load_profile(work)
-    for role in load_roles(work):
+    roles = load_roles(work)
+    if role_id is not None:
+        roles = [r for r in roles if r.id == role_id]
+        if not roles:
+            raise UnknownRoleError(role_id)
+    for role in roles:
         folder = _role_dir(work, role.id)
         if (folder / SKIPPED_FILE).exists():
             continue

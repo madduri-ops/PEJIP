@@ -34,10 +34,11 @@ def _say(text: str) -> None:
     sys.stdout.write(text + "\n")
 
 
-def _cmd_next(work: Path) -> int:
-    step = workbench.next_step(work)
+def _cmd_next(work: Path, role_id: str | None) -> int:
+    step = workbench.next_step(work, role_id)
     if step is None:
-        _say("DONE: every role has valid answers or was skipped.")
+        which = "this role has" if role_id else "every role has"
+        _say(f"DONE: {which} valid answers or was skipped.")
         return 0
     if step.problem:
         _say(f"REDO role {step.role_id} {step.feature}: {step.problem}")
@@ -84,7 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m pejip.routine", description=__doc__)
     parser.add_argument("--work", type=Path, required=True, help="working folder")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("next", help="name the next step and write its instructions")
+    step = sub.add_parser("next", help="name the next step and write its instructions")
+    step.add_argument("--role", help="only this role")
     skip = sub.add_parser("skip", help="give up on a role that keeps failing")
     skip.add_argument("role")
     skip.add_argument("reason")
@@ -101,7 +103,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         if args.command == "next":
-            return _cmd_next(args.work)
+            return _cmd_next(args.work, args.role)
         if args.command == "skip":
             return _cmd_skip(args.work, args.role, args.reason)
         if args.command == "eval-prepare":

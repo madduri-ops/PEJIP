@@ -40,9 +40,16 @@ def test_next_walks_the_steps(tmp_path: Path, capsys: pytest.CaptureFixture[str]
     routine.main(["--work", str(work), "next"])
     assert capsys.readouterr().out.startswith("REDO role G01 job_analysis: ")
 
+    routine.main(["--work", str(work), "next", "--role", "G02"])
+    assert capsys.readouterr().out.startswith("STEP role G02 job_analysis")
+    assert routine.main(["--work", str(work), "next", "--role", "G99"]) == 2
+    assert "no role 'G99'" in capsys.readouterr().err
+
     _answer_from_recordings(work)
     routine.main(["--work", str(work), "next"])
-    assert capsys.readouterr().out.startswith("DONE")
+    assert capsys.readouterr().out.startswith("DONE: every role")
+    routine.main(["--work", str(work), "next", "--role", "G02"])
+    assert capsys.readouterr().out.startswith("DONE: this role")
 
 
 def test_the_golden_set_scores_the_same_through_the_workbench(
