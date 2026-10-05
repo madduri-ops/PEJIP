@@ -306,7 +306,7 @@ jobs:
         if: always()
         run: |
           for f in recordings/*.json; do
-            [ -e "$f" ] && echo "RECORDING $(basename "$f") $(jq -c . "$f")"
+            if [ -e "$f" ]; then echo "RECORDING $(basename "$f") $(jq -c . "$f")"; fi
           done
       - if: always()
         uses: actions/upload-artifact@v7

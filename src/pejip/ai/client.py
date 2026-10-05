@@ -40,7 +40,12 @@ class ModelCallError(AIError):
     """The API rejected or failed the request."""
 
     def __init__(self, cause: Exception) -> None:
-        super().__init__(f"model call failed: {type(cause).__name__}")
+        detail = type(cause).__name__
+        if isinstance(cause, anthropic.APIStatusError):
+            # The API's own explanation (a bad parameter, an exhausted credit
+            # balance); it describes the request, never the posting or profile.
+            detail += f" {cause.status_code}: {cause.message}"
+        super().__init__(f"model call failed: {detail}")
 
 
 class IncompleteOutputError(AIError):

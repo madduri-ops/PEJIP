@@ -107,8 +107,8 @@ def test_refusal_and_truncation_are_errors(config: SearchConfig, guard: CostGuar
 
 def test_api_rejection_releases_the_reservation(config: SearchConfig, guard: CostGuard) -> None:
     rejected = httpx2.Response(400, request=httpx2.Request("POST", API_URL))
-    fake = FakeMessages(anthropic.BadRequestError("bad", response=rejected, body=None))
-    with pytest.raises(AIError, match="BadRequestError"):
+    fake = FakeMessages(anthropic.BadRequestError("credit too low", response=rejected, body=None))
+    with pytest.raises(AIError, match="BadRequestError 400: credit too low"):
         call(make(config, guard, fake))
     assert guard.month_to_date_usd() == 0
 
