@@ -23,5 +23,7 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - Health endpoint `GET /healthz` reporting the running version.
 - AI cost guard enforcing the $100 monthly cap, with spend alarms from 50% to 100%.
 - Golden evaluation set and harness for rankings.
+- 90-day retention window for personal data, postings and rankings, with an
+  expired-file purge.
 - Release tooling: this changelog, version checks, tagged GitHub Releases and a
   rollback workflow.
