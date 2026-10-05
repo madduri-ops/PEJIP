@@ -5,7 +5,8 @@ Keeps the version in `pyproject.toml`, the sections of `CHANGELOG.md` and the
 
     python -m ci.release check                 # changelog and version agree (pre-commit, CI)
     python -m ci.release prepare 0.2.0         # cut a release from the Unreleased section
-    python -m ci.release check-tag v0.2.0      # a pushed tag matches the version
+    python -m ci.release version               # the version to release, once checked
+    python -m ci.release check-tag v0.2.0      # a tag matches the version
     python -m ci.release notes 0.2.0           # release notes for the GitHub Release
     python -m ci.release rollback-target [--version 0.1.0] [--head SHA] [--fallback-parent]
 """
@@ -229,6 +230,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=Path(), help="repository root")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check")
+    commands.add_parser("version")
     commands.add_parser("prepare").add_argument("version")
     commands.add_parser("check-tag").add_argument("tag")
     commands.add_parser("notes").add_argument("version")
@@ -265,12 +267,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.command == "check":
             check_changelog(parse_changelog(changelog), version)
             print(f"CHANGELOG.md and pyproject.toml agree on {version}.")
+        elif args.command == "version":
+            check_changelog(parse_changelog(changelog), version)
+            print(version)
         elif args.command == "prepare":
             today = datetime.datetime.now(datetime.UTC).date()
             new_changelog, new_pyproject = prepare(changelog, pyproject, args.version, today)
             changelog_path.write_text(new_changelog, encoding="utf-8")
             pyproject_path.write_text(new_pyproject, encoding="utf-8")
-            print(f"Prepared {args.version}; open a PR, then tag v{args.version} once merged.")
+            print(f"Prepared {args.version}; open a PR, then run the Release workflow once merged.")
         elif args.command == "check-tag":
             check_changelog(parse_changelog(changelog), version)
             check_tag(args.tag, version)

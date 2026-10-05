@@ -85,14 +85,15 @@ Versions follow [semantic versioning](https://semver.org/) and are tagged
   `pyproject.toml` in step.
 - **Cutting a release:** on a branch, run `python -m ci.release prepare X.Y.Z`. It
   moves the Unreleased notes into a dated `## X.Y.Z` section and bumps
-  `pyproject.toml`. Merge that PR, then tag the merge commit on `main`:
+  `pyproject.toml`. Merge that PR, then run the Release workflow on `main`:
 
   ```sh
-  git fetch origin main && git tag -a vX.Y.Z origin/main -m "PEJIP X.Y.Z" && git push origin vX.Y.Z
+  gh workflow run release.yml
   ```
 
-  The Release workflow checks the tag against `pyproject.toml` and `CHANGELOG.md`,
-  checks the commit is on `main`, and publishes a GitHub Release with the notes.
+  (or Actions > Release > Run workflow). It checks `CHANGELOG.md` against
+  `pyproject.toml`, tags `main`'s head `vX.Y.Z` and publishes a GitHub Release with
+  that version's notes.
 - **Rolling back:** a failed post-deploy health gate rolls back automatically. The
   one-command manual rollback (`gh workflow run rollback.yml`) arrives with the deploy
   workflow; see the design doc's Rollback section. CI's **Rollback drill** job
