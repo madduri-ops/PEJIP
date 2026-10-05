@@ -80,11 +80,28 @@ class Opportunity:
     connections: tuple[Connection, ...] | None = None
     watched: bool = False
     change_note: str | None = None
+    # The configured geographic scope the location falls in (``discovery.place``),
+    # such as BAY_AREA or US_REMOTE; None when it is in none.
+    location_scope: str | None = None
+
+
+@dataclass(frozen=True)
+class SourceStatus:
+    """How one source did in a run (``pejip.digest.SourceResult``).
+
+    ``status`` is OK or FAILED. Low-level errors stay in the logs; the portal shows
+    only the impact (spec 12.31).
+    """
+
+    name: str
+    status: str
+    fetched: int
+    candidates: int
 
 
 @dataclass(frozen=True)
 class SearchRun:
-    """The latest search run, for the status line on every page."""
+    """One search run: the status line on every page and the Search Health page."""
 
     started_at: datetime
     status: str  # SUCCESS, PARTIAL or FAILED
@@ -94,6 +111,39 @@ class SearchRun:
     changed: int
     expired: int
     next_run_at: datetime | None
+    sources: tuple[SourceStatus, ...] = ()
+
+
+@dataclass(frozen=True)
+class Signal:
+    """A company development worth knowing, with where it came from (spec 12.19)."""
+
+    text: str
+    source: str
+    seen_at: datetime
+
+
+@dataclass(frozen=True)
+class Company:
+    """A company PEJIP tracks: a target Babu chose, or one discovered in searches.
+
+    Whether it has matching jobs comes from the opportunities, not from here;
+    ``relevance`` (STRATEGICALLY_RELEVANT, NO_CURRENT_MATCH or LOW_RELEVANCE) is
+    what the portal shows when it has none (spec 12.18, 12.21).
+    """
+
+    name: str
+    industry: str | None
+    target: bool
+    watching: bool
+    monitoring: str  # HIGH, NORMAL or LOW
+    relevance: str
+    job_source: str
+    coverage_note: str | None = None
+    signals: tuple[Signal, ...] = ()
+    # None until a LinkedIn connections export maps people to this company.
+    connections: int | None = None
+    low_reason: str | None = None
 
 
 class PortalData(Protocol):
@@ -106,5 +156,11 @@ class PortalData(Protocol):
     def latest_run(self) -> SearchRun | None:
         """The most recent search run, or None before the first one."""
 
+    def recent_runs(self) -> list[SearchRun]:
+        """Recent search runs, newest first; empty before the first one."""
+
     def opportunities(self) -> list[Opportunity]:
         """Every active opportunity, in any order."""
+
+    def companies(self) -> list[Company]:
+        """Target companies and companies discovered in searches, in any order."""

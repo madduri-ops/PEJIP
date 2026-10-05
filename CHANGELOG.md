@@ -26,6 +26,19 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Opportunities has a Bay Area view and filters for location, posting age,
+  network and whether pay is published.
+- The portal has a read-only Settings page at `/settings` showing the real search
+  setup: titles, locations, schedule, sources and the alert address, how ranking
+  works, and data retention.
+- The portal has a Watchlist page at `/watchlist`: what changed in watched jobs
+  and companies, then everything watched.
+- The portal has a Companies page at `/companies`: target companies with their
+  matching roles, connections and signals, why a company without an opening stays
+  relevant, and companies discovered in searches.
+- The portal has a Search Health page at `/search-health`: the latest search, any
+  failed sources with their impact and last success, every source searched, and
+  recent runs.
 - PEJIP searches on its own every morning at 6am Pacific on AWS, keeps its results
   in an encrypted SQLite database on EFS, and emails Babu the digest. Data past 90
   days is purged daily.

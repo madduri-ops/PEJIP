@@ -1,4 +1,4 @@
-"""The signed-in web portal: Home, Opportunities and Opportunity detail pages.
+"""The signed-in web portal: Home, Opportunities, Opportunity detail and Search Health.
 
 Built from the portal mocks (spec section 12, design doc 0011). Pages read through
 :class:`pejip.portal.data.PortalData`; sample data stands in until the persistent
@@ -13,17 +13,20 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import HTMLResponse, Response
 
+from pejip.config import SearchConfig
 from pejip.portal import render
 from pejip.portal.data import PortalData
-from pejip.portal.views import Filters, list_opportunities
+from pejip.portal.views import Filters, list_companies, list_opportunities, watchlist
 
 STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encoding="utf-8")
 
 Clock = Callable[[], datetime]
 
 
-def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
-    """The portal's routes, reading from ``data``."""
+def router(
+    data: PortalData, clock: Clock | None = None, config: SearchConfig | None = None
+) -> APIRouter:
+    """The portal's routes, reading from ``data``; Settings shows ``config``."""
     now_fn = clock or (lambda: datetime.now(UTC))
     routes = APIRouter(tags=["portal"], default_response_class=HTMLResponse)
 
@@ -65,6 +68,10 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
         confidence: Annotated[str, Query(max_length=16)] = "",
         company: Annotated[str, Query(max_length=100)] = "",
         work_model: Annotated[str, Query(max_length=16)] = "",
+        scope: Annotated[str, Query(max_length=16)] = "",
+        age: Annotated[str, Query(max_length=4)] = "",
+        network: Annotated[str, Query(max_length=16)] = "",
+        pay: Annotated[str, Query(max_length=16)] = "",
     ) -> str:
         """Every active opportunity, by view and filters (spec 12.6, 12.7)."""
         filters = Filters.from_query(
@@ -75,9 +82,13 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
                 "confidence": confidence,
                 "company": company,
                 "work_model": work_model,
+                "scope": scope,
+                "age": age,
+                "network": network,
+                "pay": pay,
             }
         )
-        listing = list_opportunities(data.opportunities(), filters)
+        listing = list_opportunities(data.opportunities(), filters, now_fn())
         body = render.opportunities_body(listing, filters, now_fn())
         return frame(
             active="opportunities",
@@ -108,6 +119,49 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
             crumb='<div class="crumb"><a href="/opportunities">Opportunities</a></div>',
         )
         return HTMLResponse(html)
+
+    @routes.get("/companies")
+    def companies(view: Annotated[str, Query(max_length=16)] = "all") -> str:
+        """Companies that matter, whether or not they are hiring today (spec 12.18)."""
+        listing = list_companies(data.companies(), data.opportunities(), view)
+        return frame(
+            active="companies",
+            heading="Companies",
+            subtitle="Companies that matter to your career, whether or not they have a "
+            "matching opening today.",
+            body=render.companies_body(listing, now_fn()),
+        )
+
+    @routes.get("/watchlist")
+    def watched() -> str:
+        """What changed in watched jobs and companies (spec 12.22)."""
+        listing = watchlist(data.companies(), data.opportunities(), now_fn())
+        return frame(
+            active="watchlist",
+            heading="Watchlist",
+            subtitle="What changed in the jobs and companies you are watching.",
+            body=render.watchlist_body(listing, now_fn()),
+        )
+
+    @routes.get("/settings")
+    def settings() -> str:
+        """What PEJIP searches for, when, and how it ranks (spec 12.35)."""
+        return frame(
+            active="settings",
+            heading="Settings",
+            subtitle="What PEJIP searches for, when, and how it ranks.",
+            body=render.settings_body(config),
+        )
+
+    @routes.get("/search-health")
+    def search_health() -> str:
+        """Search Health: what each recent run searched and what failed (spec 12.27)."""
+        return frame(
+            active="search-health",
+            heading="Search Health",
+            subtitle="Did the searches cover everything they should?",
+            body=render.search_health_body(data.recent_runs(), now_fn()),
+        )
 
     @routes.get("/portal.css", response_class=Response)
     def stylesheet() -> Response:

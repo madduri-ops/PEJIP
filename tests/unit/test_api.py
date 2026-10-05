@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Iterator
+from pathlib import Path
 
 import httpx
 import pytest
@@ -10,7 +11,7 @@ from fastapi import FastAPI
 from ci.alb_token import AlbSigner
 from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
-from pejip.portal.data import Opportunity
+from pejip.portal.data import Company, Opportunity, SearchRun
 from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 
 
@@ -63,6 +64,12 @@ def test_portal_reads_the_data_it_is_given(signer: AlbSigner) -> None:
 
         def latest_run(self) -> None:
             return None
+
+        def recent_runs(self) -> list[SearchRun]:
+            return []
+
+        def companies(self) -> list[Company]:
+            return []
 
         def opportunities(self) -> list[Opportunity]:
             return []
@@ -164,3 +171,14 @@ def test_interactive_docs_are_disabled(signed_in_app: FastAPI, signer: AlbSigner
 
     assert _get(signed_in_app, "/docs", token).status_code == 404
     assert _get(signed_in_app, "/redoc", token).status_code == 404
+
+
+def test_settings_page_reads_the_search_configuration(signer: AlbSigner, tmp_path: Path) -> None:
+    with key_server(signer) as key_url:
+        token = signer.token(ALLOWED_EMAIL)
+        default = _get(api.create_app(env=auth_env(key_url)), "/settings", token).text
+        missing = {**auth_env(key_url), "PEJIP_CONFIG": str(tmp_path / "absent.yaml")}
+        absent = _get(api.create_app(env=missing), "/settings", token).text
+
+    assert "Seniority a title needs" in default
+    assert "The search configuration is not available on this server." in absent
