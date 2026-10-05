@@ -17,7 +17,7 @@ resource "aws_iam_outbound_web_identity_federation" "this" {
 }
 
 # Tokens only for Anthropic, only RS256, at most 15 minutes. Attached to the app's
-# ECS task role by the hosting Terraform.
+# ECS task role below.
 data "aws_iam_policy_document" "claude_federation" {
   statement {
     sid       = "ClaudeIdentityToken"
@@ -55,6 +55,13 @@ resource "aws_iam_policy" "claude_federation" {
   name        = "pejip-claude-federation"
   description = "Lets PEJIP workloads get short-lived identity tokens for the Claude API"
   policy      = data.aws_iam_policy_document.claude_federation.json
+}
+
+# The app's runtime identity (infra/ecs.tf). Its role ARN is the subject the
+# Anthropic rule for the app matches.
+resource "aws_iam_role_policy_attachment" "ecs_task_claude_federation" {
+  role       = aws_iam_role.ecs_task.name
+  policy_arn = aws_iam_policy.claude_federation.arn
 }
 
 # The plan role reads these resources on every pull request plan. Kept here, next
