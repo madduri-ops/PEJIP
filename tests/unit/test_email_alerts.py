@@ -145,7 +145,7 @@ def test_a_subdomain_of_a_careers_host_matches() -> None:
 def test_the_shipped_configuration_names_the_target_companies(config: SearchConfig) -> None:
     assert config.inbox is not None
     names = {c.company for c in config.inbox.companies}
-    assert names == {"Google", "NVIDIA", "Meta", "Micron", "OpenAI", "Microsoft"}
+    assert names == {"Google", "NVIDIA", "Meta", "Micron", "OpenAI", "Microsoft", "LinkedIn"}
 
 
 def test_inbox_lists_every_page_reads_and_deletes() -> None:
@@ -193,3 +193,118 @@ def test_make_s3_client_builds_a_regional_boto3_client() -> None:
     client: Any = make_s3_client("us-west-2")
     assert client.meta.region_name == "us-west-2"
     assert callable(client.list_objects_v2)
+
+
+BOARD = AlertCompany(
+    company="Board",
+    job_board=True,
+    link_patterns=["jobs.board.test/view"],
+    job_id_pattern=r"view/\d+",
+)
+
+BOARD_SENDER = "Board Alerts <alerts@board.test>"
+
+BOARD_ALERT = f"""
+<p>Your job alert for vice president</p>
+<a href="https://jobs.board.test/view/111/?trackingId=abc&refId=x">VP, Platform Engineering</a>
+<p>Acme Corp · San Jose, CA (Hybrid)</p><p>Actively recruiting</p>
+<a href="{tracked("https://jobs.board.test/view/111/?trk=other")}">VP, Platform Engineering</a>
+<a href="https://jobs.board.test/view/222">Head of Technology Operations</a>
+<p>Globex</p><p>Remote, United States</p>
+<a href="https://jobs.board.test/view/333">Chief Operating Officer</a>
+<a href="https://jobs.board.test/viewer/444">Senior Director, Programs</a><p>Initech</p>
+<a href="https://jobs.board.test/view/abc">Senior Director, Strategy</a><p>Hooli | Oakland, CA</p>
+"""
+
+
+def test_a_job_board_alert_names_each_employer() -> None:
+    alert = parse_alert(email(BOARD_ALERT, sender=BOARD_SENDER), [BOARD])
+
+    by_title = {p.title: p for p in alert.postings}
+    assert set(by_title) == {
+        "VP, Platform Engineering",
+        "Head of Technology Operations",
+        "Senior Director, Strategy",
+    }
+    vp = by_title["VP, Platform Engineering"]
+    assert (vp.company, vp.location) == ("Acme Corp", "San Jose, CA (Hybrid)")
+    # The role id is cut from the link, so tracking variants are one role.
+    assert vp.url == vp.source_job_id == "https://jobs.board.test/view/111"
+    assert vp.extra == {"origin": "job_alert_email", "job_board": "Board"}
+    assert vp.description.splitlines() == [
+        "VP, Platform Engineering at Acme Corp, from a Board job-alert email.",
+        "San Jose, CA (Hybrid)",
+        "Actively recruiting",
+    ]
+    head = by_title["Head of Technology Operations"]
+    assert (head.company, head.location) == ("Globex", "Remote, United States")
+    # A link the id pattern does not match keeps its full canonical URL.
+    strategy = by_title["Senior Director, Strategy"]
+    assert (strategy.company, strategy.location) == ("Hooli", "Oakland, CA")
+    assert strategy.url == "https://jobs.board.test/view/abc"
+
+
+def test_a_job_board_role_with_no_employer_text_is_skipped() -> None:
+    body = '<a href="https://jobs.board.test/view/9">VP, Operations</a><p> · Remote</p>'
+    assert parse_alert(email(body, sender=BOARD_SENDER), [BOARD]).postings == []
+
+
+def test_an_alert_forwarded_as_an_attachment_is_read() -> None:
+    inner = EmailMessage()
+    inner["From"] = "Board Alerts <alerts@board.test>"
+    inner["Subject"] = "Your job alert"
+    inner.set_content(BOARD_ALERT, subtype="html")
+    outer = EmailMessage()
+    outer["From"] = "Babu <someone@mail.test>"
+    outer["Subject"] = "Fwd: Your job alert"
+    outer.set_content("Forwarding this alert.")
+    outer.add_attachment(inner)
+
+    alert = parse_alert(outer.as_bytes(), [BOARD])
+
+    assert alert.sender == "someone@mail.test"
+    assert len(alert.postings) == 3
+
+
+def test_an_invalid_job_id_pattern_is_rejected() -> None:
+    with pytest.raises(ValueError, match="not a valid regular expression"):
+        AlertCompany(company="Bad", link_patterns=["x.test/"], job_id_pattern="(")
+
+
+def test_a_confirm_link_to_an_unconfigured_site_is_not_surfaced() -> None:
+    body = '<a href="https://bank.test/confirm?t=9">Confirm payment</a>'
+    assert parse_alert(email(body), COMPANIES).confirm_links == []
+
+
+def test_a_job_board_link_in_someone_elses_email_is_not_a_role() -> None:
+    body = '<p>Saw this for you</p><a href="https://jobs.board.test/view/5">VP, Eng</a><p>A · B</p>'
+    for sender in ("Friend <friend@mail.test>", ""):
+        assert parse_alert(email(body, sender=sender), [BOARD]).postings == []
+
+
+def test_a_role_is_kept_when_only_a_later_link_names_the_employer() -> None:
+    body = (
+        '<a href="https://jobs.board.test/view/1">VP, Operations</a>'
+        '<a href="https://jobs.board.test/view/1?trk=x">VP, Operations</a><p>Acme · Austin, TX</p>'
+    )
+    [role] = parse_alert(email(body, sender=BOARD_SENDER), [BOARD]).postings
+    assert (role.company, role.location) == ("Acme", "Austin, TX")
+
+
+def test_a_role_has_one_id_with_or_without_www() -> None:
+    board = BOARD.model_copy(update={"link_patterns": ["board.test/view"]})
+    body = (
+        '<a href="https://www.board.test/view/1">VP, Operations</a><p>Acme · Austin, TX</p>'
+        '<a href="https://board.test/view/1">VP, Operations</a><p>Acme · Austin, TX</p>'
+    )
+    [role] = parse_alert(email(body, sender=BOARD_SENDER), [board]).postings
+    assert role.url == "https://board.test/view/1"
+
+
+def test_an_email_in_an_unknown_charset_yields_nothing() -> None:
+    raw = (
+        b"From: someone@mail.test\r\nSubject: Hi\r\n"
+        b"Content-Type: text/plain; charset=unknown-8bit\r\n\r\n\xff\xfe hello\r\n"
+    )
+    alert = parse_alert(raw, COMPANIES)
+    assert (alert.postings, alert.confirm_links) == ([], [])

@@ -32,6 +32,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts
   from Google, NVIDIA, Meta, Micron, OpenAI and Microsoft are ranked with the rest,
   and alert sign-up checks show up in the digest with their confirm link.
+- LinkedIn job alerts forwarded to the inbox (inline or as attachments) become
+  roles with each employer's name and location. Other forwarded email is deleted
+  and only counted in the digest; a sign-up note appears only for a configured
+  job site's confirm link. LinkedIn links count only in emails from LinkedIn
+  itself, and an email in an unreadable charset is skipped instead of stopping
+  the run.
 - First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
   configured Greenhouse and Lever company boards, filters them by the search
   taxonomy and geography, analyses each with Claude, scores Fit, Confidence and
