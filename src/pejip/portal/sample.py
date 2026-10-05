@@ -13,11 +13,15 @@ from datetime import UTC, datetime, timedelta
 
 from pejip.portal.data import (
     Citation,
+    Company,
     Connection,
     FitComponent,
+    HistoryEvent,
     Opportunity,
     Point,
     SearchRun,
+    Signal,
+    SourceStatus,
 )
 
 
@@ -54,6 +58,12 @@ DESCRIPTION = (
 )
 
 
+def _scope(location: str) -> str | None:
+    if location == "United States":
+        return "US_REMOTE"
+    return "BAY_AREA" if location.endswith(", CA") or "Bay Area" in location else None
+
+
 def _opportunity(  # noqa: PLR0913 - one row of sample data per call
     now: datetime,
     *,
@@ -77,6 +87,18 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
     discovery: str = "NEW_POSTING",
     change_note: str | None = None,
 ) -> Opportunity:
+    first_seen = now - timedelta(hours=seen_hours)
+    verified = now - timedelta(hours=min(seen_hours, 1))
+    history = [
+        HistoryEvent(first_seen, "First discovered by the daily search"),
+        HistoryEvent(verified, f"Verified on the {company} careers site"),
+    ]
+    if change_note:
+        history.append(HistoryEvent(verified, change_note))
+    if fit is not None:
+        history.append(
+            HistoryEvent(verified, f"Scored: fit {fit:.0f}, priority {priority.title()}")
+        )
     return Opportunity(
         id=number,
         title=title,
@@ -85,7 +107,7 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
         work_model=work_model,
         compensation=compensation,
         posted_at=None if posted_hours is None else now - timedelta(hours=posted_hours),
-        first_seen_at=now - timedelta(hours=seen_hours),
+        first_seen_at=first_seen,
         fit=fit,
         confidence=confidence,
         priority=priority,
@@ -100,6 +122,11 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
         connections=connections,
         watched=watched,
         change_note=change_note,
+        location_scope=_scope(location),
+        verified_on=f"{company} careers site",
+        requisition=f"R{100000 + number}",
+        last_verified_at=verified,
+        history=tuple(history),
     )
 
 
@@ -327,6 +354,191 @@ def sample_opportunities(now: datetime) -> list[Opportunity]:
     ]
 
 
+ALERTS = "Job-alert emails"
+PARTIAL_COVERAGE = "coverage may be incomplete"
+
+
+def sample_companies(now: datetime) -> list[Company]:
+    """Target and discovered companies, matching the Companies mock."""
+    day = timedelta(days=1)
+
+    def signal(text: str, source: str, days_ago: float) -> Signal:
+        return Signal(text, source, now - days_ago * day)
+
+    return [
+        Company(
+            "Company A",
+            "Enterprise Software · AI Platforms",
+            target=True,
+            watching=True,
+            monitoring="HIGH",
+            relevance="NO_CURRENT_MATCH",
+            job_source="Careers site feed",
+            signals=(
+                signal("Enterprise AI investment", "Company announcement", 6),
+                signal("Technology modernization program", "Earnings call", 21),
+                signal("New technology leadership", "Press release", 14),
+            ),
+            connections=3,
+        ),
+        Company(
+            "Company B",
+            "Technology · AI Infrastructure",
+            target=True,
+            watching=True,
+            monitoring="HIGH",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(
+                signal("AI expansion", "Company announcement", 4),
+                signal("Platform modernization", "Engineering blog", 7),
+            ),
+            connections=7,
+        ),
+        Company(
+            "Company C",
+            "Semiconductors · Memory and Storage",
+            target=True,
+            watching=True,
+            monitoring="NORMAL",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(signal("Significant AI investment", "Investor presentation", 21),),
+            connections=0,
+        ),
+        Company(
+            "Company D",
+            "Cloud and Productivity Software",
+            target=True,
+            watching=False,
+            monitoring="NORMAL",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(signal("Recent acquisition", "Company announcement", 30),),
+            connections=12,
+        ),
+        Company(
+            "Company J",
+            "Consumer Internet · AI Research",
+            target=True,
+            watching=True,
+            monitoring="HIGH",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(
+                signal("Enterprise transformation underway", "News report", 30),
+                signal("New Bay Area office opening", "Company announcement", 14),
+            ),
+            connections=5,
+        ),
+        Company(
+            "Company K",
+            "AI Research Lab",
+            target=True,
+            watching=False,
+            monitoring="NORMAL",
+            relevance="STRATEGICALLY_RELEVANT",
+            job_source=ALERTS,
+            coverage_note=PARTIAL_COVERAGE,
+            signals=(signal("Enterprise product launch", "Company announcement", 7),),
+            connections=2,
+        ),
+        Company(
+            "Company L",
+            "Social Media · Advertising Platforms",
+            target=True,
+            watching=False,
+            monitoring="LOW",
+            relevance="NO_CURRENT_MATCH",
+            job_source=ALERTS,
+            coverage_note="no alert received in 9 days",
+        ),
+        *(
+            Company(
+                f"Company {letter}",
+                None,
+                target=False,
+                watching=False,
+                monitoring="LOW",
+                relevance="NO_CURRENT_MATCH",
+                job_source="Careers site feed",
+            )
+            for letter in "EFG"
+        ),
+        Company(
+            "Company H",
+            "Financial Services · Payments",
+            target=False,
+            watching=False,
+            monitoring="LOW",
+            relevance="LOW_RELEVANCE",
+            job_source="Careers site feed",
+            low_reason="Role family outside your targets",
+        ),
+        Company(
+            "Company I",
+            None,
+            target=False,
+            watching=False,
+            monitoring="LOW",
+            relevance="NO_CURRENT_MATCH",
+            job_source="Careers site feed",
+        ),
+    ]
+
+
+SAMPLE_SOURCES = (
+    *(f"Company {letter} careers site" for letter in "ABCDEFGHIJKL"),
+    "Job-alert inbox",
+    "Job discovery source B",
+)
+FAILING_SOURCE = "Job discovery source B"
+
+
+def _sources(failed: str | None = None) -> tuple[SourceStatus, ...]:
+    return tuple(
+        SourceStatus(
+            name,
+            "FAILED" if name == failed else "OK",
+            0 if name == failed else 4 + 3 * (i % 5),
+            0 if name == failed else i % 3,
+        )
+        for i, name in enumerate(SAMPLE_SOURCES)
+    )
+
+
+def sample_runs(now: datetime) -> list[SearchRun]:
+    """Recent runs, newest first: two clean runs, a partial one, then clean again."""
+    hour = timedelta(hours=1)
+    # (hours ago, status, failed source, new, changed, expired)
+    history = (
+        (1, "SUCCESS", None, 7, 3, 2),
+        (6, "SUCCESS", None, 4, 1, 0),
+        (20, "PARTIAL", FAILING_SOURCE, 5, 2, 1),
+        (25, "SUCCESS", None, 3, 0, 2),
+        (30, "SUCCESS", None, 6, 1, 0),
+    )
+    total = len(SAMPLE_SOURCES)
+    return [
+        SearchRun(
+            started_at=now - ago * hour,
+            status=status,
+            sources_searched=total - (failed is not None),
+            sources_total=total,
+            new=new,
+            changed=changed,
+            expired=expired,
+            next_run_at=now + 4 * hour if ago == 1 else None,
+            sources=_sources(failed),
+        )
+        for ago, status, failed, new, changed, expired in history
+    ]
+
+
 class SampleData:
     """A :class:`pejip.portal.data.PortalData` serving the sample roles."""
 
@@ -336,17 +548,13 @@ class SampleData:
         self._clock = clock or (lambda: datetime.now(UTC))
 
     def latest_run(self) -> SearchRun | None:
-        now = self._clock()
-        return SearchRun(
-            started_at=now - timedelta(hours=1),
-            status="SUCCESS",
-            sources_searched=14,
-            sources_total=14,
-            new=7,
-            changed=3,
-            expired=2,
-            next_run_at=now + timedelta(hours=4),
-        )
+        return self.recent_runs()[0]
+
+    def recent_runs(self) -> list[SearchRun]:
+        return sample_runs(self._clock())
 
     def opportunities(self) -> list[Opportunity]:
         return sample_opportunities(self._clock())
+
+    def companies(self) -> list[Company]:
+        return sample_companies(self._clock())

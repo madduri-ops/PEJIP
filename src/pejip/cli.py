@@ -1,4 +1,4 @@
-"""Command line entry point: ``pejip run|digest|purge|export|delete-all``."""
+"""Command line entry point: ``pejip run|digest|connections|purge|export|delete-all``."""
 
 from __future__ import annotations
 
@@ -9,12 +9,17 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from pejip.ai.client import AIClient
 from pejip.config import SearchConfig, Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import Digest, render
 from pejip.logs import configure_logging
+from pejip.network.linkedin import ExportError
+from pejip.network.loader import load_index
+from pejip.network.matching import YOUR_CALL, NetworkIndex
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile, load_profile, load_profile_parameter, make_ssm_client
 from pejip.retention import purge_files
@@ -66,6 +71,7 @@ def _cmd_run(settings: Settings) -> int:
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
+    network, network_problem = _network(config, settings)
     inbox = None
     if settings.inbox_bucket:
         inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
@@ -77,12 +83,15 @@ def _cmd_run(settings: Settings) -> int:
             _ai_client(settings, config, ledger),
             http,
             inbox=inbox,
+            network=network,
             unranked_reason=_unranked_reason(settings, profile),
             routine=settings.ranker == "routine",
         ).run()
     finally:
         http.close()
         ledger.close()
+    if network_problem:
+        digest.notes.append(f"Connections were not used this run: {network_problem}.")
     if settings.ranker == "routine":
         # `pejip digest` emails it once the routine has analysed the new roles.
         log.info("digest_deferred", extra={"status": digest.status})
@@ -101,12 +110,14 @@ def _cmd_digest(settings: Settings) -> int:
         log.error("digest_without_run")
         return 1
     profile = _load_profile(settings)
+    network, network_problem = _network(config, settings)
     pipeline = Pipeline(
         config,
         profile,
         store,
         None,
         PoliteClient(config.fetch),
+        network=network,
         unranked_reason=_unranked_reason(settings, profile),
         routine=settings.ranker == "routine",
     )
@@ -114,6 +125,8 @@ def _cmd_digest(settings: Settings) -> int:
         digest = pipeline.digest_from(run)
     finally:
         pipeline.http.close()
+    if network_problem:
+        digest.notes.append(f"Connections were not used this run: {network_problem}.")
     waiting = any(item.recommendation is None for item in digest.items)
     age = datetime.now(UTC) - run["started_at"]
     if age > timedelta(hours=STALE_RUN_HOURS):
@@ -151,6 +164,72 @@ def _deliver(settings: Settings, config: SearchConfig, digest: Digest) -> None:
         _purge_output(settings, config.retention_days)
 
 
+def _network(config: SearchConfig, settings: Settings) -> tuple[NetworkIndex | None, str | None]:
+    """The connections index, or the reason it is unusable; a bad file never stops a run."""
+    if settings.connections_path is None:
+        return None, None
+    try:
+        _, index = load_index(config, settings.connections_path, settings.network_decisions_path)
+    except (ExportError, OSError, ValidationError) as exc:
+        # Only the error type is logged: the message can quote the files' contents.
+        log.warning("network_unavailable", extra={"error_type": type(exc).__name__})
+        return None, _problem(exc)
+    return index, None
+
+
+def _problem(exc: Exception) -> str:
+    """A reason for the candidate, naming the file at fault."""
+    if isinstance(exc, ExportError):
+        return f"the LinkedIn export could not be read ({exc})"
+    if isinstance(exc, ValidationError):
+        return "the network decisions file has an invalid entry"
+    return f"a network file could not be opened ({type(exc).__name__})"
+
+
+def _cmd_connections(settings: Settings, path: Path) -> int:
+    """Check a LinkedIn export before using it: counts and names to review, no people."""
+    config = load_config(settings.config_path)
+    try:
+        preview, index = load_index(config, path, settings.network_decisions_path)
+    except (ExportError, OSError, ValidationError) as exc:
+        sys.stderr.write(f"Cannot use {path}: {_problem(exc)}\n")
+        return 2
+    out = [
+        f"Rows read: {preview.records_parsed}",
+        f"Valid connections: {preview.records_accepted}",
+        f"Duplicates merged: {preview.duplicates}",
+        f"Rejected: {len(preview.rejected)}",
+    ]
+    reasons: dict[str, list[int]] = {}
+    for row in preview.rejected:
+        reasons.setdefault(row.reason, []).append(row.line)
+    out += [f"  {reason}: lines {_lines(lines)}" for reason, lines in sorted(reasons.items())]
+    out.append("At tracked companies:")
+    out += _company_lines(index) or ["  none"]
+    out.append("Employer names to review:")
+    out += [
+        f"  {raw}: {index.held_back[raw]} held back, could be {' or '.join(res.candidates)}"
+        for raw, res in sorted(index.unresolved.items())
+    ] or ["  none"]
+    sys.stdout.write("\n".join(out) + "\n")
+    return 0
+
+
+def _lines(lines: list[int], limit: int = 5) -> str:
+    shown = ", ".join(str(n) for n in lines[:limit])
+    return shown + (f" and {len(lines) - limit} more" if len(lines) > limit else "")
+
+
+def _company_lines(index: NetworkIndex) -> list[str]:
+    """Per company: connections, and those with no clear level (judged against a VP role)."""
+    lines = []
+    for company in sorted(index.by_company):
+        signal = index.signal(company, "VP")
+        unclear = len(signal.by_status(YOUR_CALL))
+        lines.append(f"  {company}: {len(signal.matches)} connections, {unclear} unclear titles")
+    return lines
+
+
 def _cmd_purge(settings: Settings) -> int:
     config = load_config(settings.config_path)
     deleted = Store(settings.database_url).purge_expired(datetime.now(UTC), config.retention_days)
@@ -185,6 +264,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("run", help="run one search and write the digest")
     sub.add_parser("digest", help="email the latest run's digest, ranked again")
+    conn = sub.add_parser("connections", help="check a LinkedIn Connections export")
+    conn.add_argument("file", type=Path)
     sub.add_parser("purge", help="delete data past the retention window")
     export = sub.add_parser("export", help="export all stored data as JSON")
     export.add_argument("out", type=Path)
@@ -212,6 +293,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             # As for run_crashed: a digest that never arrives must still alarm.
             log.exception("digest_crashed")
             raise
+    if args.command == "connections":
+        return _cmd_connections(settings, args.file)
     if args.command == "purge":
         return _cmd_purge(settings)
     if args.command == "export":

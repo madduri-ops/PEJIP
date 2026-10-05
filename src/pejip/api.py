@@ -12,6 +12,7 @@ load balancer adds (ADR-0006). The ranking routes need the routine's key instead
 
 import os
 from collections.abc import Awaitable, Callable, Mapping
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -26,6 +27,7 @@ from pejip.auth import (
     AuthSettings,
     SignInRequiredError,
 )
+from pejip.config import SearchConfig, load_config
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
 from pejip.ranking_api import RANKING_PREFIX, RankingService, screen
@@ -50,6 +52,12 @@ PAGE_CSP = (
     "font-src https://fonts.gstatic.com; img-src 'self'; form-action 'self'; "
     "base-uri 'none'; frame-ancestors 'none'"
 )
+
+
+def _search_config(env: Mapping[str, str]) -> SearchConfig | None:
+    """The search configuration Settings shows; None where the file is absent."""
+    path = Path(env.get("PEJIP_CONFIG", "config/search.yaml"))
+    return load_config(path) if path.is_file() else None
 
 
 def create_app(
@@ -114,7 +122,9 @@ def create_app(
         """Liveness check used by the load balancer and the post-deploy health gate."""
         return {"status": "ok", "version": __version__}
 
-    app.include_router(portal.router(SampleData() if data is None else data))
+    app.include_router(
+        portal.router(SampleData() if data is None else data, config=_search_config(environment))
+    )
     app.include_router(ranking_router(ranking_service))
     return app
 

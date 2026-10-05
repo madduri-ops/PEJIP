@@ -7,7 +7,7 @@ batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is
 ```mermaid
 flowchart TB
     api[api: GET /healthz]
-    portal[portal: Home, Opportunities, detail pages]
+    portal[portal: Home, Opportunities, detail, Companies, Watchlist, Search Health, Settings pages]
     rapi[ranking_api: /api/ranking/queue, /analyses]
     api --> portal
     api --> rapi
@@ -16,7 +16,7 @@ flowchart TB
     routine[routine: the Claude Code routine's command line] -.HTTPS, key.-> rapi
     routine --> work[workbench: steps and answer checks]
     work --> ana
-    cli[cli: pejip run, digest, purge, export, delete-all]
+    cli[cli: pejip run, digest, connections, purge, export, delete-all]
     pipe[pipeline: one search run]
     src[sources: greenhouse, lever adapters, email_alerts]
     http[sources.http: PoliteClient + RateLimiter]
@@ -32,6 +32,7 @@ flowchart TB
     explain[explain: cited explanations]
     digest[digest: Markdown digest]
     evals[golden_eval: golden set adapter]
+    net[network: LinkedIn export, companies, seniority, matching]
     cli --> pipe
     pipe --> src --> http
     pipe --> disc
@@ -41,6 +42,8 @@ flowchart TB
     ai --> guard --> ledger
     guard -.-> cw
     pipe --> score --> explain
+    pipe --> net
+    cli --> net
     cli --> digest
     evals --> ana
     evals --> score
@@ -50,13 +53,15 @@ flowchart TB
 
 - **Responsibility:** command line entry point; wires configuration, profile,
   store, HTTP and AI clients together.
-- **Interfaces:** `pejip run | digest | purge | export <file> | delete-all --yes`;
-  environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
-  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
-  `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM instead of a
-  file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest), `PEJIP_AI_ENABLED`, `PEJIP_RANKER`
-  (`routine`: `run` makes no Claude calls and sends nothing, and `digest` emails
-  the latest run ranked by the routine's stored analyses), and Claude
+- **Interfaces:** `pejip run | digest | connections <file> | purge | export <file> |
+  delete-all --yes`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
+  `PEJIP_DATABASE_URL`, `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's
+  SQLite file), `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM
+  instead of a file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest),
+  `PEJIP_AI_ENABLED`, `PEJIP_RANKER` (`routine`: `run` makes no Claude calls and
+  sends nothing, and `digest` emails the latest run ranked by the routine's stored
+  analyses), `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the LinkedIn
+  export and the candidate's network decisions), and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
   emails it through `pejip.delivery`.
@@ -111,6 +116,19 @@ flowchart TB
   `S3Inbox(client, bucket)` with `message_keys`, `read` and `delete`, and
   `parse_alert(raw, companies) -> AlertMessage`.
 - **Data:** none stored; allowed sources are listed in [docs/sources.md](../sources.md).
+
+## network
+
+- **Responsibility:** connection matching
+  ([design 0014](../design/0014-connection-matching.md)): parse a LinkedIn
+  Connections export, resolve employer names to tracked companies without
+  guessing, read a seniority level from a title, and find matured connections
+  for a role. Unclear titles and ambiguous employers wait for the candidate.
+- **Interfaces:** `linkedin.parse_export`, `linkedin.compare_imports`,
+  `companies.CompanyDirectory`, `seniority.title_level`,
+  `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`.
+- **Data:** imports are not stored yet; reads the export and decisions files named in the
+  environment. The "Who you know" lines are saved inside each recommendation.
 
 ## discovery
 
@@ -175,7 +193,7 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
+  `/opportunities/{id}`, `/companies`, `/watchlist`, `/search-health`, `/settings` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
   `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and
@@ -187,11 +205,12 @@ flowchart TB
 
 ## Portal (`pejip.portal`)
 
-- **Responsibility:** server-rendered Home, Opportunities and Opportunity detail
-  pages built from the portal mocks; ranking, saved views, filters and Pacific time
+- **Responsibility:** server-rendered Home, Opportunities, Opportunity detail,
+  Companies, Watchlist, Search Health and Settings pages built from the portal mocks; ranking, saved views, filters and Pacific time
   display.
-- **Interfaces:** `portal.router(data, clock)` mounted by `create_app`; reads a
-  `PortalData` (`is_sample`, `latest_run()`, `opportunities()`). Pages get their own
+- **Interfaces:** `portal.router(data, clock, config)` mounted by `create_app`, which passes the
+  search configuration from `PEJIP_CONFIG` for Settings; reads a
+  `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`). Pages get their own
   content security policy (`PAGE_CSP`), with no script.
 - **Data:** none stored. `SampleData` (synthetic) until a store-backed reader lands.
 - **Design doc:** [0013: Web portal](../design/0013-web-portal.md).

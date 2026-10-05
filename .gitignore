@@ -19,3 +19,7 @@ reports/
 *.sqlite
 profile.yaml
 output/
+# A real LinkedIn export and network decisions (examples/ holds synthetic ones).
+/Connections*.csv
+/Basic_LinkedInDataExport*
+/network-decisions.yaml

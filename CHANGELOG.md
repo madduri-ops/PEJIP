@@ -25,6 +25,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   through the API: `python -m pejip.routine` lays out each step with the same
   prompt, input and schema, and checks every answer the way the API path does
   (design doc 0015). The golden set can be scored through it.
+- The portal's sidebar shows the full name, Personal Executive Job Intelligence
+  Platform, instead of PEJIP.
 - `python -m pejip.evaluation run` takes `--workers N` to score several golden
   cases at once; the live model evaluation in CI uses six.
 - The live model evaluation in CI runs only on pull requests labelled
@@ -37,6 +39,30 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- An opportunity's page shows company intelligence (industry, other roles you
+  match, watch state and recent signals), where the role was found and verified,
+  and a history of meaningful changes.
+- Opportunities has a Bay Area view and filters for location, posting age,
+  network and whether pay is published.
+- The portal has a read-only Settings page at `/settings` showing the real search
+  setup: titles, locations, schedule, sources and the alert address, how ranking
+  works, and data retention.
+- The portal has a Watchlist page at `/watchlist`: what changed in watched jobs
+  and companies, then everything watched.
+- The portal has a Companies page at `/companies`: target companies with their
+  matching roles, connections and signals, why a company without an opening stays
+  relevant, and companies discovered in searches.
+- Connection matching: `pejip run` reads a LinkedIn Connections export
+  (`PEJIP_CONNECTIONS`) and shows, for each role, your matured connections
+  (first-degree, at the hiring company, at the role's level or above). They raise
+  Application Priority, never Fit. Unclear titles and ambiguous employer names are
+  asked about instead of guessed, and answered in a decisions file
+  (`PEJIP_NETWORK_DECISIONS`).
+- `pejip connections <file>` checks an export before use: counts, rejected rows,
+  connections per tracked company and employer names to review.
+- The portal has a Search Health page at `/search-health`: the latest search, any
+  failed sources with their impact and last success, every source searched, and
+  recent runs.
 - PEJIP searches on its own every morning at 6am Pacific on AWS, keeps its results
   in an encrypted SQLite database on EFS, and emails Babu the digest. Data past 90
   days is purged daily.

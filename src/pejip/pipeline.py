@@ -22,6 +22,7 @@ from pejip.discovery import classify_location, is_candidate
 from pejip.explain import build_explanation, verify_citations
 from pejip.logs import run_id_var
 from pejip.models import Posting
+from pejip.network.matching import NetworkIndex, NetworkSignal
 from pejip.profile import CareerProfile
 from pejip.scoring import JobFacts, score_job
 from pejip.sources.email_alerts import S3Inbox, parse_alert
@@ -47,6 +48,7 @@ class Pipeline:
     http: PoliteClient
     clock: Callable[[], datetime] = lambda: datetime.now(UTC)
     inbox: S3Inbox | None = None
+    network: NetworkIndex | None = None
     unranked_reason: str = "ranking is not set up"
     # The Claude Code routine analyses new roles after the run (design doc 0015),
     # so their waiting is expected, not worth a digest note.
@@ -113,6 +115,7 @@ class Pipeline:
 
         status = _status(sources, items)
         unranked = sum(i.recommendation is None for i in items)
+        notes += _network_notes(self.network)
         if budget_hit:
             notes.append("The monthly AI spend cap was reached; remaining roles are unranked.")
         summary = {
@@ -283,6 +286,9 @@ class Pipeline:
         analysis = JobAnalysis.model_validate(payload["analysis"])
         matching = EvidenceMatching.model_validate(payload["matching"])
         geo = classify_location(job["location"], self.config.geography)
+        signal: NetworkSignal | None = None
+        if self.network is not None:
+            signal = self.network.signal(job["company"], analysis.inferred_seniority, job["title"])
         facts = JobFacts(
             posted_at=job["posted_at"],
             first_seen_at=job["first_seen_at"],
@@ -290,10 +296,11 @@ class Pipeline:
             comp_max=job["comp_max"],
             location_preference=geo.preference,
             as_of=now,
+            network=signal.facts() if signal is not None else None,
         )
         rec = score_job(analysis, matching, profile, facts, self.config.scoring)
-        explanation = build_explanation(analysis, matching, rec, job)
-        verify_citations(explanation, job, profile)
+        explanation = build_explanation(analysis, matching, rec, job, signal)
+        verify_citations(explanation, job, profile, signal)
         detail = {**rec.to_dict(), "explanation": explanation}
         if not self._recorded(job["id"], analysis_row["id"], rec.scoring_version):
             self.store.add_recommendation(
@@ -330,6 +337,24 @@ def _status(sources: list[SourceResult], items: list[DigestItem]) -> str:
     else:
         status = "SUCCESS"
     return status
+
+
+def _network_notes(index: NetworkIndex | None) -> list[str]:
+    """Digest lines on the connections snapshot (spec 8.19) and names to review."""
+    if index is None:
+        return []
+    when = f"{index.imported_at:%B %-d, %Y}" if index.imported_at else "never"
+    notes = [f"LinkedIn connections last refreshed: {when}."]
+    if index.unresolved:
+        names = "; ".join(
+            f"{raw} ({index.held_back[raw]}, could be {' or '.join(res.candidates)})"
+            for raw, res in sorted(index.unresolved.items())
+        )
+        notes.append(
+            "Employer names to review before their connections count (add them to your"
+            f" network decisions file): {names}."
+        )
+    return notes
 
 
 def _confirm_note(sender: str, subject: str, confirm_links: list[str]) -> str:
