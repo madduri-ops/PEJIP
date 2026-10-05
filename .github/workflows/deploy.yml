@@ -112,6 +112,13 @@ jobs:
           python-version: '3.12'
       - if: steps.build.outputs.needed
         run: python -m ci.severity_gate grype grype-image-report.json
+      # On a blocked scan, show whether a fixed version exists for each blocker.
+      - name: Show fix availability for blocking findings
+        if: failure() && steps.build.outputs.needed
+        run: |
+          jq -r '.matches[] | select(.vulnerability.severity | test("High|Critical"))
+            | "\(.vulnerability.id) \(.artifact.name) \(.artifact.version) fix=\(.vulnerability.fix.state) \(.vulnerability.fix.versions | join(","))"' \
+            grype-image-report.json | sort -u
       - if: always() && steps.build.outputs.needed
         uses: actions/upload-artifact@v7
         with:
