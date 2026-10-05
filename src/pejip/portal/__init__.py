@@ -16,7 +16,18 @@ from fastapi.responses import HTMLResponse, Response
 from pejip.config import SearchConfig
 from pejip.portal import render
 from pejip.portal.data import PortalData
-from pejip.portal.views import Filters, list_companies, list_opportunities, watchlist
+from pejip.portal.views import (
+    MAX_COMPANY_FILTER,
+    MAX_PEOPLE_QUERY,
+    Filters,
+    PeopleFilters,
+    find_people,
+    list_companies,
+    list_opportunities,
+    matured_roles,
+    referral_paths,
+    watchlist,
+)
 
 STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encoding="utf-8")
 
@@ -125,6 +136,31 @@ def router(
             crumb='<div class="crumb"><a href="/opportunities">Opportunities</a></div>',
         )
         return HTMLResponse(html)
+
+    @routes.get("/connections")
+    def connections(
+        q: Annotated[str, Query(max_length=MAX_PEOPLE_QUERY)] = "",
+        company: Annotated[str, Query(max_length=MAX_COMPANY_FILTER)] = "",
+        matured: Annotated[str, Query(max_length=1)] = "",
+    ) -> str:
+        """Who Babu knows at the companies that matter (spec 8.20 to 8.26)."""
+        items = data.opportunities()
+        network = data.network()
+        filters = PeopleFilters(query=q, company=company or None, matured=matured == "1")
+        body = render.connections_body(
+            network,
+            paths=referral_paths(items),
+            matured_roles=matured_roles(items),
+            people=find_people(network, items, filters) if network else [],
+            filters=filters,
+            now=now_fn(),
+        )
+        return frame(
+            active="connections",
+            heading="Connections",
+            subtitle="Who you know at the companies you are tracking, from your LinkedIn export.",
+            body=body,
+        )
 
     @routes.get("/companies")
     def companies(view: Annotated[str, Query(max_length=16)] = "all") -> str:

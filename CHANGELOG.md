@@ -26,6 +26,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Connections page at `/connections`: the last LinkedIn import as
+  a snapshot, who you know for each open role (matured, your call, below the
+  role's level), employer names waiting for your decision, and a searchable list
+  of every imported connection.
 - An opportunity's page shows company intelligence (industry, other roles you
   match, watch state and recent signals), where the role was found and verified,
   and a history of meaningful changes.
