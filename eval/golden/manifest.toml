@@ -2,10 +2,10 @@
 # Bump golden_set_version whenever a case, a label or the profile changes, and
 # note why in eval/README.md's changelog.
 
-golden_set_version = "1.0.0"
+golden_set_version = "1.1.0"
 profile = "profile.toml"
 cases_dir = "cases"
-labelled_by = "Claude (synthetic draft), pending Babu's review"
+labelled_by = "Claude (synthetic draft), reviewed in part by Babu"
 labelled_on = "2026-10-05"
 
 # Controlled vocabularies. The loader rejects anything outside these lists so a

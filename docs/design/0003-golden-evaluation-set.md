@@ -88,7 +88,7 @@ checks postings carry no email addresses, phone numbers or URLs.
 
 ## Open questions
 
-- The labels are Claude's draft from the spec. Babu should review them, especially
-  the Fit ranges and the career-direction calls in G17 and G22.
+- The labels are Claude's draft from the spec. Babu reviewed G17 (kept) and G22
+  (raised) on 2026-10-05; the other cases can be reviewed the same way.
 - Spec 17.34 also versions job fixtures, expected results and model versions
   separately; one set version covers them for now.

@@ -73,5 +73,8 @@ network context, profile; never the labels) and returns a `pejip.evaluation.scor
 
 ## Changelog
 
+- **1.1.0** (2026-10-05): Babu's review. G17 (security operations) kept as is; G22
+  (Chief of Staff to the CTO) raised to Fit 65-80, Priority HIGH or MEDIUM, as a
+  worthwhile stepping stone.
 - **1.0.0** (2026-10-05): first set, 24 synthetic cases drafted by Claude from the FIND
   spec. Labels await Babu's review.

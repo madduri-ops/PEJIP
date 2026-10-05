@@ -1,7 +1,7 @@
 id = "G22"
 name = "Chief of Staff to the CTO"
-categories = ["borderline_match", "misleading_title"]
-notes = "Senior exposure and some operating cadence work, but no organization or budget of its own. Plausible stepping-stone, not a target role."
+categories = ["good_match", "misleading_title"]
+notes = "Senior exposure and operating-cadence work with no organization or budget of its own. Babu rated it a worthwhile stepping stone (2026-10-05), so Fit and Priority sit above borderline while the scope concern stays."
 
 [job]
 title = "Chief of Staff to the CTO"
@@ -30,8 +30,8 @@ strong_relationships = 0
 [expected]
 role_family = "Strategic Programs"
 inferred_level = "DIRECTOR_EQUIVALENT"
-fit = [40, 68]
+fit = [65, 80]
 confidence = ["HIGH", "MEDIUM"]
-priority = ["MEDIUM", "LOW"]
+priority = ["HIGH", "MEDIUM"]
 positive_reasons = []
 concerns = ["SCOPE_CONCERN"]

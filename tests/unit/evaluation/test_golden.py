@@ -22,7 +22,7 @@ def _problems(root: Path) -> list[str]:
 
 
 def test_committed_set_loads(golden: GoldenSet) -> None:
-    assert golden.version == "1.0.0"
+    assert golden.version == "1.1.0"
     assert len(golden.cases) >= 20
     assert golden.profile["profile_version"] == "synthetic-1"
 
@@ -77,7 +77,7 @@ def test_bad_toml_and_empty_cases(golden_copy: Path) -> None:
 def test_manifest_field_types(golden_copy: Path) -> None:
     _edit(
         golden_copy / "manifest.toml",
-        'golden_set_version = "1.0.0"',
+        'golden_set_version = "1.1.0"',
         "golden_set_version = 1",
     )
     _edit(
