@@ -56,11 +56,7 @@ def test_fixtures_are_synthetic(golden: GoldenSet) -> None:
         assert not pattern.search(case.job.description), case.id
     assert (
         "Synthetic"
-        in Path(__file__)
-        .resolve()
-        .parents[3]
-        .joinpath("eval/golden/profile.toml")
-        .read_text()
+        in Path(__file__).resolve().parents[3].joinpath("eval/golden/profile.toml").read_text()
     )
 
 
@@ -146,9 +142,7 @@ def test_missing_tables_and_duplicate_ids(golden_copy: Path) -> None:
 
 def test_unreadable_case_file(golden_copy: Path) -> None:
     (golden_copy / "cases" / "zz-broken.toml").write_text("id = ", encoding="utf-8")
-    assert any(
-        p.startswith("zz-broken.toml: not valid TOML") for p in _problems(golden_copy)
-    )
+    assert any(p.startswith("zz-broken.toml: not valid TOML") for p in _problems(golden_copy))
 
 
 def test_custom_profile_and_cases_dir(golden_copy: Path) -> None:

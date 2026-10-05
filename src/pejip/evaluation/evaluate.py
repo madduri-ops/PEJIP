@@ -85,9 +85,7 @@ class Report:
             "cases": [
                 {
                     "case_id": r.case_id,
-                    "prediction": dataclasses.asdict(r.prediction)
-                    if r.prediction
-                    else None,
+                    "prediction": dataclasses.asdict(r.prediction) if r.prediction else None,
                     "failures": r.failures(),
                 }
                 for r in self.cases
@@ -109,9 +107,7 @@ def _call(scorer: Scorer, item: EvalInput) -> tuple[Prediction | None, str | Non
 def _judge(case: Case, prediction: Prediction) -> CaseResult:
     exp = case.expected
     posting = _norm(" ".join((case.job.title, case.job.description)))
-    bad = tuple(
-        c for c in prediction.citations if not c.strip() or _norm(c) not in posting
-    )
+    bad = tuple(c for c in prediction.citations if not c.strip() or _norm(c) not in posting)
     return CaseResult(
         case_id=case.id,
         prediction=prediction,
@@ -131,9 +127,7 @@ def _rate(hits: int, total: int) -> float:
     return round(hits / total, 4) if total else 1.0
 
 
-def evaluate(
-    golden: GoldenSet, scorer: Scorer, *, fit_tolerance: float = 0.0
-) -> Report:
+def evaluate(golden: GoldenSet, scorer: Scorer, *, fit_tolerance: float = 0.0) -> Report:
     results: list[CaseResult] = []
     for case in golden.cases:
         item = EvalInput(case.id, case.job, case.context, golden.profile)
@@ -145,9 +139,7 @@ def evaluate(
         if case.invariance_probe:
             probe, _ = _call(
                 scorer,
-                dataclasses.replace(
-                    item, context=Context(PROBE_CONNECTIONS, PROBE_STRONG)
-                ),
+                dataclasses.replace(item, context=Context(PROBE_CONNECTIONS, PROBE_STRONG)),
             )
             result.probe_fit = probe.fit if probe else None
             result.network_invariant = (
@@ -157,17 +149,13 @@ def evaluate(
 
     by_id = {case.id: case for case in golden.cases}
     scored = [r for r in results if r.prediction is not None]
-    expected_reasons = sum(
-        len(by_id[r.case_id].expected.positive_reasons) for r in results
-    )
+    expected_reasons = sum(len(by_id[r.case_id].expected.positive_reasons) for r in results)
     expected_concerns = sum(len(by_id[r.case_id].expected.concerns) for r in results)
     found_reasons = sum(
-        len(by_id[r.case_id].expected.positive_reasons) - len(r.missing_reasons)
-        for r in scored
+        len(by_id[r.case_id].expected.positive_reasons) - len(r.missing_reasons) for r in scored
     )
     found_concerns = sum(
-        len(by_id[r.case_id].expected.concerns) - len(r.missing_concerns)
-        for r in scored
+        len(by_id[r.case_id].expected.concerns) - len(r.missing_concerns) for r in scored
     )
 
     # Ranking quality: for every pair whose labelled Fit ranges do not overlap, the
@@ -182,29 +170,19 @@ def evaluate(
         else:
             continue
         pairs += 1
-        if (
-            low.prediction
-            and high.prediction
-            and low.prediction.fit < high.prediction.fit
-        ):
+        if low.prediction and high.prediction and low.prediction.fit < high.prediction.fit:
             ordered += 1
 
     probes = [r for r in results if by_id[r.case_id].invariance_probe]
     metrics = {
         "scored_rate": _rate(len(scored), len(results)),
         "fit_in_range": _rate(sum(r.fit_in_range for r in results), len(results)),
-        "confidence_match": _rate(
-            sum(r.confidence_match for r in results), len(results)
-        ),
+        "confidence_match": _rate(sum(r.confidence_match for r in results), len(results)),
         "priority_match": _rate(sum(r.priority_match for r in results), len(results)),
         "positive_reason_recall": _rate(found_reasons, expected_reasons),
         "concern_recall": _rate(found_concerns, expected_concerns),
         "pairwise_order": _rate(ordered, pairs),
-        "citation_validity": _rate(
-            sum(r.citations_valid for r in results), len(results)
-        ),
-        "network_invariance": _rate(
-            sum(bool(r.network_invariant) for r in probes), len(probes)
-        ),
+        "citation_validity": _rate(sum(r.citations_valid for r in results), len(results)),
+        "network_invariance": _rate(sum(bool(r.network_invariant) for r in probes), len(probes)),
     }
     return Report(golden_set_version=golden.version, metrics=metrics, cases=results)

@@ -42,21 +42,20 @@ Scorer = Callable[[EvalInput], Prediction]
 
 
 class ScorerLoadError(ValueError):
-    pass
+    def __init__(self, spec: str, reason: str) -> None:
+        super().__init__(f"cannot load scorer {spec!r}: {reason}")
 
 
 def load_scorer(spec: str) -> Scorer:
     """Import a scorer from ``package.module:attribute``."""
     module_name, sep, attr = spec.partition(":")
     if not sep or not module_name or not attr:
-        raise ScorerLoadError(
-            f"scorer must look like 'package.module:attribute', got {spec!r}"
-        )
+        raise ScorerLoadError(spec, "expected 'package.module:attribute'")
     try:
         module = importlib.import_module(module_name)
     except ImportError as exc:
-        raise ScorerLoadError(f"cannot import {module_name!r}: {exc}") from exc
+        raise ScorerLoadError(spec, str(exc)) from exc
     scorer = getattr(module, attr, None)
     if not callable(scorer):
-        raise ScorerLoadError(f"{spec!r} is not a callable scorer")
+        raise ScorerLoadError(spec, "not callable")
     return cast(Scorer, scorer)

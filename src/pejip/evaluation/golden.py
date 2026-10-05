@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-import tomllib
+FIT_MAX = 100
+_RANGE_LEN = 2
 
 DEFAULT_GOLDEN_DIR = Path(__file__).resolve().parents[3] / "eval" / "golden"
 
@@ -100,9 +102,7 @@ def _read_toml(path: Path, problems: list[str]) -> dict[str, Any] | None:
     return None
 
 
-def _strs(
-    raw: dict[str, Any], key: str, where: str, problems: list[str]
-) -> tuple[str, ...]:
+def _strs(raw: dict[str, Any], key: str, where: str, problems: list[str]) -> tuple[str, ...]:
     value = raw.get(key)
     if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
         problems.append(f"{where}: '{key}' must be a list of strings")
@@ -142,9 +142,7 @@ def _subset(
     where: str,
     problems: list[str],
 ) -> None:
-    for value in values:
-        if value not in allowed:
-            problems.append(f"{where}: unknown {label} '{value}'")
+    problems.extend(f"{where}: unknown {label} '{v}'" for v in values if v not in allowed)
 
 
 def _load_manifest(raw: dict[str, Any], problems: list[str]) -> Manifest:
@@ -168,9 +166,7 @@ def _table(raw: dict[str, Any], key: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def _load_case(
-    raw: dict[str, Any], where: str, manifest: Manifest, problems: list[str]
-) -> Case:
+def _load_case(raw: dict[str, Any], where: str, manifest: Manifest, problems: list[str]) -> Case:
     job_raw = _table(raw, "job")
     ctx_raw = _table(raw, "context")
     exp_raw = _table(raw, "expected")
@@ -203,8 +199,7 @@ def _load_case(
 
     context = Context(
         connections=_int(ctx_raw, "connections", where, problems) or 0,
-        strong_relationships=_int(ctx_raw, "strong_relationships", where, problems)
-        or 0,
+        strong_relationships=_int(ctx_raw, "strong_relationships", where, problems) or 0,
     )
     if context.strong_relationships > context.connections:
         problems.append(f"{where}: strong_relationships exceeds connections")
@@ -213,15 +208,13 @@ def _load_case(
     fit_min, fit_max = 0.0, 0.0
     if (
         isinstance(fit, list)
-        and len(fit) == 2
+        and len(fit) == _RANGE_LEN
         and all(isinstance(v, int | float) and not isinstance(v, bool) for v in fit)
-        and 0 <= fit[0] <= fit[1] <= 100
+        and 0 <= fit[0] <= fit[1] <= FIT_MAX
     ):
         fit_min, fit_max = float(fit[0]), float(fit[1])
     else:
-        problems.append(
-            f"{where}: 'fit' must be [min, max] with 0 <= min <= max <= 100"
-        )
+        problems.append(f"{where}: 'fit' must be [min, max] with 0 <= min <= max <= 100")
 
     expected = Expected(
         role_family=_str(exp_raw, "role_family", where, problems),
@@ -240,9 +233,7 @@ def _load_case(
         where,
         problems,
     )
-    _subset(
-        expected.confidence, manifest.confidence_levels, "confidence", where, problems
-    )
+    _subset(expected.confidence, manifest.confidence_levels, "confidence", where, problems)
     _subset(expected.priority, manifest.priority_levels, "priority", where, problems)
     _subset(
         expected.positive_reasons,
@@ -284,10 +275,7 @@ def load_golden_set(root: Path = DEFAULT_GOLDEN_DIR) -> GoldenSet:
         raise GoldenSetError(problems)
     manifest = _load_manifest(manifest_raw, problems)
 
-    profile = (
-        _read_toml(root / str(manifest_raw.get("profile", "profile.toml")), problems)
-        or {}
-    )
+    profile = _read_toml(root / str(manifest_raw.get("profile", "profile.toml")), problems) or {}
     cases_dir = root / str(manifest_raw.get("cases_dir", "cases"))
     case_paths = sorted(cases_dir.glob("*.toml"))
     if not case_paths:
@@ -297,9 +285,7 @@ def load_golden_set(root: Path = DEFAULT_GOLDEN_DIR) -> GoldenSet:
     for path in case_paths:
         raw = _read_toml(path, problems)
         if raw is not None:
-            cases.append(
-                _load_case(raw, f"{cases_dir.name}/{path.name}", manifest, problems)
-            )
+            cases.append(_load_case(raw, f"{cases_dir.name}/{path.name}", manifest, problems))
 
     seen: set[str] = set()
     for case in cases:
@@ -308,9 +294,7 @@ def load_golden_set(root: Path = DEFAULT_GOLDEN_DIR) -> GoldenSet:
         seen.add(case.id)
 
     covered = {c for case in cases for c in case.categories}
-    for category in manifest.categories:
-        if category not in covered:
-            problems.append(f"category '{category}' has no case")
+    problems.extend(f"category '{c}' has no case" for c in manifest.categories if c not in covered)
 
     if problems:
         raise GoldenSetError(problems)

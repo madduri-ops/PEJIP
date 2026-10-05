@@ -1,8 +1,0 @@
-__pycache__/
-*.py[cod]
-.coverage
-coverage.xml
-eval-coverage.xml
-eval-report.json
-.pytest_cache/
-.ruff_cache/

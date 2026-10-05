@@ -20,9 +20,7 @@ from .scorer import ScorerLoadError, load_scorer
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        prog="python -m pejip.evaluation", description=__doc__
-    )
+    parser = argparse.ArgumentParser(prog="python -m pejip.evaluation", description=__doc__)
     parser.add_argument(
         "--golden", type=Path, default=DEFAULT_GOLDEN_DIR, help="golden set directory"
     )
@@ -47,14 +45,18 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _say(text: object, *, err: bool = False) -> None:
+    (sys.stderr if err else sys.stdout).write(f"{text}\n")
+
+
 def _print_report(report: Report) -> None:
-    print(f"golden set {report.golden_set_version}")
+    _say(f"golden set {report.golden_set_version}")
     for name, value in report.metrics.items():
-        print(f"  {name:<24} {value:.4f}")
+        _say(f"  {name:<24} {value:.4f}")
     for result in report.cases:
         failures = result.failures()
         if failures:
-            print(f"  {result.case_id}: " + "; ".join(failures))
+            _say(f"  {result.case_id}: " + "; ".join(failures))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,37 +64,35 @@ def main(argv: list[str] | None = None) -> int:
     try:
         golden = load_golden_set(args.golden)
     except GoldenSetError as exc:
-        print(exc, file=sys.stderr)
+        _say(exc, err=True)
         return 2
 
     if args.command == "validate":
-        print(f"golden set {golden.version}: {len(golden.cases)} cases OK")
+        _say(f"golden set {golden.version}: {len(golden.cases)} cases OK")
         return 0
 
     try:
         scorer = load_scorer(args.scorer)
         baseline = read_baseline(args.baseline)
     except (ScorerLoadError, OSError, ValueError) as exc:
-        print(exc, file=sys.stderr)
+        _say(exc, err=True)
         return 2
 
     report = evaluate(golden, scorer, fit_tolerance=args.fit_tolerance)
     _print_report(report)
     if args.report:
-        args.report.write_text(
-            json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8"
-        )
+        args.report.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
 
     if args.command == "ratchet":
         updated, changed = ratchet(report, baseline, args.scorer)
         if changed:
             write_baseline(args.baseline, updated)
-            print(f"baseline raised in {args.baseline}")
+            _say(f"baseline raised in {args.baseline}")
         else:
-            print("baseline unchanged")
+            _say("baseline unchanged")
         return 0
 
     found = regressions(report, baseline)
     for regression in found:
-        print(f"REGRESSION {regression}", file=sys.stderr)
+        _say(f"REGRESSION {regression}", err=True)
     return 1 if found else 0

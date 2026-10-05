@@ -17,9 +17,7 @@ def test_oracle_scores_perfectly(golden: GoldenSet, oracle: Scorer) -> None:
     assert report.to_dict()["cases"][0]["failures"] == []
 
 
-def test_labels_are_never_passed_to_the_scorer(
-    golden: GoldenSet, oracle: Scorer
-) -> None:
+def test_labels_are_never_passed_to_the_scorer(golden: GoldenSet, oracle: Scorer) -> None:
     seen: list[EvalInput] = []
 
     def spy(item: EvalInput) -> Prediction:
@@ -40,7 +38,7 @@ def test_labels_are_never_passed_to_the_scorer(
 def test_failures_count_as_unranked(golden: GoldenSet) -> None:
     def broken(item: EvalInput) -> Prediction:
         if item.case_id == "G01":
-            raise TimeoutError("model timed out")
+            raise TimeoutError
         return "not a prediction"  # type: ignore[return-value]
 
     report = evaluate(golden, broken)
@@ -48,7 +46,7 @@ def test_failures_count_as_unranked(golden: GoldenSet) -> None:
     assert report.metrics["pairwise_order"] == 0.0
     assert report.metrics["positive_reason_recall"] == 0.0
     by_id = {r.case_id: r for r in report.cases}
-    assert by_id["G01"].failures() == ["unranked: TimeoutError: model timed out"]
+    assert by_id["G01"].failures() == ["unranked: TimeoutError: "]
     assert by_id["G02"].failures() == ["unranked: scorer returned str, not Prediction"]
     assert report.to_dict()["cases"][0]["prediction"] is None
 
@@ -56,17 +54,13 @@ def test_failures_count_as_unranked(golden: GoldenSet) -> None:
 def test_network_leaking_into_fit_is_caught(golden: GoldenSet, oracle: Scorer) -> None:
     def leaky(item: EvalInput) -> Prediction:
         base = oracle(item)
-        return dataclasses.replace(
-            base, fit=min(100.0, base.fit + item.context.connections)
-        )
+        return dataclasses.replace(base, fit=min(100.0, base.fit + item.context.connections))
 
     report = evaluate(golden, leaky)
     assert report.metrics["network_invariance"] < 1.0
     g02 = next(r for r in report.cases if r.case_id == "G02")
     assert "fit moved to" in " ".join(g02.failures())
-    assert (
-        evaluate(golden, leaky, fit_tolerance=100).metrics["network_invariance"] == 1.0
-    )
+    assert evaluate(golden, leaky, fit_tolerance=100).metrics["network_invariance"] == 1.0
 
 
 def test_probe_failure_is_not_invariant(golden: GoldenSet, oracle: Scorer) -> None:
@@ -105,9 +99,7 @@ def test_wrong_answers_are_reported(golden: GoldenSet) -> None:
         assert text in failures
 
 
-def test_inverted_ranking_scores_zero_pairwise(
-    golden: GoldenSet, oracle: Scorer
-) -> None:
+def test_inverted_ranking_scores_zero_pairwise(golden: GoldenSet, oracle: Scorer) -> None:
     def inverted(item: EvalInput) -> Prediction:
         return dataclasses.replace(oracle(item), fit=100 - oracle(item).fit)
 
