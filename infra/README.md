@@ -73,6 +73,9 @@ After that every merge to `main` that changes the app deploys on its own.
 
 ## Job-alert inbox (once)
 
+Steps 1 and 2 were done on 2026-10-05: nothing else in the account used SES
+receiving, and `inbox_receiving_enabled` now defaults to `true`.
+
 1. Check that nothing else in the account receives mail through SES here. SES
    allows one active receipt rule set per account and region, and activating
    PEJIP's would switch off any other:

@@ -152,7 +152,7 @@ variable "inbox_domain" {
 }
 
 variable "inbox_receiving_enabled" {
-  description = "Activates the pejip-inbox receipt rule set. SES allows one active rule set per account and region, so enable only after checking nothing else in the account uses SES receiving here (infra/README.md)."
+  description = "Activates the pejip-inbox receipt rule set. SES allows one active rule set per account and region; on 2026-10-05 nothing else in this account used SES receiving in us-west-2. Re-check before adding another rule set (infra/README.md)."
   type        = bool
-  default     = false
+  default     = true
 }
