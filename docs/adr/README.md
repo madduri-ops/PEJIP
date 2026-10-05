@@ -17,4 +17,5 @@ architecture, update [docs/architecture/](../architecture/) in the same PR.
 | [0005](0005-app-hosting-and-continuous-deploy.md) | Serve PEJIP from Fargate behind a WAF-fronted ALB, deployed by GitHub Actions | Accepted |
 | [0006](0006-google-sign-in-at-the-load-balancer.md) | Require Google sign-in at the load balancer, with an allow-list check in the app | Accepted |
 | [0007](0007-sqlite-on-efs-and-a-scheduled-daily-run.md) | Keep PEJIP's data in SQLite on encrypted EFS, written by a scheduled daily run | Accepted |
+| [0008](0008-ranking-through-a-claude-code-routine.md) | Rank roles through a Claude Code routine on Babu's plan | Accepted |
 | [0009](0009-private-inputs-outside-the-public-repository.md) | Keep Babu's private inputs outside the public repository | Accepted |

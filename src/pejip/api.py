@@ -4,8 +4,10 @@ It serves the health endpoint that the post-deploy gate and the load balancer po
 and the web portal's pages (``pejip.portal``, design doc 0011). The system smoke
 test and DAST exercise every route in the OpenAPI document automatically.
 
-Every route except ``/healthz`` requires Babu's Google sign-in, checked by
-``pejip.auth`` against the token the load balancer adds (ADR-0006).
+Every route except ``/healthz`` and the ranking routine's ``/api/ranking/*``
+requires Babu's Google sign-in, checked by ``pejip.auth`` against the token the
+load balancer adds (ADR-0006). The ranking routes need the routine's key instead
+(``pejip.ranking_api``, design doc 0015).
 """
 
 import logging
@@ -33,6 +35,8 @@ from pejip.config import SearchConfig, Settings, load_config
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
 from pejip.profile import make_ssm_client
+from pejip.ranking_api import RANKING_PREFIX, RankingService, screen
+from pejip.ranking_api import router as ranking_router
 
 log = logging.getLogger(__name__)
 
@@ -74,23 +78,42 @@ def _search_config(env: Mapping[str, str]) -> SearchConfig | None:
     return config
 
 
-def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = None) -> FastAPI:
+def create_app(
+    env: Mapping[str, str] | None = None,
+    data: PortalData | None = None,
+    ranking: RankingService | None = None,
+) -> FastAPI:
     """Build the API. Interactive docs are off; the OpenAPI document stays for DAST.
 
     Sign-in settings come from ``env`` (the process environment by default). The
-    portal reads ``data``, sample data by default until the database lands.
+    portal reads ``data``, sample data by default until the database lands. The
+    ranking routine's endpoints use ``ranking``, built from ``env`` by default.
     """
     app = FastAPI(title="PEJIP", version=__version__, docs_url=None, redoc_url=None)
     environment = os.environ if env is None else env
     settings = AuthSettings.from_env(environment)
     authenticator = Authenticator(settings) if settings else None
+    ranking_service = ranking or RankingService.from_env(environment)
+
+    # The ranking routine's routes skip sign-in below and are screened here
+    # instead, before any body is read (ranking_api.screen).
+    @app.middleware("http")
+    async def screen_ranking_requests(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if request.url.path.startswith(RANKING_PREFIX):
+            refused = screen(ranking_service, request)
+            if refused is not None:
+                return JSONResponse({"detail": refused.detail}, status_code=refused.status_code)
+        return await call_next(request)
 
     # Registered before the security headers middleware, so refusals get them too.
     @app.middleware("http")
     async def require_sign_in(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        if request.url.path in PUBLIC_PATHS:
+        # The ranking routine's routes check its own key instead (ranking_api).
+        if request.url.path in PUBLIC_PATHS or request.url.path.startswith(RANKING_PREFIX):
             return await call_next(request)
         if authenticator is None:
             return JSONResponse({"detail": "sign-in is not configured"}, status_code=503)
@@ -120,6 +143,7 @@ def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = N
     app.include_router(
         portal.router(SampleData() if data is None else data, config=_search_config(environment))
     )
+    app.include_router(ranking_router(ranking_service))
     return app
 
 

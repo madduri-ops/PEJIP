@@ -152,6 +152,27 @@ morning's run uses it and the digest says when it was last refreshed. Answers to
 "Your call" questions go in `network/network-decisions.yaml` the same way (see
 `examples/network-decisions.example.yaml`). A new upload replaces the old one.
 
+## Ranking routine (once, then every 90 days)
+
+[Design 0015](../docs/design/0015-ranking-routine.md). With `ranker = "routine"`
+(the default), `pejip run` at 06:00 PT stores roles without ranking them, a
+Claude Code routine on Babu's claude.ai plan analyses them at 07:00, and
+`pejip digest` emails the ranked digest at 08:00.
+
+1. In CloudShell, make the key and store only its SHA-256 on AWS:
+   `key=$(openssl rand -base64 48 | tr -d '/+=\n' | cut -c1-48)`, then
+   `printf %s "$key" | sha256sum | cut -d' ' -f1 > key.sha256` and
+   `aws ssm put-parameter --name /pejip/ranking-key-sha256 --type SecureString --key-id alias/pejip --value "$(cat key.sha256)" --overwrite`.
+   Copy `$key` once (`echo "$key"`), then `rm key.sha256; unset key`.
+2. Apply and deploy.
+3. In claude.ai, add a cloud environment for the routine with the secret
+   `PEJIP_RANKING_KEY` (the key from step 1), `PEJIP_RANKING_URL=https://job-search.zephyr-mcg.com`,
+   and network access to `job-search.zephyr-mcg.com`. The key is pasted only there.
+4. Claude creates the 07:00 PT routine in that environment.
+
+To rotate, repeat steps 1 and 3. The app reads the new hash within five minutes,
+so the old key stops working then.
+
 ## Google sign-in
 
 Every route except `/healthz` requires signing in with the Google account in

@@ -104,10 +104,9 @@ def make_ssm_client(region: str | None) -> SsmClient:
 
 
 def read_parameter(client: SsmClient, name: str) -> str | None:
-    """A SecureString's value, or None when Babu has not stored it yet.
+    """A decrypted SSM parameter's value, or None when it is not stored yet.
 
-    Any other failure (such as no permission) raises, so a broken setup fails the
-    run loudly instead of quietly doing less.
+    Any other failure (no permission, throttling) raises.
     """
     try:
         response = client.get_parameter(Name=name, WithDecryption=True)
@@ -115,13 +114,15 @@ def read_parameter(client: SsmClient, name: str) -> str | None:
         if exc.response.get("Error", {}).get("Code") == "ParameterNotFound":
             return None
         raise
-    return str(response["Parameter"]["Value"])
+    value: str = response["Parameter"]["Value"]
+    return value
 
 
 def load_profile_parameter(client: SsmClient, name: str) -> CareerProfile | None:
     """The profile stored in SSM, or None when Babu has not stored one yet.
 
-    A malformed profile raises, like any failure but a missing parameter.
+    Any other failure (no permission, a malformed profile) raises, so a broken
+    setup fails the run loudly instead of quietly ranking nothing.
     """
     value = read_parameter(client, name)
     return None if value is None else parse_profile(value)

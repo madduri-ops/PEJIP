@@ -54,7 +54,9 @@ CI hygiene:
 ## 5. Deployment and infrastructure
 
 - Continuous deploy on `main`.
-- Cloud auth via OIDC; no long-lived keys.
+- Cloud auth via OIDC; no long-lived keys. One exception, approved by Babu on
+  2026-10-05: the ranking routine's key (ADR-0008), which opens only the two
+  ranking endpoints, is held on AWS only as a hash, and is rotated every 90 days.
 - Post-deploy health gate that polls a health endpoint.
 - Infrastructure as code (Terraform), including alarms.
 
@@ -234,6 +236,9 @@ notes. It is treated as personal data.
   feature is known.
 - **Cost in review:** a PR that adds an AI call or changes a model states its
   expected monthly cost.
+- **Ranking routine:** ranking done by the Claude Code routine on Babu's plan
+  (ADR-0008) makes no API calls, so it costs nothing beyond the plan and the cap
+  and alerts above don't see it. Its size is bounded by `ai.max_jobs_per_run`.
 
 ## 14. Observability
 

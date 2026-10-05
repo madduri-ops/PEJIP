@@ -85,6 +85,28 @@ run it with `PEJIP_EVAL_RECORD_DIR=eval/recordings`, or copy them from that job,
 commit them in the same PR. A recording is only used for the golden set version it
 was made with, so bumping `golden_set_version` needs fresh recordings.
 
+### Through the ranking routine
+
+The ranking routine (design doc 0015) does the model's part in a Claude Code
+session on Babu's plan instead of the API. The golden set runs through the same
+steps, and its answers become recordings the replay scores. Like a live model run,
+it gates on the invariants (`--gate invariants`) and reports the other metrics,
+which vary from run to run:
+
+```sh
+python -m pejip.routine --work /tmp/eval eval-prepare
+python -m pejip.routine --work /tmp/eval next      # follow it, repeat until DONE
+python -m pejip.routine --work /tmp/eval eval-record --out /tmp/eval/recordings --model <model>
+PEJIP_EVAL_RECORDINGS=/tmp/eval/recordings python -m pejip.evaluation run \
+  --scorer pejip.golden_eval:replay_scorer --gate invariants
+```
+
+The routine ranks real roles only after this passes, and again after any prompt
+change. Its first run (2026-10-05, the session on claude-opus-5-5) held every
+invariant and scored Fit in range 62.5%, confidence 79%, priority 79%, positive
+reasons 74%, concerns 81% and pairwise order 94%, within the spread of live API
+runs (Fit in range has scored 46% to 67%).
+
 ## Changing the set
 
 - Bump `golden_set_version` in `manifest.toml` for any change to a case, a label or

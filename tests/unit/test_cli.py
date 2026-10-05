@@ -5,6 +5,7 @@ import os
 import runpy
 import shutil
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -13,6 +14,7 @@ import pytest
 from pejip import cli
 from pejip.config import Settings
 from pejip.digest import Digest
+from pejip.models import Posting
 from pejip.network.loader import CONNECTIONS_KEY
 from pejip.network.matching import NetworkIndex
 from pejip.store import Store
@@ -439,3 +441,152 @@ def test_a_missing_company_list_is_noted_in_the_digest(
     assert "Your company list is not stored yet (SSM parameter /pejip/companies)" in (
         digest.read_text()
     )
+
+
+@pytest.mark.usefixtures("env")
+def test_with_the_routine_the_run_defers_the_email(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    RecordingPipeline.built.clear()
+    sns = FakeSns()
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_sns_client", lambda _r: sns)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["run"]) == 0
+    args, kwargs = RecordingPipeline.built[-1]
+    assert args[3] is None  # the routine does the model step, not the API
+    assert kwargs["routine"] is True
+    assert kwargs["unranked_reason"] == cli.ROUTINE_PENDING
+    assert sns.calls == []
+    assert "digest_deferred" in [r.getMessage() for r in caplog.records]
+
+
+def test_routine_reason_without_a_profile() -> None:
+    settings = Settings.from_env({"PEJIP_RANKER": "routine", "PEJIP_PROFILE_PARAMETER": "/p"})
+    assert cli._unranked_reason(settings, None) == (
+        "no career profile is stored yet (SSM parameter /p)"
+    )
+
+
+@pytest.mark.usefixtures("env")
+def test_digest_needs_a_finished_run(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    with caplog.at_level("ERROR", logger="pejip"):
+        assert cli.main(["digest"]) == 1
+    assert "digest_without_run" in [r.getMessage() for r in caplog.records]
+
+
+def _finished_run(env: Path, seen: list[list[Any]], started: datetime | None = None) -> Store:
+    # The digest checks the run's age against the real clock.
+    started = started or datetime.now(UTC)
+    store = Store(f"sqlite:///{env / 'cli.db'}")
+    store.start_run("r1", started)
+    summary = {"sources": [{"name": "A", "status": "OK"}], "seen": seen, "notes": ["n"]}
+    store.finish_run("r1", "PARTIAL", summary, started)
+    return store
+
+
+def test_digest_emails_the_latest_run_ranked_again(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _finished_run(env, [])
+    sns = FakeSns()
+    monkeypatch.setattr(cli, "make_sns_client", lambda _r: sns)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    [call] = sns.calls
+    assert "finished **SUCCESS**" in call["Message"]
+    assert "routine_results_missing" not in [r.getMessage() for r in caplog.records]
+    assert len(list((env / "out").glob("digest-*.md"))) == 1
+
+
+def test_digest_says_when_the_routine_did_not_report(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = _finished_run(env, [])
+    posting = Posting(
+        source="greenhouse",
+        source_job_id="1",
+        company="Example Co",
+        title="VP Technology Operations",
+        location="Remote",
+        description="Lead technology operations.",
+        url="https://example.test/1",
+    )
+    now = datetime.now(UTC)
+    job_id = store.upsert_job(posting, now).job_id
+    store.finish_run(
+        "r1", "PARTIAL", {"sources": [], "seen": [[job_id, "NEW_POSTING"]], "notes": []}, now
+    )
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    missing = [r for r in caplog.records if r.getMessage() == "routine_results_missing"]
+    assert missing[0].levelname == "ERROR"
+    [written] = (env / "out").glob("digest-*.md")
+    assert "The ranking routine did not report" in written.read_text()
+
+
+def test_digest_of_a_stale_run_says_so_and_alarms(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    started = datetime.now(UTC) - timedelta(hours=cli.STALE_RUN_HOURS + 1)
+    _finished_run(env, [], started)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    stale = [r for r in caplog.records if r.getMessage() == "digest_run_stale"]
+    assert stale[0].levelname == "ERROR"
+    [written] = (env / "out").glob("digest-*.md")
+    assert "No search has finished since" in written.read_text()
+
+
+def test_a_crashing_digest_logs_an_error(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _finished_run(env, [])
+
+    def broken(*_args: Any, **_kwargs: Any) -> None:
+        raise ConnectionError
+
+    monkeypatch.setattr(cli, "_deliver", broken)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    with caplog.at_level("ERROR", logger="pejip"), pytest.raises(ConnectionError):
+        cli.main(["digest"])
+    assert "digest_crashed" in [r.getMessage() for r in caplog.records]
+
+
+def test_the_digest_notes_an_unusable_connections_file(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _finished_run(env, [])
+    (env / "bad.csv").write_text("Name,Headline\nAvery Secretname,VP\n")
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_CONNECTIONS", str(env / "bad.csv"))
+    assert cli.main(["digest"]) == 0
+    [written] = (env / "out").glob("digest-*.md")
+    assert "Connections were not used this run:" in written.read_text()
+
+
+def test_the_digest_notes_a_missing_company_list(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _finished_run(env, [])
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setattr(cli, "make_ssm_client", lambda _r: FakeSsm(error="ParameterNotFound"))
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_COMPANIES_PARAMETER", "/pejip/companies")
+    assert cli.main(["digest"]) == 0
+    [written] = (env / "out").glob("digest-*.md")
+    assert "Your company list is not stored yet" in written.read_text()

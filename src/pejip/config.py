@@ -187,6 +187,18 @@ def _flag(env: dict[str, str], name: str, *, default: bool) -> bool:
     raise ValueError(msg)
 
 
+RANKERS = ("api", "routine")
+
+
+def _choice(env: dict[str, str], name: str, choices: tuple[str, ...]) -> str:
+    """One of ``choices``, the first when unset; anything else fails."""
+    value = env.get(name, "").strip().lower() or choices[0]
+    if value not in choices:
+        msg = f"{name} must be one of {list(choices)}, got {value!r}"
+        raise ValueError(msg)
+    return value
+
+
 @dataclass(frozen=True)
 class Settings:
     """Runtime locations, taken from the environment."""
@@ -206,6 +218,8 @@ class Settings:
     profile_parameter: str | None = None
     digest_topic_arn: str | None = None
     ai_enabled: bool = True
+    ranker: str = "api"
+    ranking_key_parameter: str | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -235,6 +249,10 @@ class Settings:
             digest_topic_arn=e.get("PEJIP_DIGEST_TOPIC_ARN") or None,
             # Off until the workload can sign in to Claude; roles are then unranked.
             ai_enabled=_flag(e, "PEJIP_AI_ENABLED", default=True),
+            # Who does the model step: the API, or the Claude Code routine (design 0015).
+            ranker=_choice(e, "PEJIP_RANKER", RANKERS),
+            # The SSM parameter holding the SHA-256 of the routine's key.
+            ranking_key_parameter=e.get("PEJIP_RANKING_KEY_PARAMETER") or None,
         )
 
 
