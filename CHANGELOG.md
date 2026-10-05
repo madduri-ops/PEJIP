@@ -12,6 +12,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- `python -m pejip.evaluation run` takes `--workers N` to score several golden
+  cases at once; the live model evaluation in CI uses six.
 - The job search covers Anthropic, the one target company whose roles are
   available through an allowed public API; the example company boards are gone.
 - For testing, the search also covers the public Greenhouse boards of nine Bay

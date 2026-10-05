@@ -55,7 +55,8 @@ flowchart LR
   `priority` is `EXCLUDED` when a hard filter removes the role. `citations` are exact
   snippets of the posting the explanation relies on.
 - CLI: `python -m pejip.evaluation validate | run | ratchet`, with `--scorer`,
-  `--baseline`, `--report` and `--fit-tolerance`. Exit codes: 0 pass, 1 regression,
+  `--baseline`, `--report`, `--fit-tolerance` and `--workers` (cases scored at once,
+  default 1; results keep the set's order). Exit codes: 0 pass, 1 regression,
   2 invalid set, scorer or baseline.
 - `eval/baseline.json`: set version, scorer, and a value per metric.
 
@@ -72,7 +73,10 @@ checks postings carry no email addresses, phone numbers or URLs.
 - **Reliability:** scorer failures are contained per case and reported.
 - **Performance:** 24 cases plus 3 probes means 27 scorer calls per run, so an AI
   scorer's run costs roughly 27 ranking calls. The scoring pipeline states that
-  cost when it wires the run into CI (policy section 13).
+  cost when it wires the run into CI (policy section 13). The live CI job scores
+  six cases at once (`--workers 6`): the same calls at the same cost, in about a
+  sixth of the eight minutes they took one at a time. Each case and its network
+  probe run on one thread, and all threads share one client and spend cap.
 - **Testing:** unit tests at 100% line and branch coverage, including an oracle
   scorer that must score 1.0 on every metric and adversarial scorers for each
   failure mode.

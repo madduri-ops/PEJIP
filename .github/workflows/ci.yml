@@ -268,9 +268,12 @@ jobs:
       # Audit the exact resolved environment, runtime and dev dependencies alike.
       - run: mkdir audit && pip freeze --exclude-editable > audit/requirements.txt
       # Report mode keeps every finding in the artifact; the next step is the gate.
+      # cache-db restores the vulnerability DB, then still updates it if a newer
+      # one is published, so scans stay current without the ~70s download each run.
       - uses: anchore/scan-action@v7
         with:
           path: audit
+          cache-db: true
           fail-build: false
           output-format: json
           output-file: grype-report.json
@@ -292,6 +295,8 @@ jobs:
   # costs a few dollars. It signs in to Claude without a key, through the job's
   # GitHub OIDC token (ADR-0004). What the model returned is uploaded, and printed
   # one line per case, so the recordings in eval/recordings can be refreshed.
+  # Six cases are scored at once (the calls and their cost are unchanged); one at
+  # a time this job took about eight minutes, the longest in the pipeline.
   eval-live:
     name: Evaluation set (live model)
     needs: [changes, unit]
@@ -309,7 +314,7 @@ jobs:
       - run: pip install -e .
       - run: >-
           python -m pejip.evaluation run --scorer pejip.golden_eval:live_scorer
-          --gate invariants --report eval-live-report.json
+          --gate invariants --workers 6 --report eval-live-report.json
         env:
           # Not secrets: only this repository's pull request runs match the rule
           # (docs/design/0007-claude-identity-federation.md).

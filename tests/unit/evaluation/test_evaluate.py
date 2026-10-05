@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import threading
 
 import pytest
 
@@ -127,3 +128,23 @@ def test_empty_denominators_count_as_perfect(golden: GoldenSet, oracle: Scorer) 
     empty = dataclasses.replace(golden, cases=())
     report = evaluate(empty, oracle)
     assert all(value == 1.0 for value in report.metrics.values())
+
+
+def test_workers_score_cases_at_once_in_golden_set_order(golden: GoldenSet, oracle: Scorer) -> None:
+    # Every first call waits until four are in flight, so this only finishes if
+    # four cases really are scored at the same time.
+    started = threading.Barrier(4, timeout=10)
+    first_calls: set[str] = set()
+    lock = threading.Lock()
+
+    def slow(item: EvalInput) -> Prediction:
+        with lock:
+            first = item.case_id not in first_calls
+            first_calls.add(item.case_id)
+        if first and len(first_calls) <= 4:
+            started.wait()
+        return oracle(item)
+
+    report = evaluate(golden, slow, workers=4)
+    assert [r.case_id for r in report.cases] == [c.id for c in golden.cases]
+    assert report.metrics == evaluate(golden, oracle).metrics
