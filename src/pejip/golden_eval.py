@@ -237,7 +237,10 @@ def _config() -> SearchConfig:
 
 
 def recording_path(case_id: str, directory: Path | None = None) -> Path:
-    return (directory or RECORDINGS_DIR) / f"{case_id}.json"
+    """Where a case's recording lives. ``PEJIP_EVAL_RECORDINGS`` points the replay at
+    another folder, such as the ranking routine's answers (design doc 0015)."""
+    default = Path(os.environ.get("PEJIP_EVAL_RECORDINGS") or RECORDINGS_DIR)
+    return (directory or default) / f"{case_id}.json"
 
 
 def load_recording(case_id: str) -> dict[str, Any]:

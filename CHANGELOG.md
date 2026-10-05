@@ -12,6 +12,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- Job analysis and evidence matching can run in a Claude Code session as well as
+  through the API: `python -m pejip.routine` lays out each step with the same
+  prompt, input and schema, and checks every answer the way the API path does
+  (design doc 0015). The golden set can be scored through it.
 - `python -m pejip.evaluation run` takes `--workers N` to score several golden
   cases at once; the live model evaluation in CI uses six.
 - The live model evaluation in CI runs only on pull requests labelled

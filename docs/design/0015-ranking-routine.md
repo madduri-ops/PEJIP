@@ -89,8 +89,19 @@ returns 401, and every response carries `Cache-Control: no-store`.
   `{"accepted": n, "rejected": [{"job_id", "reason"}]}`. The prompt versions
   must match the ones the queue served.
 
-CLI: `python -m pejip.routine fetch | submit | eval`, reading `PEJIP_RANKING_URL`
-and `PEJIP_RANKING_KEY` from the environment. Scheduled tasks: `pejip-run-daily`
+CLI, `python -m pejip.routine --work DIR`:
+
+- `next` names the next step (a role's job analysis, then its evidence matching)
+  and writes its instructions to `roles/<id>/step.md`: the same system prompt,
+  input and JSON schema as the API call. The session writes the answer to the
+  file it names and runs `next` again until it prints `DONE`. An answer that fails
+  the API path's validation (schema, then grounding) comes back as `REDO` with the
+  reason. `skip ROLE REASON` gives up on a role, which stays queued.
+- `eval-prepare` and `eval-record` lay out the golden set and turn the answers into
+  recordings; `PEJIP_EVAL_RECORDINGS` points the replay scorer at them.
+- `fetch` and `submit` exchange roles and answers with the endpoints above,
+  reading `PEJIP_RANKING_URL` and `PEJIP_RANKING_KEY` from the environment
+  (second change). Scheduled tasks: `pejip-run-daily`
 (06:00 PT, unchanged) and a new `pejip-digest-daily` (08:00 PT).
 
 ## Data model
