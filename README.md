@@ -125,8 +125,11 @@ To add who you know, point `PEJIP_CONNECTIONS` at your LinkedIn Connections expo
 (kept outside the repository) and check it first with `pejip connections <file>`.
 On AWS, upload it instead as described in [infra/README.md](infra/README.md).
 
-Which boards are searched, the title taxonomy, geography, model and scoring weights
-are in [config/search.yaml](config/search.yaml).
+The title taxonomy, geography, model, scoring weights and the boards searched for
+testing are in [config/search.yaml](config/search.yaml). Your own target companies
+stay out of the repository: point `PEJIP_COMPANIES` at a copy of
+[examples/companies.example.yaml](examples/companies.example.yaml) kept elsewhere
+([ADR-0009](docs/adr/0009-private-inputs-outside-the-public-repository.md)).
 
 ## Project structure
 

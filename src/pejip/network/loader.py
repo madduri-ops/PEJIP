@@ -68,7 +68,8 @@ def tracked_companies(config: SearchConfig) -> list[str]:
     """Every company PEJIP searches: board sources and job-alert companies."""
     names = [s.company for s in config.sources]
     if config.inbox is not None:
-        names += [c.company for c in config.inbox.companies]
+        # A job board such as LinkedIn lists other employers' roles; it is not one.
+        names += [c.company for c in config.inbox.companies if not c.job_board]
     return list(dict.fromkeys(names))
 
 

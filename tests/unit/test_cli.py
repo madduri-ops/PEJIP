@@ -134,17 +134,17 @@ def test_connections_reports_counts_and_names_to_review_but_no_people(
     upload = env / "Connections.csv"
     upload.write_bytes(
         export(
-            row("Avery", "Synthetic", "Anthropic, PBC", "SVP Technology"),
-            row("Casey", "Synthetic", "Anthropic", "Partner"),
+            row("Avery", "Synthetic", "Databricks, Inc.", "SVP Technology"),
+            row("Casey", "Synthetic", "Databricks", "Partner"),
             row("Devon", "Synthetic", "Stripe Cloud", "VP"),
-            *[row("", "", "Anthropic", "VP")] * 7,
+            *[row("", "", "Databricks", "VP")] * 7,
         )
     )
     assert cli.main(["connections", str(upload)]) == 0
     out = capsys.readouterr().out
     assert "Valid connections: 3" in out
     assert "no first or last name: lines 8, 9, 10, 11, 12 and 2 more" in out
-    assert "Anthropic: 2 connections, 1 unclear titles" in out
+    assert "Databricks: 2 connections, 1 unclear titles" in out
     assert "Stripe Cloud: 1 held back, could be Stripe" in out
     assert "Synthetic" not in out
 
@@ -375,7 +375,7 @@ def test_on_aws_connections_are_read_from_the_uploads_bucket(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     RecordingPipeline.built.clear()
-    uploads = UploadS3({CONNECTIONS_KEY: export(row(company="Anthropic", position="SVP"))})
+    uploads = UploadS3({CONNECTIONS_KEY: export(row(company="Databricks", position="SVP"))})
     regions: list[str | None] = []
 
     def fake_s3(region: str | None) -> UploadS3:
@@ -389,7 +389,7 @@ def test_on_aws_connections_are_read_from_the_uploads_bucket(
     assert cli.main(["run"]) == 0
     network = RecordingPipeline.built[-1][1]["network"]
     assert isinstance(network, NetworkIndex)
-    assert "Anthropic" in network.by_company
+    assert "Databricks" in network.by_company
     assert regions == ["us-west-2"]
 
     monkeypatch.setattr(cli, "make_s3_client", lambda _r: UploadS3({}))
@@ -404,3 +404,38 @@ def test_an_unreadable_upload_is_noted(env: Path, monkeypatch: pytest.MonkeyPatc
     assert cli.main(["run"]) == 0
     [digest] = list((env / "out").glob("digest-*.md"))
     assert "a network file could not be opened (ClientError)" in digest.read_text()
+
+
+def test_the_private_company_list_is_added_from_ssm_or_a_file(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    example = (ROOT / "examples" / "companies.example.yaml").read_text()
+    ssm = FakeSsm(value=example)
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_ssm_client", lambda _r: ssm)
+    monkeypatch.setenv("PEJIP_COMPANIES_PARAMETER", "/pejip/companies")
+    assert cli.main(["run"]) == 0
+    config = RecordingPipeline.built[-1][0][0]
+    assert config.sources[-1].company == "Northwind Robotics"
+    assert ssm.calls == [{"Name": "/pejip/companies", "WithDecryption": True}]
+
+    monkeypatch.delenv("PEJIP_COMPANIES_PARAMETER")
+    private = env / "companies.yaml"
+    private.write_text(example)
+    monkeypatch.setenv("PEJIP_COMPANIES", str(private))
+    assert cli.main(["run"]) == 0
+    config = RecordingPipeline.built[-1][0][0]
+    assert config.inbox.companies[-1].company == "Contoso Silicon"
+
+
+def test_a_missing_company_list_is_noted_in_the_digest(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_ssm_client", lambda _r: FakeSsm(error="ParameterNotFound"))
+    monkeypatch.setenv("PEJIP_COMPANIES_PARAMETER", "/pejip/companies")
+    assert cli.main(["run"]) == 0
+    [digest] = list((env / "out").glob("digest-*.md"))
+    assert "Your company list is not stored yet (SSM parameter /pejip/companies)" in (
+        digest.read_text()
+    )

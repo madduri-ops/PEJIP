@@ -2,13 +2,13 @@ Notes:
 "Synthetic sample in the shape of a LinkedIn Connections export. Every person and company is invented."
 
 First Name,Last Name,URL,Email Address,Company,Position,Connected On
-Avery,Example,https://www.linkedin.com/in/avery-example,,Anthropic,SVP Technology,14 Mar 2019
-Blake,Sample,https://www.linkedin.com/in/blake-sample,,Anthropic,Chief Operating Officer,02 Jun 2021
-Casey,Placeholder,https://www.linkedin.com/in/casey-placeholder,,"Anthropic, PBC","Principal, Technology Strategy",11 Jan 2022
-Devon,Demo,https://www.linkedin.com/in/devon-demo,,Anthropic,Senior Software Engineer,20 Aug 2023
+Avery,Example,https://www.linkedin.com/in/avery-example,,Databricks,SVP Technology,14 Mar 2019
+Blake,Sample,https://www.linkedin.com/in/blake-sample,,Databricks,Chief Operating Officer,02 Jun 2021
+Casey,Placeholder,https://www.linkedin.com/in/casey-placeholder,,"Databricks, Inc.","Principal, Technology Strategy",11 Jan 2022
+Devon,Demo,https://www.linkedin.com/in/devon-demo,,Databricks,Senior Software Engineer,20 Aug 2023
 Emery,Fixture,https://www.linkedin.com/in/emery-fixture,,Stripe Inc.,VP Program Management,05 May 2018
-Finley,Mock,https://www.linkedin.com/in/finley-mock,,Facebook,Director of Product,30 Sep 2020
+Finley,Mock,https://www.linkedin.com/in/finley-mock,,Contoso Semiconductor,Director of Product,30 Sep 2020
 Gray,Stub,https://www.linkedin.com/in/gray-stub,,Scale AI Labs,Head of Platform,12 Dec 2024
 Harper,Test,https://www.linkedin.com/in/harper-test,,Northwind Traders,Chief Executive Officer,07 Jul 2017
-,,https://www.linkedin.com/in/no-name,,Anthropic,Recruiter,01 Feb 2024
-Avery,Example,https://www.linkedin.com/in/avery-example/,,Anthropic,SVP Technology,14 Mar 2019
+,,https://www.linkedin.com/in/no-name,,Databricks,Recruiter,01 Feb 2024
+Avery,Example,https://www.linkedin.com/in/avery-example/,,Databricks,SVP Technology,14 Mar 2019

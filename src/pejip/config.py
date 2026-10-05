@@ -140,6 +140,36 @@ def load_config(path: Path) -> SearchConfig:
     return SearchConfig.model_validate(data)
 
 
+class PrivateCompanies(_Strict):
+    """Babu's own target companies, kept out of the public repository (ADR-0009).
+
+    They are added to the boards, alert companies and aliases in the committed
+    configuration, which holds only companies searched for testing.
+    """
+
+    sources: list[SourceConfig] = Field(default_factory=list)
+    inbox_companies: list[AlertCompany] = Field(default_factory=list)
+    company_aliases: dict[str, list[str]] = Field(default_factory=dict)
+
+
+def parse_private_companies(text: str) -> PrivateCompanies:
+    return PrivateCompanies.model_validate(yaml.safe_load(text) or {})
+
+
+def with_private_companies(config: SearchConfig, private: PrivateCompanies) -> SearchConfig:
+    """The configuration with Babu's private companies added to the committed ones."""
+    alerts = [*(config.inbox.companies if config.inbox else []), *private.inbox_companies]
+    aliases = config.network.company_aliases if config.network else {}
+    return SearchConfig.model_validate(
+        {
+            **config.model_dump(),
+            "sources": [*config.sources, *private.sources],
+            "inbox": InboxConfig(companies=alerts) if alerts else None,
+            "network": NetworkConfig(company_aliases={**aliases, **private.company_aliases}),
+        }
+    )
+
+
 _TRUE = frozenset({"1", "true", "yes", "on"})
 _FALSE = frozenset({"0", "false", "no", "off"})
 
@@ -171,6 +201,8 @@ class Settings:
     connections_path: Path | None = None
     network_decisions_path: Path | None = None
     network_bucket: str | None = None
+    companies_path: Path | None = None
+    companies_parameter: str | None = None
     profile_parameter: str | None = None
     digest_topic_arn: str | None = None
     ai_enabled: bool = True
@@ -193,6 +225,10 @@ class Settings:
             network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
             # On AWS they are uploaded to network/ in this bucket instead.
             network_bucket=e.get("PEJIP_NETWORK_BUCKET") or None,
+            # Babu's target companies, kept out of the public repository (ADR-0009):
+            # a local file, or on AWS an encrypted SSM parameter.
+            companies_path=_optional_path(e.get("PEJIP_COMPANIES")),
+            companies_parameter=e.get("PEJIP_COMPANIES_PARAMETER") or None,
             # In AWS the profile is an encrypted SSM parameter, not a file.
             profile_parameter=e.get("PEJIP_PROFILE_PARAMETER") or None,
             # Where `pejip run` emails the digest (an SNS topic), when set.

@@ -23,7 +23,11 @@ source for those roles (spec section 7.1).
 3. Add the adapter under `src/pejip/sources/`, calling only `PoliteClient`, with
    tests against recorded payloads.
 4. If a source's terms stop allowing our use, remove it from `config/search.yaml`
+   (and tell Babu to remove it from his private company list)
    and mark it disabled here in the same PR.
 
 Which company boards are searched, and which careers pages an alert's links may
-point at, is configuration, in `config/search.yaml`.
+point at, is configuration: `config/search.yaml` for the test boards, and Babu's
+private company list for his targets
+([ADR-0009](adr/0009-private-inputs-outside-the-public-repository.md)). Every board
+in either must use a source listed here.

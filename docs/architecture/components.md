@@ -53,7 +53,9 @@ flowchart TB
   instead of a file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest),
   `PEJIP_AI_ENABLED`, `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the
   LinkedIn export and the candidate's network decisions), `PEJIP_NETWORK_BUCKET`
-  (where they are uploaded on AWS), and Claude
+  (where they are uploaded on AWS), `PEJIP_COMPANIES` and
+  `PEJIP_COMPANIES_PARAMETER` (Babu's private company list, from a file or SSM;
+  ADR-0009), and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
   emails it through `pejip.delivery`.

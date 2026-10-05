@@ -8,7 +8,7 @@ import pytest
 from botocore.exceptions import ClientError
 from pydantic import ValidationError
 
-from pejip.config import SearchConfig
+from pejip.config import SearchConfig, parse_private_companies, with_private_companies
 from pejip.network.companies import CompanyDirectory
 from pejip.network.linkedin import MAX_EXPORT_BYTES, Connection, ExportError, parse_export
 from pejip.network.loader import (
@@ -129,23 +129,31 @@ def test_the_latest_import_time_is_kept() -> None:
     assert NetworkIndex.build([], DIRECTORY).imported_at is None
 
 
+def with_examples(config: SearchConfig) -> SearchConfig:
+    """The shipped configuration plus the invented private companies example."""
+    text = (ROOT / "examples" / "companies.example.yaml").read_text()
+    return with_private_companies(config, parse_private_companies(text))
+
+
 def test_loader_reads_config_aliases_and_decisions(config: SearchConfig, tmp_path: Path) -> None:
-    assert "Anthropic" in tracked_companies(config)
-    assert "Meta" in tracked_companies(config)
+    config = with_examples(config)
+    assert "Stripe" in tracked_companies(config)
+    assert "Contoso Silicon" in tracked_companies(config)
+    assert "LinkedIn" not in tracked_companies(config)
     decisions_file = tmp_path / "decisions.yaml"
     decisions_file.write_text(
         "companies: {Company X Cloud: null}\n"
         "titles:\n"
-        "  - {company: Anthropic, position: Partner, role_level: VP, matured: true}\n"
+        "  - {company: Stripe, position: Partner, role_level: VP, matured: true}\n"
     )
     decisions = load_decisions(decisions_file)
     assert decisions.companies == {"Company X Cloud": None}
     assert decisions.titles[0].matured is True
     directory = directory_for(config, decisions)
-    assert directory.resolve("Facebook").company == "Meta"
+    assert directory.resolve("Contoso Semiconductor").company == "Contoso Silicon"
     assert directory.resolve("Company X Cloud").method == "DECISION"
     no_network = config.model_copy(update={"network": None, "inbox": None})
-    assert directory_for(no_network, decisions).resolve("Facebook").company is None
+    assert directory_for(no_network, decisions).resolve("Contoso Semiconductor").company is None
 
 
 def test_decisions_files_none_empty_missing_and_invalid(tmp_path: Path) -> None:
@@ -164,12 +172,12 @@ def test_decisions_files_none_empty_missing_and_invalid(tmp_path: Path) -> None:
 def test_load_index_uses_the_file_time_as_the_import_date(config: SearchConfig) -> None:
     sample = ROOT / "examples" / "Connections.example.csv"
     decisions = ROOT / "examples" / "network-decisions.example.yaml"
-    preview, index = load_index(config, sample, decisions)
+    preview, index = load_index(with_examples(config), sample, decisions)
     assert preview.records_accepted == 8
     assert index.imported_at is not None
     assert index.imported_at.timestamp() == pytest.approx(sample.stat().st_mtime)
-    assert set(index.by_company) == {"Anthropic", "Meta", "Scale AI", "Stripe"}
-    signal = index.signal("Anthropic", "VP")
+    assert set(index.by_company) == {"Databricks", "Contoso Silicon", "Scale AI", "Stripe"}
+    signal = index.signal("Databricks", "VP")
     assert signal.facts() == NetworkFacts(first_degree=4, matured=3, your_call=0)
 
 
@@ -206,16 +214,16 @@ def test_an_uploaded_export_and_decisions_are_read_from_s3(config: SearchConfig)
     index = load_index_s3(s3, "bucket", config)
     assert index is not None
     assert index.imported_at == NOW
-    assert index.signal("Anthropic", "VP").facts() == NetworkFacts(4, 3, 0)
+    assert index.signal("Databricks", "VP").facts() == NetworkFacts(4, 3, 0)
     assert all(body.closed for body in s3.bodies)
     assert len(s3.bodies) == 2
 
 
 def test_an_upload_without_decisions_uses_none(config: SearchConfig) -> None:
-    s3 = UploadS3({CONNECTIONS_KEY: export(row(company="Anthropic", position="SVP"))})
+    s3 = UploadS3({CONNECTIONS_KEY: export(row(company="Databricks", position="SVP"))})
     index = load_index_s3(s3, "bucket", config)
     assert index is not None
-    assert index.signal("Anthropic", "VP").facts().matured == 1
+    assert index.signal("Databricks", "VP").facts().matured == 1
 
 
 def test_no_upload_means_no_network_and_other_errors_are_raised(config: SearchConfig) -> None:

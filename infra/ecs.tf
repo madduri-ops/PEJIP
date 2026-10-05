@@ -171,12 +171,15 @@ data "aws_iam_policy_document" "ecs_task" {
     }
   }
 
-  # Babu's career profile, a SecureString Babu stores by hand (never in
-  # Terraform, so it never reaches the state file).
+  # Babu's career profile and target companies (ADR-0009), SecureStrings Babu
+  # stores by hand (never in Terraform, so they never reach the state file).
   statement {
-    sid       = "CareerProfile"
-    actions   = ["ssm:GetParameter"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}"]
+    sid     = "CareerProfile"
+    actions = ["ssm:GetParameter"]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}",
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.companies_parameter}",
+    ]
   }
 
   statement {
@@ -260,8 +263,9 @@ data "aws_ecs_container_definition" "live" {
 }
 
 locals {
-  data_dir          = "/data"
-  profile_parameter = "/pejip/profile"
+  data_dir            = "/data"
+  profile_parameter   = "/pejip/profile"
+  companies_parameter = "/pejip/companies"
 
   # What `pejip run` and `pejip purge` read (design doc 0012). The API ignores them.
   run_environment = [
@@ -271,6 +275,7 @@ locals {
     { name = "PEJIP_INBOX_BUCKET", value = aws_s3_bucket.inbox.id },
     { name = "PEJIP_NETWORK_BUCKET", value = aws_s3_bucket.inbox.id },
     { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
+    { name = "PEJIP_COMPANIES_PARAMETER", value = local.companies_parameter },
     { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
   ]
 

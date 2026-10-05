@@ -14,7 +14,13 @@ from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import ValidationError
 
 from pejip.ai.client import AIClient
-from pejip.config import SearchConfig, Settings, load_config
+from pejip.config import (
+    SearchConfig,
+    Settings,
+    load_config,
+    parse_private_companies,
+    with_private_companies,
+)
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import render
@@ -23,7 +29,13 @@ from pejip.network.linkedin import ExportError
 from pejip.network.loader import load_index, load_index_s3
 from pejip.network.matching import YOUR_CALL, NetworkIndex
 from pejip.pipeline import Pipeline
-from pejip.profile import CareerProfile, load_profile, load_profile_parameter, make_ssm_client
+from pejip.profile import (
+    CareerProfile,
+    load_profile,
+    load_profile_parameter,
+    make_ssm_client,
+    read_parameter,
+)
 from pejip.retention import purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
@@ -42,6 +54,27 @@ def _load_profile(settings: Settings) -> CareerProfile | None:
     return load_profile(settings.profile_path)
 
 
+def _load_config(settings: Settings) -> tuple[SearchConfig, str | None]:
+    """The search configuration with Babu's private companies, and a note if they are missing.
+
+    A malformed company list raises: searching without it would look like a quiet
+    day rather than a broken setup.
+    """
+    config = load_config(settings.config_path)
+    if settings.companies_parameter:
+        text = read_parameter(make_ssm_client(settings.aws_region), settings.companies_parameter)
+        if text is None:
+            return config, (
+                "Your company list is not stored yet (SSM parameter"
+                f" {settings.companies_parameter}), so only the test boards were searched."
+            )
+    elif settings.companies_path:
+        text = settings.companies_path.read_text(encoding="utf-8")
+    else:
+        return config, None
+    return with_private_companies(config, parse_private_companies(text)), None
+
+
 def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
     """Why roles can't be ranked, naming every missing piece at once."""
     missing = []
@@ -55,7 +88,7 @@ def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
 
 
 def _cmd_run(settings: Settings) -> int:
-    config = load_config(settings.config_path)
+    config, companies_note = _load_config(settings)
     profile = _load_profile(settings)
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
@@ -79,6 +112,8 @@ def _cmd_run(settings: Settings) -> int:
     finally:
         http.close()
         ledger.close()
+    if companies_note:
+        digest.notes.append(companies_note)
     if network_problem:
         digest.notes.append(f"Connections were not used this run: {network_problem}.")
     settings.output_dir.mkdir(parents=True, exist_ok=True)
@@ -128,7 +163,7 @@ def _problem(exc: Exception) -> str:
 
 def _cmd_connections(settings: Settings, path: Path) -> int:
     """Check a LinkedIn export before using it: counts and names to review, no people."""
-    config = load_config(settings.config_path)
+    config, _ = _load_config(settings)
     try:
         preview, index = load_index(config, path, settings.network_decisions_path)
     except _FILE_ERRORS as exc:
