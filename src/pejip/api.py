@@ -28,7 +28,7 @@ from pejip.auth import (
 )
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
-from pejip.ranking_api import RANKING_PREFIX, RankingService
+from pejip.ranking_api import RANKING_PREFIX, RankingService, screen
 from pejip.ranking_api import router as ranking_router
 
 # Sent on every response. JSON responses get a CSP that denies everything; HTML
@@ -67,6 +67,19 @@ def create_app(
     environment = os.environ if env is None else env
     settings = AuthSettings.from_env(environment)
     authenticator = Authenticator(settings) if settings else None
+    ranking_service = ranking or RankingService.from_env(environment)
+
+    # The ranking routine's routes skip sign-in below and are screened here
+    # instead, before any body is read (ranking_api.screen).
+    @app.middleware("http")
+    async def screen_ranking_requests(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if request.url.path.startswith(RANKING_PREFIX):
+            refused = screen(ranking_service, request)
+            if refused is not None:
+                return JSONResponse({"detail": refused.detail}, status_code=refused.status_code)
+        return await call_next(request)
 
     # Registered before the security headers middleware, so refusals get them too.
     @app.middleware("http")
@@ -102,7 +115,7 @@ def create_app(
         return {"status": "ok", "version": __version__}
 
     app.include_router(portal.router(SampleData() if data is None else data))
-    app.include_router(ranking_router(ranking or RankingService.from_env(environment)))
+    app.include_router(ranking_router(ranking_service))
     return app
 
 

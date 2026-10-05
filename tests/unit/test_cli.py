@@ -5,6 +5,7 @@ import os
 import runpy
 import shutil
 import time
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -291,11 +292,13 @@ def test_digest_needs_a_finished_run(
     assert "digest_without_run" in [r.getMessage() for r in caplog.records]
 
 
-def _finished_run(env: Path, seen: list[list[Any]]) -> Store:
+def _finished_run(env: Path, seen: list[list[Any]], started: datetime | None = None) -> Store:
+    # The digest checks the run's age against the real clock.
+    started = started or datetime.now(UTC)
     store = Store(f"sqlite:///{env / 'cli.db'}")
-    store.start_run("r1", NOW)
+    store.start_run("r1", started)
     summary = {"sources": [{"name": "A", "status": "OK"}], "seen": seen, "notes": ["n"]}
-    store.finish_run("r1", "PARTIAL", summary, NOW)
+    store.finish_run("r1", "PARTIAL", summary, started)
     return store
 
 
@@ -329,9 +332,10 @@ def test_digest_says_when_the_routine_did_not_report(
         description="Lead technology operations.",
         url="https://example.test/1",
     )
-    job_id = store.upsert_job(posting, NOW).job_id
+    now = datetime.now(UTC)
+    job_id = store.upsert_job(posting, now).job_id
     store.finish_run(
-        "r1", "PARTIAL", {"sources": [], "seen": [[job_id, "NEW_POSTING"]], "notes": []}, NOW
+        "r1", "PARTIAL", {"sources": [], "seen": [[job_id, "NEW_POSTING"]], "notes": []}, now
     )
     monkeypatch.setattr(cli, "configure_logging", lambda: None)
     monkeypatch.setenv("PEJIP_RANKER", "routine")
@@ -341,3 +345,33 @@ def test_digest_says_when_the_routine_did_not_report(
     assert missing[0].levelname == "ERROR"
     [written] = (env / "out").glob("digest-*.md")
     assert "The ranking routine did not report" in written.read_text()
+
+
+def test_digest_of_a_stale_run_says_so_and_alarms(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    started = datetime.now(UTC) - timedelta(hours=cli.STALE_RUN_HOURS + 1)
+    _finished_run(env, [], started)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    stale = [r for r in caplog.records if r.getMessage() == "digest_run_stale"]
+    assert stale[0].levelname == "ERROR"
+    [written] = (env / "out").glob("digest-*.md")
+    assert "No search has finished since" in written.read_text()
+
+
+def test_a_crashing_digest_logs_an_error(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    _finished_run(env, [])
+
+    def broken(*_args: Any, **_kwargs: Any) -> None:
+        raise ConnectionError
+
+    monkeypatch.setattr(cli, "_deliver", broken)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    with caplog.at_level("ERROR", logger="pejip"), pytest.raises(ConnectionError):
+        cli.main(["digest"])
+    assert "digest_crashed" in [r.getMessage() for r in caplog.records]

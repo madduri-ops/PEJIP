@@ -26,7 +26,6 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -48,14 +47,19 @@ from pejip.profile import (
     load_profile,
     load_profile_parameter,
     make_ssm_client,
+    read_parameter,
 )
 from pejip.store import AnalysisRecord, Store
 
 RANKING_PREFIX = "/api/ranking/"
 PROMPT_IDS = ("JOB_ANALYSIS", "EVIDENCE_MATCHING")
 MAX_RESULTS = 100
-# The key hash is read again after this long, so a rotated key works without a deploy.
+# The key hash, profile and config are read again after this long, so a rotated
+# key or a new profile works without a deploy.
 KEY_HASH_TTL_SECONDS = 300
+# Largest answers body accepted, checked before it is read (design doc 0015).
+# 40 answers of a few KB each fit many times over.
+MAX_BODY_BYTES = 2_000_000
 _BEARER = "bearer "
 _MIN_KEY_CHARS = 32
 _MAX_KEY_CHARS = 256
@@ -124,15 +128,8 @@ def key_hash_from_ssm(region: str | None, name: str) -> Callable[[], str | None]
     """Reads the key's SHA-256 (hex) from SSM, or None when it is not stored yet."""
 
     def read() -> str | None:
-        client = make_ssm_client(region)
-        try:
-            response = client.get_parameter(Name=name, WithDecryption=True)
-        except ClientError as exc:
-            if exc.response.get("Error", {}).get("Code") == "ParameterNotFound":
-                return None
-            raise
-        value: str = response["Parameter"]["Value"]
-        return value.strip().lower()
+        value = read_parameter(make_ssm_client(region), name)
+        return None if value is None else value.strip().lower()
 
     return read
 
@@ -146,7 +143,7 @@ class RankingService:
     profile: Callable[[], CareerProfile | None]
     config: Callable[[], SearchConfig]
     clock: Callable[[], float] = time.monotonic
-    _cached: tuple[float, str | None] | None = field(default=None, repr=False)
+    _cache: dict[str, tuple[float, Any]] = field(default_factory=dict, repr=False)
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> RankingService:
@@ -177,11 +174,24 @@ class RankingService:
 
         return cls(key_hash, store, profile, lambda: load_config(settings.config_path))
 
-    def expected_hash(self) -> str | None:
+    def _cached(self, name: str, read: Callable[[], Any]) -> Any:
         now = self.clock()
-        if self._cached is None or now - self._cached[0] > KEY_HASH_TTL_SECONDS:
-            self._cached = (now, self.key_hash())
-        return self._cached[1]
+        hit = self._cache.get(name)
+        if hit is None or now - hit[0] > KEY_HASH_TTL_SECONDS:
+            hit = self._cache[name] = (now, read())
+        return hit[1]
+
+    def expected_hash(self) -> str | None:
+        value: str | None = self._cached("key_hash", self.key_hash)
+        return value
+
+    def current_profile(self) -> CareerProfile | None:
+        value: CareerProfile | None = self._cached("profile", self.profile)
+        return value
+
+    def current_config(self) -> SearchConfig:
+        value: SearchConfig = self._cached("config", self.config)
+        return value
 
 
 class NotConfiguredError(HTTPException):
@@ -198,6 +208,41 @@ class KeyRequiredError(HTTPException):
         super().__init__(status_code=401, detail="a ranking key is required")
 
 
+class BodyTooLargeError(HTTPException):
+    """An answers body without a length, or longer than ``MAX_BODY_BYTES`` (413)."""
+
+    def __init__(self) -> None:
+        super().__init__(status_code=413, detail=f"bodies are limited to {MAX_BODY_BYTES} bytes")
+
+
+def check_key(service: RankingService, authorization: str) -> None:
+    """Raise unless ``authorization`` carries the routine's key."""
+    expected = service.expected_hash()
+    if expected is None:
+        raise NotConfiguredError(_NO_KEY)
+    header = authorization
+    key = header[len(_BEARER) :] if header.lower().startswith(_BEARER) else ""
+    if not _MIN_KEY_CHARS <= len(key) <= _MAX_KEY_CHARS:
+        raise KeyRequiredError
+    given = hashlib.sha256(key.encode()).hexdigest()
+    if not hmac.compare_digest(given, expected):
+        raise KeyRequiredError
+
+
+def screen(service: RankingService, request: Request) -> HTTPException | None:
+    """Checks made before a body is read, so a caller without the key can't make
+    the app read a large one (the WAF lets these bodies past its 8 KB limit)."""
+    try:
+        check_key(service, request.headers.get("authorization", ""))
+        if request.method == "POST":
+            length = request.headers.get("content-length", "")
+            if not length.isdigit() or int(length) > MAX_BODY_BYTES:
+                raise BodyTooLargeError
+    except HTTPException as exc:
+        return exc
+    return None
+
+
 class StalePromptsError(HTTPException):
     """The answers were made with other prompt versions than the ones in use (409)."""
 
@@ -207,22 +252,13 @@ class StalePromptsError(HTTPException):
 
 def router(service: RankingService) -> APIRouter:
     def require_key(request: Request) -> None:
-        expected = service.expected_hash()
-        if expected is None:
-            raise NotConfiguredError(_NO_KEY)
-        header = request.headers.get("authorization", "")
-        key = header[len(_BEARER) :] if header.lower().startswith(_BEARER) else ""
-        if not _MIN_KEY_CHARS <= len(key) <= _MAX_KEY_CHARS:
-            raise KeyRequiredError
-        given = hashlib.sha256(key.encode()).hexdigest()
-        if not hmac.compare_digest(given, expected):
-            raise KeyRequiredError
+        check_key(service, request.headers.get("authorization", ""))
 
     def ready() -> tuple[Store, CareerProfile]:
         store = service.store()
         if store is None:
             raise NotConfiguredError(_NO_DATABASE)
-        profile = service.profile()
+        profile = service.current_profile()
         if profile is None:
             raise NotConfiguredError(_NO_PROFILE)
         return store, profile
@@ -235,13 +271,14 @@ def router(service: RankingService) -> APIRouter:
         store, profile = ready()
         run = store.latest_run()
         waiting: list[dict[str, Any]] = []
-        for job_id, _ in run["summary"].get("seen", []) if run else []:
-            if store.has_job(job_id):
-                job = store.get_job(job_id)
-                if store.needs_analysis(job):
-                    waiting.append(job)
+        # A role reported by two sources in one run is queued once.
+        seen = run["summary"].get("seen", []) if run else []
+        for job_id in dict.fromkeys(job_id for job_id, _ in seen):
+            job = store.find_job(job_id)
+            if job is not None and store.needs_analysis(job):
+                waiting.append(job)
         waiting.sort(key=lambda job: job["first_seen_at"])
-        limit = service.config().ai.max_jobs_per_run
+        limit = service.current_config().ai.max_jobs_per_run
         return Queue(
             profile=MatchingProfile(
                 headline=profile.headline,
@@ -286,9 +323,9 @@ def _store_answer(
     store: Store, profile: CareerProfile, submission: Submission, answer: Answer
 ) -> str | None:
     """Store one answer, or say why it was refused."""
-    if not store.has_job(answer.job_id):
+    job = store.find_job(answer.job_id)
+    if job is None:
         return "no such role"
-    job = store.get_job(answer.job_id)
     if job["content_hash"] != answer.content_hash:
         return "the posting has changed since it was queued"
     try:

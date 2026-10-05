@@ -14,14 +14,14 @@ from typing import Any
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, func, select, update
 
-from pejip import api, routine, workbench
+from pejip import api, ranking_api, routine, workbench
 from pejip.config import SearchConfig
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile
 from pejip.ranking_api import RankingService
-from pejip.store import Store, jobs
+from pejip.store import Store, jobs, recommendations, runs
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages
 from tests.integration.test_pipeline import Boards, build
@@ -259,3 +259,80 @@ def test_routine_needs_its_settings_and_a_willing_server(
     monkeypatch.delenv("PEJIP_RANKING_KEY")
     assert routine.main(["--work", work, "fetch"]) == 2
     assert "PEJIP_RANKING_KEY is not set" in capsys.readouterr().err
+
+
+def _set_summary(store: Store, **changes: Any) -> None:
+    run = store.latest_run()
+    assert run is not None
+    with store.engine.begin() as conn:
+        conn.execute(
+            update(runs).where(runs.c.id == run["id"]).values(summary={**run["summary"], **changes})
+        )
+
+
+def test_a_role_reported_twice_is_queued_and_listed_once(client: TestClient, ran: Pipeline) -> None:
+    seen = ran.store.latest_run()["summary"]["seen"]  # type: ignore[index]
+    _set_summary(ran.store, seen=seen + seen)
+    roles = client.get("/api/ranking/queue", headers=AUTH).json()["roles"]
+    assert len(roles) == len(seen)
+    assert len(ran.digest_from(ran.store.latest_run() or {}).items) == len(seen)
+
+
+def test_runs_from_before_the_routine_still_make_a_digest(ran: Pipeline) -> None:
+    run = ran.store.latest_run() or {}
+    old = {**run, "summary": {"candidates": 0}}
+    digest = ran.digest_from(old)
+    assert digest.items == []
+    assert digest.notes == []
+
+
+def _recommendation_rows(store: Store) -> int:
+    with store.engine.connect() as conn:
+        return int(conn.execute(select(func.count()).select_from(recommendations)).scalar_one())
+
+
+@pytest.mark.usefixtures("connected")
+def test_the_digest_adds_no_repeat_recommendations(ran: Pipeline, tmp_path: Path) -> None:
+    work = tmp_path / "work"
+    routine.main(["--work", str(work), "fetch"])
+    answer_all(work)
+    routine.main(["--work", str(work), "submit", "--model", "m"])
+    run = ran.store.latest_run() or {}
+    ran.digest_from(run)
+    rows = _recommendation_rows(ran.store)
+    assert rows == 2
+    ran.digest_from(run)
+    assert _recommendation_rows(ran.store) == rows
+
+
+def test_large_or_unmeasured_bodies_are_refused_before_reading(client: TestClient) -> None:
+    url = "/api/ranking/analyses"
+    too_big = {**AUTH, "content-length": str(ranking_api.MAX_BODY_BYTES + 1)}
+    assert client.post(url, headers=too_big, content=b"{}").status_code == 413
+
+    def chunks() -> Any:
+        yield b"{}"
+
+    assert client.post(url, headers=AUTH, content=chunks()).status_code == 413
+    # Without the key the body is never looked at.
+    assert client.post(url, headers={"content-length": "999999999"}, content=b"").status_code == 401
+
+
+def test_the_profile_and_config_are_read_once_per_interval(
+    store: Store, profile: CareerProfile, config: SearchConfig
+) -> None:
+    calls = {"profile": 0, "config": 0}
+
+    def count_profile() -> CareerProfile:
+        calls["profile"] += 1
+        return profile
+
+    def count_config() -> SearchConfig:
+        calls["config"] += 1
+        return config
+
+    ranking = RankingService(lambda: KEY_HASH, lambda: store, count_profile, count_config)
+    app = TestClient(api.create_app(env={}, ranking=ranking))
+    for _ in range(3):
+        assert app.get("/api/ranking/queue", headers=AUTH).status_code == 200
+    assert calls == {"profile": 1, "config": 1}

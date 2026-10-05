@@ -6,7 +6,7 @@ import argparse
 import logging
 import sys
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from pejip.ai.client import AIClient
@@ -33,6 +33,9 @@ def _load_profile(settings: Settings) -> CareerProfile | None:
 
 
 ROUTINE_PENDING = "the ranking routine has not analysed it yet"
+# The digest goes out two hours after the run; a run older than this means this
+# morning's search never finished.
+STALE_RUN_HOURS = 20
 
 
 def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
@@ -112,7 +115,15 @@ def _cmd_digest(settings: Settings) -> int:
     finally:
         pipeline.http.close()
     waiting = any(item.recommendation is None for item in digest.items)
-    if profile is not None and waiting and not store.analyses_since(run["started_at"], "routine"):
+    age = datetime.now(UTC) - run["started_at"]
+    if age > timedelta(hours=STALE_RUN_HOURS):
+        # The pejip-app-errors alarm emails Babu about this ERROR line.
+        log.error("digest_run_stale", extra={"run_id": run["id"]})
+        digest.notes.append(
+            f"No search has finished since {run['started_at']:%Y-%m-%d %H:%M} UTC, so this "
+            "digest repeats that search's roles. Check why this morning's search failed."
+        )
+    elif profile is not None and waiting and not store.analyses_since(run["started_at"], "routine"):
         # The pejip-app-errors alarm emails Babu about this ERROR line.
         log.error("routine_results_missing", extra={"run_id": run["id"]})
         digest.notes.append(
@@ -195,7 +206,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             log.exception("run_crashed")
             raise
     if args.command == "digest":
-        return _cmd_digest(settings)
+        try:
+            return _cmd_digest(settings)
+        except Exception:
+            # As for run_crashed: a digest that never arrives must still alarm.
+            log.exception("digest_crashed")
+            raise
     if args.command == "purge":
         return _cmd_purge(settings)
     if args.command == "export":

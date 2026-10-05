@@ -176,14 +176,19 @@ class Store:
             changed = row.content_hash != posting.content_hash
             return UpsertResult(row.id, "MATERIALLY_CHANGED" if changed else "PREVIOUSLY_SEEN")
 
-    def has_job(self, job_id: int) -> bool:
+    def find_job(self, job_id: int) -> dict[str, Any] | None:
+        """The job, or None when it does not exist (or was purged)."""
         with self.engine.connect() as conn:
-            found = conn.execute(select(jobs.c.id).where(jobs.c.id == job_id)).first()
-        return found is not None
+            row = conn.execute(select(jobs).where(jobs.c.id == job_id)).mappings().first()
+        return None if row is None else self._job(row)
 
     def get_job(self, job_id: int) -> dict[str, Any]:
         with self.engine.connect() as conn:
             row = conn.execute(select(jobs).where(jobs.c.id == job_id)).mappings().one()
+        return self._job(row)
+
+    @staticmethod
+    def _job(row: Any) -> dict[str, Any]:
         job = dict(row)
         for key in ("posted_at", "first_seen_at", "last_seen_at"):
             job[key] = _aware(job[key])
@@ -232,12 +237,7 @@ class Store:
 
     def needs_analysis(self, job: dict[str, Any]) -> bool:
         """True when the posting has no successful analysis of its current text."""
-        latest = self.latest_analysis(job["id"])
-        return (
-            latest is None
-            or latest["status"] != "OK"
-            or latest["content_hash"] != job["content_hash"]
-        )
+        return not is_current(self.latest_analysis(job["id"]), job)
 
     def analyses_since(self, since: datetime, ranker: str) -> int:
         """How many successful analyses ``ranker`` stored at or after ``since``."""
@@ -324,3 +324,12 @@ class Store:
         with self.engine.begin() as conn:
             for table in reversed(metadata.sorted_tables):
                 conn.execute(delete(table))
+
+
+def is_current(analysis: dict[str, Any] | None, job: dict[str, Any]) -> bool:
+    """True when ``analysis`` is a successful analysis of the job's current text."""
+    return (
+        analysis is not None
+        and analysis["status"] == "OK"
+        and analysis["content_hash"] == job["content_hash"]
+    )

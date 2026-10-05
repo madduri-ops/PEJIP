@@ -78,7 +78,9 @@ backlog drains over several days instead of exhausting the plan's usage.
 Both endpoints require `Authorization: Bearer <key>` and skip Google sign-in at
 the load balancer (a listener rule like `/healthz`'s). The app compares the
 key's SHA-256 with the hash in SSM in constant time. A missing or wrong key
-returns 401, and every response carries `Cache-Control: no-store`.
+returns 401, and every response carries `Cache-Control: no-store`. The key and
+the body size (at most 2 MB, with a declared length) are checked in middleware
+before any body is read, since these bodies pass the WAF's 8 KB limit.
 
 - `GET /api/ranking/queue` returns
   `{"profile": {...}, "prompts": {"JOB_ANALYSIS": "v1", "EVIDENCE_MATCHING": "v1"},
@@ -103,7 +105,9 @@ CLI, `python -m pejip.routine --work DIR`:
   reading `PEJIP_RANKING_URL` and `PEJIP_RANKING_KEY` from the environment.
 
 `pejip digest` scores the latest finished run's roles from stored analyses and
-emails the digest. It logs `routine_results_missing` (ERROR, so the
+emails the digest, listing each role once and adding no recommendation row the
+run already stored. A crash logs `digest_crashed`; a latest run more than 20
+hours old logs `digest_run_stale` and says so in the digest (both ERROR). It logs `routine_results_missing` (ERROR, so the
 `pejip-app-errors` alarm fires) when roles were waiting and the routine stored
 nothing since the run began.
 
