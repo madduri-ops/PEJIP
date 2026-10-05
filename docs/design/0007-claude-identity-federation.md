@@ -1,4 +1,4 @@
-# 0004: Keyless Claude access
+# 0007: Keyless Claude access
 
 _Status: accepted. Last updated: 2026-10-05._
 

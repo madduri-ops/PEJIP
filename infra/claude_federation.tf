@@ -1,4 +1,4 @@
-# Keyless Claude access for the app (ADR-0004, docs/design/0004-claude-identity-federation.md).
+# Keyless Claude access for the app (ADR-0004, docs/design/0007-claude-identity-federation.md).
 # The ECS task asks AWS STS for a short-lived web identity token addressed to
 # Anthropic and swaps it for a short-lived Claude token. No Claude API key exists
 # anywhere in AWS.

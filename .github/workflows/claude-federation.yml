@@ -1,5 +1,5 @@
 # Proves keyless Claude access works from GitHub Actions (ADR-0004,
-# docs/design/0004-claude-identity-federation.md): pejip.claude_auth fetches the
+# docs/design/0007-claude-identity-federation.md): pejip.claude_auth fetches the
 # job's OIDC token, Anthropic swaps it for a short-lived Claude token, and the job
 # lists models with it. Listing models is free, so this check costs nothing.
 name: Claude federation
@@ -31,7 +31,7 @@ jobs:
     env:
       PEJIP_CLAUDE_IDENTITY: github-actions
       # Not secrets: they name the Anthropic rule, and only this repository's pull
-      # request runs match it (docs/design/0004-claude-identity-federation.md).
+      # request runs match it (docs/design/0007-claude-identity-federation.md).
       ANTHROPIC_ORGANIZATION_ID: a477af3f-5a3d-4ce5-baf6-dce8ef60bcba
       ANTHROPIC_FEDERATION_RULE_ID: fdrl_01CtwDVHviL3ksZcu5qotT3G
       ANTHROPIC_SERVICE_ACCOUNT_ID: svac_01Sv6EquQ5ayA76z1avc8P6e

@@ -17,7 +17,7 @@ Usage::
 ``PEJIP_CLAUDE_IDENTITY`` picks the identity source (``github-actions`` or
 ``aws-sts``). When it is unset, ``federation_credentials`` returns ``None`` and the
 SDK's own resolution applies, which is how a developer's ``ant auth login`` works
-locally. Design: docs/design/0004-claude-identity-federation.md.
+locally. Design: docs/design/0007-claude-identity-federation.md.
 """
 
 from __future__ import annotations

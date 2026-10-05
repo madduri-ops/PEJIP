@@ -1,4 +1,4 @@
-# ADR-0004: Keyless Claude access through Workload Identity Federation
+# ADR-0007: Keyless Claude access through Workload Identity Federation
 
 **Status:** Accepted (2026-10-05)
 

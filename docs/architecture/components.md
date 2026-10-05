@@ -49,6 +49,16 @@ flowchart TB
   `eval/baseline.json`; writes an optional JSON report.
 - **Design doc:** [0003: Golden evaluation set](../design/0003-golden-evaluation-set.md).
 
+## Data retention (`pejip.retention`)
+
+- **Responsibility:** defines the 90-day retention window for personal data, job
+  postings and rankings (policy section 10) and deletes expired files.
+- **Interfaces:** `cutoff(now, days=90)` (rejects windows longer than 90 days) and
+  `purge_files(directory, now, days=90)`; every store purges rows older than
+  `cutoff`.
+- **Data:** none of its own; deletes expired digest and export files.
+- **Design doc:** [0004: Data retention](../design/0004-data-retention.md).
+
 ## Claude credentials (`pejip.claude_auth`)
 
 - **Responsibility:** gives every Claude caller short-lived credentials through
@@ -60,4 +70,4 @@ flowchart TB
   `ClaudeAuthError` on misconfiguration or a leftover API key. Consumes the GitHub
   Actions OIDC endpoint or AWS STS `GetWebIdentityToken`.
 - **Data:** none stored; tokens live in memory only.
-- **Design doc:** [0004: Keyless Claude access](../design/0004-claude-identity-federation.md).
+- **Design doc:** [0007: Keyless Claude access](../design/0007-claude-identity-federation.md).
