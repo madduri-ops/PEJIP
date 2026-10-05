@@ -70,8 +70,14 @@ Phase 1 succeeds when the candidate can open the app and confidently answer:
 - Which deserve attention now, and do I know anyone relevant there?
 - Did today's searches actually complete, and are failures visible?
 
+The north star is **three referral-backed interviews per month**: interviews for roles
+PEJIP surfaced, where a matured connection (a first-degree connection at the hiring
+company in a comparable or more senior position) recommended the candidate.
+
 We track that with:
 
+- **Referral path:** high-Fit roles with a matured connection, and how many become
+  referrals and interviews.
 - **Recommendation quality:** precision of high-Fit recommendations, recall of known
   strong opportunities, false high-Fit and false low-Fit rates, and unsupported
   explanation rate.
@@ -81,7 +87,8 @@ We track that with:
   share of low-Fit roles they reject.
 - **Release gate:** a golden evaluation set that every scoring change must pass.
 
-The full definitions, acceptance criteria and Definition of Done are in sections 17
+The [success scorecard](docs/success-scorecard.md) defines every metric, its target and
+how it is analysed. Acceptance criteria and the Definition of Done are in sections 17
 and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 ## Status
@@ -123,6 +130,7 @@ are in [config/search.yaml](config/search.yaml).
 | [`examples/`](examples/) | Synthetic example profile |
 | [`docs/spec/`](docs/spec/) | Product and engineering build specification (primary product reference) |
 | [`docs/BUILD_POLICY.md`](docs/BUILD_POLICY.md) | Binding CI/CD and engineering policy |
+| [`docs/success-scorecard.md`](docs/success-scorecard.md) | North star, success metrics and targets |
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
