@@ -10,7 +10,7 @@ section 5.1.
 | File | Resources |
 |---|---|
 | `kms.tf` | Adopts the bootstrap key `alias/pejip` (import blocks) and manages its policy |
-| `ecr.tf` | ECR repository `pejip`, immutable tags, scan on push, KMS-encrypted, keeps 10 images |
+| `ecr.tf` | ECR repository `pejip`, immutable tags, scan on push, KMS-encrypted, keeps the last 10 images plus up to 100 release images tagged `v*` |
 | `iam_github.tf` | `pejip-github-deploy` (main only) and `pejip-github-plan` (pull requests, read only) |
 | `alerts.tf` | SNS topic `pejip-alerts` with Babu's email, and the `pejip-monthly` budget on `Project = PEJIP` |
 | `ai_cost.tf` | Alarms `pejip-ai-spend-50pct` to `-100pct` on the app's month-to-date Claude spend, emailing through `pejip-alerts` ([design](../docs/design/0002-ai-cost-guard.md)) |
