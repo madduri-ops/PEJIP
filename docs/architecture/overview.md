@@ -36,7 +36,10 @@ cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule and the
 service alarms. Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The Deploy workflow builds and scans the image
 on every pull request and ships `main` with a health gate and automatic rollback
-([design 0005](../design/0005-app-hosting-and-deploy.md)).
+([design 0005](../design/0005-app-hosting-and-deploy.md)). Releases are tagged
+`vX.Y.Z` by the Release workflow, which also tags the release's image so ECR keeps
+it; the Rollback workflow redeploys an earlier release's image through the same
+health gate ([design 0006](../design/0006-releases-and-rollback.md)).
 
 Neither CI nor the app holds a Claude API key: both swap a short-lived identity
 token (GitHub Actions OIDC, or AWS STS for the ECS task role) for a short-lived

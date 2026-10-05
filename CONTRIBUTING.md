@@ -109,7 +109,10 @@ Versions follow [semantic versioning](https://semver.org/) and are tagged
   (or Actions > Release > Run workflow). It checks `CHANGELOG.md` against
   `pyproject.toml`, tags `main`'s head `vX.Y.Z` and publishes a GitHub Release with
   that version's notes.
-- **Rolling back:** a failed post-deploy health gate rolls back automatically. The
-  one-command manual rollback (`gh workflow run rollback.yml`) arrives with the deploy
-  workflow; see the design doc's Rollback section. CI's **Rollback drill** job
-  exercises a rollback to the previous release on every app change.
+- **Rolling back:** a failed post-deploy health gate rolls back automatically. To
+  put production back on an earlier release by hand, run
+  `gh workflow run rollback.yml` (the release before the live one) or
+  `gh workflow run rollback.yml -f version=X.Y.Z` (or Actions > Rollback > Run
+  workflow). It redeploys that release's image through the Deploy workflow and its
+  health gate. CI's **Rollback drill** job exercises a rollback to the previous
+  release on every app change.

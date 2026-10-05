@@ -8,7 +8,9 @@ Keeps the version in `pyproject.toml`, the sections of `CHANGELOG.md` and the
     python -m ci.release version               # the version to release, once checked
     python -m ci.release check-tag v0.2.0      # a tag matches the version
     python -m ci.release notes 0.2.0           # release notes for the GitHub Release
-    python -m ci.release rollback-target [--version 0.1.0] [--head SHA] [--fallback-parent]
+    python -m ci.release rollback-target [--version 0.1.0] [--head SHA]
+        [--fallback-parent | --by-image]
+    python -m ci.release image-commit SHA      # the commit whose container image SHA runs
 """
 
 import argparse
@@ -25,6 +27,15 @@ SEMVER = re.compile(r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
 TAG = re.compile(r"^v(.+)$")
 UNRELEASED_HEADING = "## Unreleased"
 RELEASE_HEADING = re.compile(r"^## (?P<version>\S+) - (?P<date>\d{4}-\d{2}-\d{2})$")
+# What the Deploy workflow builds an image for on main (its push paths). A commit
+# that touches none of these runs the image of the last commit that did.
+IMAGE_PATHS = (
+    "src",
+    "pyproject.toml",
+    "Dockerfile",
+    ".dockerignore",
+    ".github/workflows/deploy.yml",
+)
 PROJECT_VERSION = re.compile(r'^version = "(?P<version>[^"]*)"$', re.MULTILINE)
 
 
@@ -218,6 +229,15 @@ def _git_release_refs(repo: Path) -> str:
     )
 
 
+def image_commit(repo: Path, sha: str) -> str:
+    """The commit whose image (tagged with its full SHA in ECR) runs `sha`'s code."""
+    found = _git(repo, "log", "-1", "--format=%H", sha, "--", *IMAGE_PATHS).strip()
+    if not found:
+        msg = f"no commit at or before {sha} builds a container image"
+        raise ReleaseError(msg)
+    return found
+
+
 def parent_release(repo: Path, head: str | None) -> Release:
     """The commit before `head` and the version it declares: the drill's stand-in
     rollback target until the first release is tagged."""
@@ -225,7 +245,7 @@ def parent_release(repo: Path, head: str | None) -> Release:
     return Release(project_version(_git(repo, "show", f"{sha}:pyproject.toml")), sha)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=Path(), help="repository root")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -234,31 +254,49 @@ def main(argv: Sequence[str] | None = None) -> int:
     commands.add_parser("prepare").add_argument("version")
     commands.add_parser("check-tag").add_argument("tag")
     commands.add_parser("notes").add_argument("version")
+    commands.add_parser("image-commit").add_argument("sha")
     rollback = commands.add_parser("rollback-target")
     rollback.add_argument("--version", help="release to return to; default: the previous one")
     rollback.add_argument("--head", help="commit deployed now; default: none")
-    rollback.add_argument(
+    mode = rollback.add_mutually_exclusive_group()
+    mode.add_argument(
         "--fallback-parent",
         action="store_true",
         help="with no earlier release, use the parent of --head (the CI drill only)",
     )
-    args = parser.parse_args(argv)
+    mode.add_argument(
+        "--by-image",
+        action="store_true",
+        help="compare and report image commits, so a docs-only head is not a new release",
+    )
+    return parser
 
+
+def _rollback_target(args: argparse.Namespace) -> Release:
+    releases = releases_from_refs(_git_release_refs(args.root))
+    head = args.head
+    if args.by_image:
+        releases = [Release(r.version, image_commit(args.root, r.sha)) for r in releases]
+        head = image_commit(args.root, head or "HEAD")
+    try:
+        return rollback_target(releases, args.version or None, head)
+    except NoEarlierReleaseError:
+        if not args.fallback_parent:
+            raise
+        print("No earlier release yet; using the parent commit.", file=sys.stderr)
+        return parent_release(args.root, args.head)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
     changelog_path = args.root / "CHANGELOG.md"
     pyproject_path = args.root / "pyproject.toml"
     try:
+        if args.command == "image-commit":
+            print(image_commit(args.root, args.sha))
+            return 0
         if args.command == "rollback-target":
-            try:
-                target = rollback_target(
-                    releases_from_refs(_git_release_refs(args.root)),
-                    args.version or None,
-                    args.head,
-                )
-            except NoEarlierReleaseError:
-                if not args.fallback_parent:
-                    raise
-                target = parent_release(args.root, args.head)
-                print("No earlier release yet; using the parent commit.", file=sys.stderr)
+            target = _rollback_target(args)
             print(f"version={target.version}\nsha={target.sha}")
             return 0
         changelog = changelog_path.read_text(encoding="utf-8")

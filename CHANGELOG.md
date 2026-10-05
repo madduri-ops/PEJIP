@@ -12,6 +12,13 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- One-command production rollback: `gh workflow run rollback.yml` redeploys the
+  previous (or a named) release through the deploy health gate.
+- Each release's container image is tagged with its version and kept, so it stays
+  available to roll back to.
+
+### Added
+
 - Hosting for `https://job-search.zephyr-mcg.com` in Terraform: VPC, load balancer
   with WAF and HTTPS certificate, ECS Fargate service, service alarms and a daily
   retention purge schedule (off until the app has a database).
