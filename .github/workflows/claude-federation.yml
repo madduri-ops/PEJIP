@@ -48,12 +48,20 @@ jobs:
           # Builds the same arguments the app passes to the Anthropic SDK; fails on
           # a missing or malformed ID before anything is sent.
           python - > request.json <<'PY'
-          import json, os
+          import base64, json, os
           from pejip.claude_auth import federation_credentials
           kwargs = federation_credentials(os.environ)
+          jwt = kwargs["identity_token_provider"]()
+          # Keep the claims the rule matches on (not the signed token) for the log.
+          payload = jwt.split(".")[1]
+          claims = json.loads(base64.urlsafe_b64decode(payload + "=" * (-len(payload) % 4)))
+          keep = ("iss", "sub", "aud", "repository", "repository_id", "repository_owner",
+                  "repository_owner_id", "event_name", "ref")
+          with open("claims.json", "w") as f:
+              json.dump({k: claims.get(k) for k in keep}, f)
           print(json.dumps({
               "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-              "assertion": kwargs["identity_token_provider"](),
+              "assertion": jwt,
               "federation_rule_id": kwargs["federation_rule_id"],
               "organization_id": kwargs["organization_id"],
               "service_account_id": kwargs["service_account_id"],
@@ -64,6 +72,8 @@ jobs:
           rm request.json
           if [ "$status" != 200 ]; then
             jq -c '.error // .' exchange.json
+            echo "Identity token claims the rule is matched against:"
+            jq . claims.json
             echo "::error::Token exchange returned $status. The deny reason is in the Claude Console under Settings > Workload identity > History."
             exit 1
           fi
