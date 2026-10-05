@@ -99,7 +99,7 @@ boards and from career-site job-alert emails sent to PEJIP's own inbox, ranks th
 digest that explains each ranking with cited evidence, including matured LinkedIn
 connections at the hiring company ([design 0014](docs/design/0014-connection-matching.md)).
 Feedback, notifications and feature API endpoints come next. The web portal's Home,
-Opportunities and detail pages are live on sample data until the database is
+Opportunities, detail and Search Health pages are live on sample data until the database is
 connected ([design 0013](docs/design/0013-web-portal.md)). The build policy,
 repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
 set for rankings and foundation AWS infrastructure are in place. The hosting stack

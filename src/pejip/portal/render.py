@@ -12,7 +12,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from html import escape
 
-from pejip.portal.data import Citation, Opportunity, Point, SearchRun
+from pejip.portal.data import Citation, Opportunity, Point, SearchRun, SourceStatus
 from pejip.portal.views import (
     CONFIDENCE_CHOICES,
     FIT_CHOICES,
@@ -55,7 +55,17 @@ CONCERN_KIND = (
     ("Not enough profile evidence", "k-unk", "Unknown"),
 )
 LOW_COMPONENT = 0.85
-SOON = ("Companies", "Watchlist", "Connections", "Search Health", "Settings")
+# Navigation in spec order (12.1): (key, label, link), with no link while a page is
+# still to come.
+NAV = (
+    ("home", "Home", "/"),
+    ("opportunities", "Opportunities", "/opportunities"),
+    ("companies", "Companies", None),
+    ("watchlist", "Watchlist", None),
+    ("connections", "Connections", None),
+    ("search-health", "Search Health", "/search-health"),
+    ("settings", "Settings", None),
+)
 
 
 def e(value: object) -> str:
@@ -74,22 +84,20 @@ def opportunity_url(o: Opportunity) -> str:
 
 # ── Page frame ───────────────────────────────────────────────────────────────
 def _nav(active: str, attention: int) -> str:
-    def link(key: str, label: str, href: str, count: int = 0) -> str:
+    def link(key: str, label: str, href: str | None) -> str:
+        if href is None:
+            return f'<span class="nl off">{label}<span class="soon">Soon</span></span>'
         on = " on" if key == active else ""
         current = ' aria-current="page"' if key == active else ""
+        count = attention if key == "opportunities" else 0
         badge = f'<span class="count">{count}</span>' if count else ""
         return f'<a class="nl{on}" href="{href}"{current}>{label}{badge}</a>'
 
-    soon = "".join(
-        f'<span class="nl off">{label}<span class="soon">Soon</span></span>' for label in SOON
-    )
     return (
         '<nav class="nav" aria-label="Main">'
         '<div class="brand">PEJIP</div>'
         '<div class="brand-sub">Executive Job Intelligence</div>'
-        + link("home", "Home", "/")
-        + link("opportunities", "Opportunities", "/opportunities", attention)
-        + soon
+        + "".join(link(*item) for item in NAV)
         + '<div class="foot">Signed in with Google</div></nav>'
     )
 
@@ -293,7 +301,7 @@ def home_body(items: list[Opportunity], run: SearchRun | None, now: datetime) ->
         + _section("New strong matches", new_html, ("/opportunities?view=new", "See all new"))
         + '<div class="grid2">'
         + _section("Roles that changed", changed_html, ("/opportunities?view=changed", "See all"))
-        + _section("Search health", health_card(run, now))
+        + _section("Search health", health_card(run, now), ("/search-health", "Details"))
         + "</div>"
     )
 
@@ -564,4 +572,93 @@ def detail_body(o: Opportunity, now: datetime) -> str:
 def not_found_body() -> str:
     return _empty("This opportunity is no longer active or was never found.") + (
         '<div><a href="/opportunities">Back to opportunities</a></div>'
+    )
+
+
+# ── Search Health ────────────────────────────────────────────────────────────
+SOURCE_PILL = {"OK": ("p-ok", "Healthy"), "FAILED": ("p-fail", "Failed")}
+RUN_PILL = {"SUCCESS": "p-ok", "PARTIAL": "p-warn"}
+
+
+def _run_pill(status: str) -> str:
+    return f'<span class="pill {RUN_PILL.get(status, "p-fail")}">{e(status)}</span>'
+
+
+def _source_pill(status: str) -> str:
+    cls, label = SOURCE_PILL.get(status, ("p-warn", words(status)))
+    return f'<span class="pill {cls}">{e(label)}</span>'
+
+
+def _last_ok(name: str, earlier: list[SearchRun], now: datetime) -> str:
+    for run in earlier:
+        if any(s.name == name and s.status == "OK" for s in run.sources):
+            return when(run.started_at, now)
+    return "None in recent runs"
+
+
+def _failures(latest: SearchRun, earlier: list[SearchRun], now: datetime) -> str:
+    failed = [s for s in latest.sources if s.status != "OK"]
+    if not failed:
+        return ""
+    cards = "".join(
+        '<div class="card"><div class="row spread">'
+        f"<h3>{e(s.name)}</h3>{_source_pill(s.status)}</div>"
+        '<div class="summary">'
+        + _kv("Last successful search", _last_ok(s.name, earlier, now))
+        + _kv("This run", when(latest.started_at, now))
+        + _kv("Impact", "Results from this source may be incomplete.")
+        + _kv("Retry", "At the next scheduled search")
+        + "</div></div>"
+        for s in failed
+    )
+    return _section(f"Sources that failed · {len(failed)}", f'<div class="stackl">{cards}</div>')
+
+
+def _sources_table(sources: tuple[SourceStatus, ...]) -> str:
+    if not sources:
+        return _empty("This run did not record its sources.")
+    ranked = sorted(sources, key=lambda s: (s.status == "OK", s.name))
+    rows = "".join(
+        f"<tr><td>{e(s.name)}</td><td>{_source_pill(s.status)}</td>"
+        f'<td class="num">{s.fetched}</td><td class="num">{s.candidates}</td></tr>'
+        for s in ranked
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Source</th>'
+        '<th scope="col">Status</th><th scope="col">Roles fetched</th>'
+        '<th scope="col">Senior roles kept</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>"
+    )
+
+
+def _history(runs: list[SearchRun], now: datetime) -> str:
+    rows = "".join(
+        f"<tr><td>{when(r.started_at, now)}</td><td>{_run_pill(r.status)}</td>"
+        f'<td class="num">{r.sources_searched} of {r.sources_total}</td>'
+        f'<td class="num">{r.new}</td><td class="num">{r.changed}</td>'
+        f'<td class="num">{r.expired}</td></tr>'
+        for r in runs
+    )
+    return (
+        '<div class="tbl"><table><thead><tr><th scope="col">Started</th>'
+        '<th scope="col">Status</th><th scope="col">Sources searched</th>'
+        '<th scope="col">New</th><th scope="col">Changed</th><th scope="col">Expired</th>'
+        f"</tr></thead><tbody>{rows}</tbody></table></div>"
+    )
+
+
+def search_health_body(runs: list[SearchRun], now: datetime) -> str:
+    """Did the searches actually cover what they should (spec 12.27 to 12.31)?"""
+    if not runs:
+        return _empty("No search has run yet. The first scheduled search will show here.")
+    latest, earlier = runs[0], runs[1:]
+    return (
+        _section("Latest search", health_card(latest, now))
+        + _failures(latest, earlier, now)
+        + _section(
+            f"Sources in the latest search · {len(latest.sources)}", _sources_table(latest.sources)
+        )
+        + _section(f"Recent searches · {len(runs)}", _history(runs, now))
+        + '<p class="note">"No jobs found" and "source failed" are different: a failed '
+        "source is listed here so a quiet day is never mistaken for an empty market.</p>"
     )
