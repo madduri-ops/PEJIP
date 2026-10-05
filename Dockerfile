@@ -23,10 +23,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PEJIP_HOST=0.0.0.0 \
     PEJIP_PORT=8000
 
+# OS packages are upgraded first so security fixes published after the base
+# image was built are picked up (the image scan blocks on high and critical).
 # Only the built wheel is installed: no tests, CI scripts or dev tools ship.
 # pip is removed afterwards; nothing installs packages at runtime.
 RUN --mount=type=bind,from=build,source=/dist,target=/dist \
-    pip install --no-cache-dir /dist/*.whl \
+    apk upgrade --no-cache \
+    && pip install --no-cache-dir /dist/*.whl \
     && pip uninstall --yes pip \
     && adduser -S -D -H -u 10001 -s /sbin/nologin pejip
 
