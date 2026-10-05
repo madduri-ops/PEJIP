@@ -36,3 +36,10 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
+      # CHANGELOG.md sections and the pyproject.toml version agree (policy section 15).
+      - id: release-check
+        name: changelog and version agree
+        entry: python -m ci.release check
+        language: system
+        files: ^(CHANGELOG\.md|pyproject\.toml|ci/release\.py)$
+        pass_filenames: false

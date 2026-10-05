@@ -72,3 +72,28 @@ a gate needs Babu's explicit approval in the PR.
 Changing the build policy means editing `docs/BUILD_POLICY.md` in a PR, bumping its
 "Last updated" date, and keeping `CLAUDE.md`, this guide and the project instructions
 in step.
+
+## Releasing
+
+Versions follow [semantic versioning](https://semver.org/) and are tagged
+`vMAJOR.MINOR.PATCH` (build policy section 15). The design is in
+[docs/design/0006-releases-and-rollback.md](docs/design/0006-releases-and-rollback.md).
+
+- **Every PR** that changes user-visible behaviour adds a line under `## Unreleased`
+  in [CHANGELOG.md](CHANGELOG.md). The `release-check` pre-commit hook
+  (`python -m ci.release check`) keeps the changelog's structure and the version in
+  `pyproject.toml` in step.
+- **Cutting a release:** on a branch, run `python -m ci.release prepare X.Y.Z`. It
+  moves the Unreleased notes into a dated `## X.Y.Z` section and bumps
+  `pyproject.toml`. Merge that PR, then tag the merge commit on `main`:
+
+  ```sh
+  git fetch origin main && git tag -a vX.Y.Z origin/main -m "PEJIP X.Y.Z" && git push origin vX.Y.Z
+  ```
+
+  The Release workflow checks the tag against `pyproject.toml` and `CHANGELOG.md`,
+  checks the commit is on `main`, and publishes a GitHub Release with the notes.
+- **Rolling back:** a failed post-deploy health gate rolls back automatically. The
+  one-command manual rollback (`gh workflow run rollback.yml`) arrives with the deploy
+  workflow; see the design doc's Rollback section. CI's **Rollback drill** job
+  exercises a rollback to the previous release on every app change.

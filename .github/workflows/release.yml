@@ -1,0 +1,47 @@
+# Releases (docs/BUILD_POLICY.md section 15, docs/design/0006-releases-and-rollback.md).
+# Pushing a vMAJOR.MINOR.PATCH tag on a commit that is on main publishes a GitHub
+# Release whose notes are that version's CHANGELOG.md section. The tag must match
+# the version in pyproject.toml; cut one with `python -m ci.release prepare X.Y.Z`.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Tag matches pyproject.toml and CHANGELOG.md
+        run: python -m ci.release check-tag "${GITHUB_REF_NAME}"
+      # Only merged, fully gated code is released.
+      - name: Tagged commit is on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "${GITHUB_SHA}" origin/main || {
+            echo "::error::${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not on main"
+            exit 1
+          }
+      - run: python -m ci.release notes "${GITHUB_REF_NAME#v}" > release-notes.md
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "${GITHUB_REF_NAME}" --verify-tag
+          --title "${GITHUB_REF_NAME}" --notes-file release-notes.md
