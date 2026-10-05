@@ -41,10 +41,18 @@ def read_baseline(path: Path) -> dict[str, Any]:
     return data
 
 
-def regressions(report: Report, baseline: dict[str, Any]) -> list[Regression]:
+# The rules a live model run must hold on every run. The other metrics move from
+# run to run with the model's answers, so live runs report them and the replay of
+# committed recordings gates them (see eval/README.md).
+INVARIANTS = ("scored_rate", "citation_validity", "network_invariance")
+
+
+def regressions(
+    report: Report, baseline: dict[str, Any], metrics: tuple[str, ...] = METRICS
+) -> list[Regression]:
     return [
         Regression(name, float(baseline["metrics"][name]), report.metrics[name])
-        for name in METRICS
+        for name in metrics
         if report.metrics[name] < float(baseline["metrics"][name])
     ]
 

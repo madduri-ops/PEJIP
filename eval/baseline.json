@@ -1,14 +1,14 @@
 {
   "golden_set_version": "1.1.0",
-  "scorer": null,
+  "scorer": "pejip.golden_eval:replay_scorer",
   "metrics": {
-    "scored_rate": 0.0,
-    "fit_in_range": 0.0,
-    "confidence_match": 0.0,
-    "priority_match": 0.0,
-    "positive_reason_recall": 0.0,
-    "concern_recall": 0.0,
-    "pairwise_order": 0.0,
+    "scored_rate": 1.0,
+    "fit_in_range": 0.6667,
+    "confidence_match": 0.75,
+    "priority_match": 0.875,
+    "positive_reason_recall": 0.7778,
+    "concern_recall": 0.8095,
+    "pairwise_order": 0.9855,
     "citation_validity": 1.0,
     "network_invariance": 1.0
   }

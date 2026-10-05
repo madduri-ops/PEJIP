@@ -1,0 +1,167 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "PCI compliance appears in responsibilities while ISO 27001 appears in qualifications; unclear whether ISO 27001 is in active scope",
+      "Budget ownership not stated"
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "SENIOR_DIRECTOR",
+    "missing_information": [
+      "BUDGET"
+    ],
+    "negative_signals": [],
+    "normalized_title": "Senior Director, Security Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "leading a 60-person\nteam through five managers"
+      },
+      {
+        "quote": "reporting to the\nCISO"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will run our 24x7 security operations center",
+        "text": "Run the 24x7 security operations center"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "incident response, threat detection engineering and SOC 2 and PCI compliance operations",
+        "text": "Own incident response, threat detection engineering, and SOC 2 and PCI compliance operations"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "leading a 60-person\nteam through five managers",
+        "text": "Lead a 60-person team through five managers"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "reporting to the\nCISO",
+        "text": "Reports to the CISO"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "You have managed a security operations center",
+        "text": "Experience managing a security operations center"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "led incident response for a regulated\ncompany",
+        "text": "Led incident response for a regulated company"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "run SOC 2 and ISO 27001 programs",
+        "text": "Run SOC 2 and ISO 27001 programs"
+      }
+    ],
+    "role_family": "Security Operations / Information Security",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "AWAY",
+    "career_direction_evidence_ids": [
+      "E6"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E6"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate managed a security operations center for six years, though 24x7 coverage is not stated.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E6"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate owned incident management and a SOC 2 compliance program, but threat detection engineering and PCI are not evidenced.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate has led organizations up to 320 people as a manager of managers, exceeding a 60-person team through five managers.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile lists executive exposure to the CIO, CTO, COO and board audit committee but says nothing about reporting to a CISO.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E6"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate managed a security operations center for six years.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E6"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate owned incident management and ran a compliance-driven SOC, but leading incident response at a regulated company is not explicitly stated.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E6"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate ran a SOC 2 and ISO 27001 compliance program.",
+        "requirement_id": "R7"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:36:06.460123+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:36:16.218717+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

@@ -1,0 +1,114 @@
+# PEJIP search configuration (spec sections 3, 4, 6, 9). Editing this file changes
+# what is searched and how it is scored without a code change. Every value that
+# affects ranking is versioned through `scoring.version`; bump it when weights or
+# thresholds change so stored recommendations stay traceable.
+
+sources:
+  # Company boards on public ATS APIs. Only sources listed in docs/sources.md may
+  # appear here. `board` is the company's public board token.
+  # Babu's targets are Google, NVIDIA, Meta, Micron, Anthropic, OpenAI and
+  # Microsoft. Only Anthropic publishes its roles through an allowed public API;
+  # the others run their own or Workday career sites with no public API, and
+  # OpenAI's Ashby feed lists only a few of its roles (checked 2026-10-05).
+  - {adapter: greenhouse, company: Anthropic, board: anthropic}
+
+fetch:
+  user_agent: "PEJIP/0.1 (personal job research; +https://github.com/madduri-ops/PEJIP)"
+  min_interval_seconds: 1.0      # per source host
+  max_retries: 3
+  backoff_base_seconds: 2.0
+  timeout_seconds: 30.0
+
+taxonomy:
+  # Title seniority patterns, matched after normalizing VP / V.P. / Sr. variants
+  # (spec 3.2, 3.3).
+  seniority_patterns:
+    - vice president
+    - head of
+    - senior director
+    - executive director
+    - chief
+  excluded_title_patterns:
+    - assistant vice president
+    - associate director
+    - intern
+  # Role-family terms (spec 3.1). A title needs a seniority pattern and one of these.
+  role_terms:
+    - operations
+    - transformation
+    - program
+    - portfolio
+    - strategic
+    - strategy
+    - platform
+    - productivity
+    - technology
+    - engineering
+    - enterprise
+    - digital
+    - cloud
+    - ai
+    - governance
+
+geography:
+  hard_filter: true             # drop roles outside every scope below (spec 4.7)
+  scopes:
+    BAY_AREA:
+      preference: PREFERRED
+      places:
+        - san francisco
+        - bay area
+        - south san francisco
+        - burlingame
+        - san mateo
+        - redwood city
+        - menlo park
+        - palo alto
+        - mountain view
+        - sunnyvale
+        - santa clara
+        - san jose
+        - cupertino
+        - fremont
+        - newark
+        - milpitas
+        - hayward
+        - oakland
+        - pleasanton
+        - san ramon
+    US_REMOTE:
+      preference: ACCEPTABLE
+      places: []
+
+ai:
+  model: claude-opus-5-5
+  effort: medium
+  max_tokens: 16000
+  max_jobs_per_run: 40
+  # The $100 monthly cap, spend alerts and prices live in the cost guard
+  # (src/pejip/cost/); the model must have an entry in its pricing.json.
+
+scoring:
+  version: fit-1
+  # Fit component weights (spec 9.7). Starting parameters, tuned on the golden set.
+  fit_weights:
+    ROLE_RESPONSIBILITY: 25
+    SENIORITY_SCOPE: 20
+    CAPABILITY: 20
+    LEADERSHIP: 15
+    CAREER_DIRECTION: 15
+    DOMAIN_INDUSTRY: 5
+  negative_signal_penalty: 8     # Fit points per distinct negative-fit signal
+  core_gap_penalty: 10           # Fit points per CORE, REQUIRED requirement with NO_MATCH
+  confidence_thresholds: {HIGH: 0.75, MEDIUM: 0.5}
+  priority_weights:
+    FIT: 70
+    FRESHNESS: 10
+    COMPENSATION: 10
+    LOCATION: 10
+  priority_thresholds: {IMMEDIATE: 85, HIGH: 72, MEDIUM: 55}
+  priority_min_fit: {IMMEDIATE: 85, HIGH: 75}   # a band also needs this much Fit
+  immediate_max_age_days: 3
+  strong_match_fit: 75
+
+retention_days: 90

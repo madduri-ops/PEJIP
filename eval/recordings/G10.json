@@ -1,0 +1,181 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Unclear whether the role carries an NRR target itself or only requires past ownership of one.",
+      "The 'Head of' title reports to a VP and leads an analyst team, suggesting a director-level functional role rather than a broader executive one.",
+      "It is not stated whether the eight analysts include managers or are all individual contributors."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "HEAD_OF",
+    "missing_information": [
+      "BUDGET",
+      "ORG_SCOPE"
+    ],
+    "negative_signals": [
+      {
+        "code": "OTHER",
+        "quote": "report to the VP of Customer Success"
+      }
+    ],
+    "normalized_title": "Head of Customer Success Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "You will lead a team of eight analysts"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "own\nrenewal forecasting",
+        "text": "Own renewal forecasting"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "IMPORTANT",
+        "quote": "customer health scoring",
+        "text": "Own customer health scoring"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "CRM administration and the tooling our\ncustomer success managers use every day",
+        "text": "Own CRM administration and customer success tooling"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "You will lead a team of eight analysts",
+        "text": "Lead a team of eight analysts"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R5",
+        "importance": "SUPPORTING",
+        "quote": "report to the VP of Customer Success",
+        "text": "Reports to the VP of Customer Success"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "You have run customer success or revenue operations at a SaaS company",
+        "text": "Experience running customer success or revenue operations at a SaaS company"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "are fluent in\nSalesforce and Gainsight",
+        "text": "Fluency in Salesforce and Gainsight"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "have owned net revenue retention targets",
+        "text": "Has owned net revenue retention targets"
+      }
+    ],
+    "role_family": "Customer Success Operations",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "AWAY",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention renewal forecasting.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention customer health scoring.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E4"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Ownership of technology operations, vendor management and an internal developer platform is loosely related to running business tooling, but none of it is CRM or customer success tooling.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Leading a 320-person organization as a manager of managers exceeds the scope of leading eight analysts.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "Reporting line is contextual, and the profile's executive exposure to the CIO, CTO and COO does not settle whether this reporting fit suits the candidate.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E7"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Operations leadership in enterprise software and cloud is loosely related, but the evidence shows technology operations rather than customer success or revenue operations.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention Salesforce or Gainsight.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention owning net revenue retention targets.",
+        "requirement_id": "R8"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:34:18.695575+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:34:25.286077+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

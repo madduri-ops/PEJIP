@@ -61,6 +61,29 @@ python -m pytest tests/unit/evaluation --cov=pejip.evaluation --cov-branch
 A scorer is any callable that takes a `pejip.evaluation.scorer.EvalInput` (case id, posting,
 network context, profile; never the labels) and returns a `pejip.evaluation.scorer.Prediction`.
 
+## The ranking pipeline's scorer
+
+`pejip.golden_eval` runs the FIND ranking pipeline as a scorer. The model's part
+(job analysis and evidence matching) comes from a recording per case in
+`recordings/<case id>.json`, so CI can score every change without calling the model:
+
+```sh
+python -m pejip.evaluation run --scorer pejip.golden_eval:replay_scorer
+```
+
+`live_scorer` calls the model instead (needs `ANTHROPIC_API_KEY`, a few dollars per
+run). CI runs it on pull requests that change a prompt, the AI client, the analysis
+code, `config/search.yaml`, the adapter or this set, and the "Evaluation set (live
+model)" job uploads and prints what the model returned. The model's answers vary
+from run to run (the same code has scored 46% and 67% Fit in range), so that job
+runs with `--gate invariants`: it fails only when a case goes unscored, a citation is
+invalid or network invariance breaks, and reports the other metrics. Those metrics
+are gated by the replay of the committed recordings, so a prompt or model change
+must commit fresh recordings that hold the baseline. To refresh the recordings,
+run it with `PEJIP_EVAL_RECORD_DIR=eval/recordings`, or copy them from that job, and
+commit them in the same PR. A recording is only used for the golden set version it
+was made with, so bumping `golden_set_version` needs fresh recordings.
+
 ## Changing the set
 
 - Bump `golden_set_version` in `manifest.toml` for any change to a case, a label or

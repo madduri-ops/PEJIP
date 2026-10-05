@@ -10,8 +10,22 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
+### Changed
+
+- The job search covers Anthropic, the one target company whose roles are
+  available through an allowed public API; the example company boards are gone.
+
 ### Added
 
+- First end-to-end FIND slice as the `pejip` command line tool: fetches roles from
+  configured Greenhouse and Lever company boards, filters them by the search
+  taxonomy and geography, analyses each with Claude, scores Fit, Confidence and
+  Priority with deterministic rules, and writes a Markdown digest that explains
+  every ranking with cited evidence.
+- `pejip purge`, `pejip export` and `pejip delete-all` for retention, export and
+  deletion of stored data.
+- The ranking pipeline is scored against the golden evaluation set in CI, from
+  recorded model output on every change and live when prompts or AI code change.
 - One-command production rollback: `gh workflow run rollback.yml` redeploys the
   previous (or a named) release through the deploy health gate.
 - Each release's container image is tagged with its version and kept, so it stays

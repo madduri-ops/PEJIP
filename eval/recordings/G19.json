@@ -1,0 +1,160 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Size of the engineering budget owned is not stated, only the 500-person organization it covers."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "SENIOR_DIRECTOR",
+    "missing_information": [
+      "BUDGET"
+    ],
+    "negative_signals": [],
+    "normalized_title": "Senior Director, Engineering Operations",
+    "positive_scope_signals": [
+      {
+        "quote": "reporting to\nthe CTO"
+      },
+      {
+        "quote": "the engineering budget for a 500-person organization"
+      },
+      {
+        "quote": "leading a 35-person team\nthrough four managers"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will own engineering planning, release governance, engineering metrics\nand the engineering budget for a 500-person organization",
+        "text": "Own engineering planning, release governance, engineering metrics and the engineering budget"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "leading a 35-person team\nthrough four managers",
+        "text": "Lead a 35-person team through four managers"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "reporting to\nthe CTO",
+        "text": "Reports to the CTO"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "CORE",
+        "quote": "You have run engineering or technology operations at scale",
+        "text": "Experience running engineering or technology operations at scale"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "managed managers",
+        "text": "Experience managing managers"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "partnered with executive stakeholders",
+        "text": "Experience partnering with executive stakeholders"
+      }
+    ],
+    "role_family": "Engineering Operations",
+    "work_model": "REMOTE"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E3",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E3",
+          "E4",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate owned release governance for an engineering organization, improved engineering delivery metrics, and ran portfolio planning and reporting, though no budget specific to engineering is stated.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E3"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate has led organizations of up to 320 people as a manager of managers, which exceeds a 35-person team led through four managers.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "The candidate has executive exposure to the CTO, though their prior reporting line is not stated.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [
+          "E3",
+          "E1",
+          "E4"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate owned technology operations for a 320-person engineering organization and ran engineering platform and transformation work at enterprise scale.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate is explicitly a manager of managers with 18 years in leadership.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate reported quarterly to the executive team and has worked with the CIO, CTO, COO and the board audit committee.",
+        "requirement_id": "R6"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:36:38.790967+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:36:49.891370+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

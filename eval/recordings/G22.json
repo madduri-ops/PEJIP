@@ -1,0 +1,181 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Reporting line implied to be the CTO via title but not explicitly stated",
+      "Size of engineering organization the CTO leads is not stated"
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "BELOW_DIRECTOR",
+    "missing_information": [
+      "ORG_SCOPE"
+    ],
+    "negative_signals": [
+      {
+        "code": "OTHER",
+        "quote": "no budget ownership"
+      },
+      {
+        "code": "INDIVIDUAL_CONTRIBUTOR",
+        "quote": "This role has one direct report (an executive business partner)"
+      }
+    ],
+    "normalized_title": "Chief of Staff to the CTO",
+    "positive_scope_signals": [
+      {
+        "quote": "prepare executive and board materials"
+      },
+      {
+        "quote": "drive cross-functional initiatives"
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will run the CTO's operating",
+        "text": "Run the CTO's operating cadence"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "prepare executive and board materials",
+        "text": "Prepare executive and board materials"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R3",
+        "importance": "CORE",
+        "quote": "drive cross-functional initiatives",
+        "text": "Drive cross-functional initiatives on the CTO's behalf"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R4",
+        "importance": "IMPORTANT",
+        "quote": "manage the engineering offsite and planning calendar",
+        "text": "Manage the engineering offsite and planning calendar"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R5",
+        "importance": "IMPORTANT",
+        "quote": "This role has one direct report (an executive business partner) and no budget",
+        "text": "One direct report (executive business partner), no budget ownership"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "IMPORTANT",
+        "quote": "You have worked closely with senior executives",
+        "text": "Experience working closely with senior executives"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "can drive initiatives through influence",
+        "text": "Ability to drive initiatives through influence"
+      }
+    ],
+    "role_family": "Chief of Staff / Executive Operations",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "LATERAL",
+    "career_direction_evidence_ids": [
+      "E2",
+      "E7"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E2",
+          "E3"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "Running a TMO with quarterly executive reporting and owning release governance show operating-cadence work, though not specifically for a CTO's office.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E2",
+          "E7"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Quarterly value reporting to the executive team and exposure to the board audit committee indicate experience preparing executive and board-level materials.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2",
+          "E5"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Led an enterprise transformation across 14 business units, a 60-program portfolio and a cross-functional AI program, though not explicitly on a CTO's behalf.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention managing offsites or engineering planning calendars.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate has managed a 320-person organization and a $140M budget, exceeding this role's limited people and budget scope.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "Executive exposure to the CIO, CTO, COO and board audit committee, plus regular executive-team reporting, shows close work with senior executives.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Consolidating delivery organizations across 14 business units and running a cross-portfolio TMO imply driving initiatives across groups beyond direct authority.",
+        "requirement_id": "R7"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:37:28.319684+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:37:41.328074+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}

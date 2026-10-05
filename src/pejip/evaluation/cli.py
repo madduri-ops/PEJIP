@@ -9,12 +9,13 @@ from pathlib import Path
 
 from .baseline import (
     DEFAULT_BASELINE,
+    INVARIANTS,
     ratchet,
     read_baseline,
     regressions,
     write_baseline,
 )
-from .evaluate import Report, evaluate
+from .evaluate import METRICS, Report, evaluate
 from .golden import DEFAULT_GOLDEN_DIR, GoldenSetError, load_golden_set
 from .scorer import ScorerLoadError, load_scorer
 
@@ -42,6 +43,14 @@ def _parser() -> argparse.ArgumentParser:
             default=0.0,
             help="allowed Fit drift in network probes",
         )
+    sub.choices["run"].add_argument(
+        "--gate",
+        choices=("all", "invariants"),
+        default="all",
+        help="metrics that fail the run: all, or only "
+        + ", ".join(INVARIANTS)
+        + " (for live model runs)",
+    )
     return parser
 
 
@@ -92,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
             _say("baseline unchanged")
         return 0
 
-    found = regressions(report, baseline)
+    found = regressions(report, baseline, INVARIANTS if args.gate == "invariants" else METRICS)
     for regression in found:
         _say(f"REGRESSION {regression}", err=True)
     return 1 if found else 0

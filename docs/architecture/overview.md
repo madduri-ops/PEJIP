@@ -1,6 +1,6 @@
 # System overview
 
-_Status: skeleton. Fill in as the first components land._
+_Last updated: 2026-10-05._
 
 ## Purpose
 
@@ -11,15 +11,31 @@ ranks which deserve attention, and explains why. It is not a generic job board.
 
 ```mermaid
 flowchart LR
-    user([Babu]) --> pejip[PEJIP]
-    sources[(Job sources)] --> pejip
-    pejip --> user
+    user([Babu]) -- profile.yaml, config --> pejip[pejip CLI]
+    boards[(Greenhouse and Lever job boards)] -- public APIs --> pejip
+    pejip -- posting text, profile evidence --> claude[Anthropic API]
+    pejip -- ranked, explained digest --> user
 ```
+
+The first slice is a Python batch CLI that Babu runs locally
+([ADR-0003](../adr/0003-python-cli-first-slice.md)). Each run fetches configured
+company boards, filters roles by the search taxonomy and geography, has Claude
+extract requirements and match them to profile evidence, computes Fit, Confidence
+and Priority with deterministic rules, and writes a Markdown digest. See
+[components.md](components.md) and [data-flow.md](data-flow.md).
 
 ## Quality attributes
 
-Performance, security, reliability and accessibility targets, and how each is tested
-(see the build policy, section 2).
+- **Reliability:** a failed source or analysis never stops the run; it is shown in
+  the digest's search health and unranked sections. Tested in
+  `tests/integration/test_pipeline.py`.
+- **Security and privacy:** personal data stays local except the minimum sent to the
+  Anthropic API; logs are redacted; 90-day retention. See
+  [docs/SECURITY.md](../SECURITY.md).
+- **Cost:** every AI call reserves its worst-case cost with the AI cost guard,
+  which enforces the $100 monthly cap before the call is made.
+- **Quality:** deterministic scoring gated by the golden evaluation set.
+- **Performance and accessibility:** targets are set with the API and web UI.
 
 ## Deployment
 

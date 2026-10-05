@@ -1,0 +1,184 @@
+{
+  "analysis": {
+    "ambiguities": [
+      "Header location is San Francisco Bay Area, but the hybrid sites listed are Sacramento and Walnut Creek, and Sacramento is outside the Bay Area.",
+      "Unclear whether the 90-person organization is permanent staff or a program team tied to the multi-year transformation.",
+      "Unclear whether the role manages managers directly."
+    ],
+    "analysis_confidence": "HIGH",
+    "inferred_scope": "FUNCTION",
+    "inferred_seniority": "VP",
+    "missing_information": [],
+    "negative_signals": [],
+    "normalized_title": "Vice President, Clinical Systems Transformation",
+    "positive_scope_signals": [
+      {
+        "quote": "electronic health record consolidation, across all hospitals, with a 90-person"
+      },
+      {
+        "quote": "organization and an $80M program budget."
+      },
+      {
+        "quote": "Clinical Systems Transformation reporting to the Chief Medical Information Officer."
+      }
+    ],
+    "requirements": [
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R1",
+        "importance": "CORE",
+        "quote": "You will lead the multi-year transformation of clinical systems, including the Epic",
+        "text": "Lead the multi-year transformation of clinical systems across all hospitals"
+      },
+      {
+        "category": "ROLE_RESPONSIBILITY",
+        "classification": "REQUIRED",
+        "id": "R2",
+        "importance": "CORE",
+        "quote": "electronic health record consolidation, across all hospitals, with a 90-person",
+        "text": "Lead Epic electronic health record consolidation across all hospitals"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R3",
+        "importance": "IMPORTANT",
+        "quote": "organization and an $80M program budget.",
+        "text": "Lead a 90-person organization with an $80M program budget"
+      },
+      {
+        "category": "SENIORITY_SCOPE",
+        "classification": "CONTEXTUAL",
+        "id": "R4",
+        "importance": "SUPPORTING",
+        "quote": "Clinical Systems Transformation reporting to the Chief Medical Information Officer.",
+        "text": "Reports to the Chief Medical Information Officer"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R5",
+        "importance": "CORE",
+        "quote": "Required: 10+ years of clinical informatics leadership in a hospital or health",
+        "text": "10+ years of clinical informatics leadership in a hospital or health system"
+      },
+      {
+        "category": "CAPABILITY",
+        "classification": "REQUIRED",
+        "id": "R6",
+        "importance": "CORE",
+        "quote": "system, deep Epic implementation experience, and working knowledge of clinical",
+        "text": "Deep Epic implementation experience"
+      },
+      {
+        "category": "DOMAIN_INDUSTRY",
+        "classification": "REQUIRED",
+        "id": "R7",
+        "importance": "IMPORTANT",
+        "quote": "workflows and regulatory reporting (CMS, Joint Commission).",
+        "text": "Working knowledge of clinical workflows and regulatory reporting (CMS, Joint Commission)"
+      },
+      {
+        "category": "LEADERSHIP",
+        "classification": "INFERRED",
+        "id": "R8",
+        "importance": "IMPORTANT",
+        "quote": "Redwood Valley Health System, a twelve-hospital network, seeks a Vice President of",
+        "text": "Transformation leadership across a twelve-hospital network"
+      }
+    ],
+    "role_family": "Healthcare IT / Clinical Informatics Leadership",
+    "work_model": "HYBRID"
+  },
+  "golden_set_version": "1.1.0",
+  "matching": {
+    "career_direction": "ALIGNED",
+    "career_direction_evidence_ids": [
+      "E1",
+      "E2"
+    ],
+    "matches": [
+      {
+        "evidence_ids": [
+          "E1",
+          "E2"
+        ],
+        "match_strength": "PARTIAL_MATCH",
+        "rationale": "The candidate led a three-year enterprise technology transformation across 14 business units with a transformation office, but the evidence shows no clinical or hospital systems context.",
+        "requirement_id": "R1"
+      },
+      {
+        "evidence_ids": [
+          "E1"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "Consolidating 9 delivery organizations is loosely related to consolidation work, but the evidence does not mention Epic or electronic health records.",
+        "requirement_id": "R2"
+      },
+      {
+        "evidence_ids": [
+          "E7",
+          "E2"
+        ],
+        "match_strength": "STRONG_MATCH",
+        "rationale": "The candidate has led organizations of up to 320 people and a $140M portfolio, which exceeds the 90-person, $80M scope.",
+        "requirement_id": "R3"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The candidate's executive exposure is to the CIO, CTO, COO and board audit committee, so the evidence does not show whether they have worked with a Chief Medical Information Officer.",
+        "requirement_id": "R4"
+      },
+      {
+        "evidence_ids": [
+          "E7"
+        ],
+        "match_strength": "NO_MATCH",
+        "rationale": "The candidate's stated industries are enterprise software, cloud infrastructure and fintech, with no hospital or health system clinical informatics leadership.",
+        "requirement_id": "R5"
+      },
+      {
+        "evidence_ids": [],
+        "match_strength": "UNKNOWN",
+        "rationale": "The profile does not mention Epic implementation experience.",
+        "requirement_id": "R6"
+      },
+      {
+        "evidence_ids": [
+          "E6"
+        ],
+        "match_strength": "WEAK_MATCH",
+        "rationale": "The candidate ran SOC 2 and ISO 27001 compliance programs, which is only loosely related to clinical workflows and CMS or Joint Commission reporting.",
+        "requirement_id": "R7"
+      },
+      {
+        "evidence_ids": [
+          "E1"
+        ],
+        "match_strength": "GOOD_MATCH",
+        "rationale": "Leading transformation across 14 business units is comparable in breadth to a twelve-hospital network, though in a non-clinical context.",
+        "requirement_id": "R8"
+      }
+    ]
+  },
+  "provenance": {
+    "analysis": {
+      "generated_at": "2026-10-05T02:33:56.743947+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "JOB_ANALYSIS",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "job-analysis-1"
+    },
+    "matching": {
+      "generated_at": "2026-10-05T02:34:10.412604+00:00",
+      "model": "claude-opus-5-5",
+      "prompt_id": "EVIDENCE_MATCHING",
+      "prompt_version": 1,
+      "provider": "anthropic",
+      "schema_version": "evidence-matching-1"
+    }
+  }
+}
