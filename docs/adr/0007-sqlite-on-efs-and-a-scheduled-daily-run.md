@@ -50,8 +50,11 @@ of it already taken by the load balancer and the API task.
   ([ADR-0004](0004-keyless-claude-access.md)); its IDs are Terraform variables.
 - The digest reaches Babu's mailbox, so Google (Gmail) holds a copy under Babu's
   own account; `docs/SECURITY.md` lists it.
-- A `terraform apply` registers a task definition revision with a placeholder
-  image; a deploy must follow before the next scheduled run (infra/README.md).
+- Terraform's task definition revisions reuse the image the service is running
+  (read from the live service), so an apply never leaves the schedules on an
+  image that doesn't exist. Deploys still own which image runs.
+- Emailed digests sit in Babu's mailbox outside PEJIP's 90-day purge; Babu
+  decides how long to keep them (`docs/SECURITY.md`).
 
 ## Alternatives considered
 

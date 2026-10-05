@@ -1,4 +1,4 @@
-# Digest email (design doc 0011). `pejip run` publishes each day's digest to
+# Digest email (design doc 0012). `pejip run` publishes each day's digest to
 # this topic and SNS emails it to Babu as plain text. Encrypted with the PEJIP
 # key; only the app's task role may publish (ecs.tf).
 resource "aws_sns_topic" "digest" {

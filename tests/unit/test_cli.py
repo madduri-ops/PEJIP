@@ -11,6 +11,7 @@ from typing import Any, ClassVar
 import pytest
 
 from pejip import cli
+from pejip.config import Settings
 from pejip.digest import Digest
 from pejip.store import Store
 from tests.conftest import NOW, ROOT
@@ -184,6 +185,14 @@ def test_without_a_stored_profile_or_claude_the_run_says_why(
         "no career profile is stored yet (SSM parameter /pejip/profile)"
     )
 
+    monkeypatch.setenv("PEJIP_AI_ENABLED", "false")
+    assert cli.main(["run"]) == 0
+    _args, kwargs = RecordingPipeline.built[-1]
+    assert kwargs["unranked_reason"] == (
+        "no career profile is stored yet (SSM parameter /pejip/profile)"
+        " and Claude access is not set up for this workload yet"
+    )
+
     monkeypatch.delenv("PEJIP_PROFILE_PARAMETER")
     monkeypatch.setenv("PEJIP_AI_ENABLED", "false")
     assert cli.main(["run"]) == 0
@@ -212,3 +221,32 @@ def test_a_crashed_run_logs_an_error_and_reraises(
     assert len(crashed) == 1
     assert crashed[0].levelname == "ERROR"
     assert crashed[0].exc_info is not None
+
+
+def test_unranked_reason_has_a_fallback() -> None:
+    settings = Settings.from_env({})
+    assert cli._unranked_reason(settings, object()) == "ranking is not set up"  # type: ignore[arg-type]
+
+
+def test_a_failed_digest_email_still_purges_old_digests(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class SendFailedError(Exception):
+        pass
+
+    class FailingSns:
+        def publish(self, **_kwargs: Any) -> dict[str, Any]:
+            raise SendFailedError
+
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_sns_client", lambda _r: FailingSns())
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    out = env / "out"
+    out.mkdir()
+    old = out / "digest-old.md"
+    old.write_text("old")
+    hundred_days_ago = time.time() - 100 * 86400
+    os.utime(old, (hundred_days_ago, hundred_days_ago))
+    with pytest.raises(SendFailedError):
+        cli.main(["run"])
+    assert not old.exists()

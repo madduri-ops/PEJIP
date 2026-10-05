@@ -4,8 +4,9 @@
 # Deploy workflow owns which image runs: it copies the latest pejip-prod task
 # definition, swaps in the image it just pushed, registers that revision and
 # points the service at it. So the service ignores task_definition and
-# desired_count drift, and Terraform's own revision names a placeholder tag that
-# never runs (the service starts at zero tasks; the first deploy scales it to one).
+# desired_count drift. Terraform's own revisions reuse the image the service is
+# running now, because the daily schedules always start the family's latest
+# revision: an apply must never leave them on an image that doesn't exist.
 
 resource "aws_ecs_cluster" "main" {
   name = local.name
@@ -225,11 +226,23 @@ resource "aws_vpc_security_group_egress_rule" "tasks_https" {
   to_port           = 443
 }
 
+# The image the service runs right now (set by the Deploy workflow). Read by
+# name, so it adds no dependency on the service resource below.
+data "aws_ecs_service" "live" {
+  service_name = local.name
+  cluster_arn  = "arn:aws:ecs:${var.aws_region}:${local.account_id}:cluster/${local.name}"
+}
+
+data "aws_ecs_container_definition" "live" {
+  task_definition = data.aws_ecs_service.live.task_definition
+  container_name  = "pejip"
+}
+
 locals {
   data_dir          = "/data"
   profile_parameter = "/pejip/profile"
 
-  # What `pejip run` and `pejip purge` read (design doc 0011). The API ignores them.
+  # What `pejip run` and `pejip purge` read (design doc 0012). The API ignores them.
   run_environment = [
     { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
     { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },
@@ -291,7 +304,7 @@ resource "aws_ecs_task_definition" "app" {
 
   container_definitions = jsonencode([{
     name      = "pejip"
-    image     = "${aws_ecr_repository.app.repository_url}:bootstrap"
+    image     = data.aws_ecs_container_definition.live.image
     essential = true
     # The image's default command serves the API (python -m pejip.api).
     portMappings = [{

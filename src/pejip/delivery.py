@@ -47,7 +47,8 @@ def fit_message(text: str, kept_at: str) -> str:
     if len(text.encode("utf-8")) <= MAX_MESSAGE_BYTES:
         return text
     cut = text.encode("utf-8")[:MAX_MESSAGE_BYTES].decode("utf-8", "ignore")
-    cut = cut[: cut.rfind("\n") + 1]
+    if "\n" in cut:
+        cut = cut[: cut.rfind("\n") + 1]
     return f"{cut}\n[Digest cut short for email. The full digest is kept at {kept_at}.]\n"
 
 

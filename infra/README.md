@@ -97,10 +97,10 @@ receiving, and `inbox_receiving_enabled` now defaults to `true`.
 [Design 0012](../docs/design/0012-daily-run-and-storage.md). After the apply that
 creates the data file system, schedules and digest topic:
 
-1. Run the Deploy workflow on `main` (or merge any app change). The apply
-   registers a task definition revision with a placeholder image, and the
-   schedules always run the latest revision, so a deploy must follow before the
-   next 06:00 Pacific run.
+1. Run the Deploy workflow on `main` (or merge any app change) so the image with
+   `pejip run`'s AWS support is live. The apply's own task definition revision
+   reuses the image the service is running, so the schedules never point at an
+   image that doesn't exist.
 2. Click the link in the "AWS Notification - Subscription Confirmation" email for
    `pejip-digest`. No digest is delivered until then.
 3. Store the career profile (the same YAML as `examples/profile.example.yaml`)

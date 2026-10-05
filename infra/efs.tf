@@ -1,4 +1,4 @@
-# Persistent storage for PEJIP's database (ADR-0007, design doc 0011). The
+# Persistent storage for PEJIP's database (ADR-0007, design doc 0012). The
 # SQLite database, the AI spend ledger and the written digests live on one
 # encrypted EFS file system, mounted at /data in every PEJIP task over TLS
 # through an access point that maps all access to the app's user (10001).

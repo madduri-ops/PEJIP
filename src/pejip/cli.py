@@ -33,9 +33,15 @@ def _load_profile(settings: Settings) -> CareerProfile | None:
 
 
 def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
+    """Why roles can't be ranked, naming every missing piece at once."""
+    missing = []
     if profile is None:
-        return f"no career profile is stored yet (SSM parameter {settings.profile_parameter})"
-    return "Claude access is not set up for this workload yet"
+        missing.append(
+            f"no career profile is stored yet (SSM parameter {settings.profile_parameter})"
+        )
+    if not settings.ai_enabled:
+        missing.append("Claude access is not set up for this workload yet")
+    return " and ".join(missing) or "ranking is not set up"
 
 
 def _cmd_run(settings: Settings) -> int:
@@ -66,11 +72,14 @@ def _cmd_run(settings: Settings) -> int:
     text = render(digest, config.scoring.strong_match_fit)
     path.write_text(text, encoding="utf-8")
     log.info("digest_written", extra={"path": str(path), "status": digest.status})
-    if settings.digest_topic_arn:
-        client = make_sns_client(settings.aws_region)
-        send_digest(client, settings.digest_topic_arn, digest, text, kept_at=str(path))
-        log.info("digest_sent", extra={"status": digest.status})
-    _purge_output(settings, config.retention_days)
+    try:
+        if settings.digest_topic_arn:
+            client = make_sns_client(settings.aws_region)
+            send_digest(client, settings.digest_topic_arn, digest, text, kept_at=str(path))
+            log.info("digest_sent", extra={"status": digest.status})
+    finally:
+        # Retention holds even when the email fails (policy section 10).
+        _purge_output(settings, config.retention_days)
     return 1 if digest.status == "FAILED" else 0
 
 

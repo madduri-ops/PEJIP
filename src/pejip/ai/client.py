@@ -105,7 +105,11 @@ def _sts_client() -> claude_auth.StsClient:
     """A regional STS client (GetWebIdentityToken has no global endpoint)."""
     import boto3  # noqa: PLC0415  (only runs on AWS, with PEJIP_CLAUDE_IDENTITY=aws-sts)
 
-    return cast(claude_auth.StsClient, boto3.client("sts", region_name=os.environ["AWS_REGION"]))
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    if not region:
+        msg = "AWS_REGION is not set; STS needs a regional endpoint"
+        raise claude_auth.ClaudeAuthError(msg)
+    return cast(claude_auth.StsClient, boto3.client("sts", region_name=region))
 
 
 def _credentials() -> anthropic.WorkloadIdentityCredentials | None:

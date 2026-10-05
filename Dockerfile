@@ -38,6 +38,11 @@ RUN --mount=type=bind,from=build,source=/dist,target=/dist \
 # career profile comes from SSM at run time (docs/design/0012-daily-run-and-storage.md).
 COPY config/search.yaml /etc/pejip/search.yaml
 
+# Fargate copies a VOLUME's image permissions (here /tmp's 1777) into the
+# task-local volume mounted there, so the app user can write temp files even
+# though the root filesystem is read-only.
+VOLUME ["/tmp"]
+
 USER 10001
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

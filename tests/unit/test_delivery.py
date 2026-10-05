@@ -61,6 +61,12 @@ def test_long_digests_are_cut_at_a_line_with_a_note() -> None:
     assert "/data/output/d.md" in note
 
 
+def test_a_digest_with_no_line_break_is_cut_hard_not_emptied() -> None:
+    cut = fit_message("x" * (MAX_MESSAGE_BYTES + 10), "/data/output/d.md")
+    body, _note = cut.split("\n[", 1)
+    assert body.rstrip("\n") == "x" * MAX_MESSAGE_BYTES
+
+
 def test_send_digest_publishes_to_the_topic() -> None:
     sns = FakeSns()
     digest = Digest("r", NOW, "SUCCESS", [], [item("HIGH")])

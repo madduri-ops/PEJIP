@@ -199,3 +199,15 @@ def test_default_messages_client_federates_from_aws_with_a_regional_sts_client(
     assert client._messages is not None
     assert built[0].meta.region_name == "us-west-2"
     assert callable(built[0].get_web_identity_token)
+
+
+def test_sts_client_falls_back_to_the_default_region_and_refuses_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("AWS_REGION", raising=False)
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-west-2")
+    client: Any = client_module._sts_client()
+    assert client.meta.region_name == "us-west-2"
+    monkeypatch.delenv("AWS_DEFAULT_REGION")
+    with pytest.raises(ClaudeAuthError, match="AWS_REGION is not set"):
+        client_module._sts_client()
