@@ -1,0 +1,38 @@
+id = "G10"
+name = "Weak fit with a very strong network"
+categories = ["high_network_low_fit", "poor_match"]
+notes = "Spec 9.28 Example C: twelve connections must not turn a weak career match into a top recommendation, and must not raise Fit."
+invariance_probe = true
+
+[job]
+title = "Head of Customer Success Operations"
+company = "Pinecrest Commerce"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 10
+base_min_usd = 210_000
+base_max_usd = 240_000
+description = """
+Pinecrest Commerce is looking for a Head of Customer Success Operations to own
+renewal forecasting, customer health scoring, CRM administration and the tooling our
+customer success managers use every day. You will lead a team of eight analysts and
+report to the VP of Customer Success.
+
+You have run customer success or revenue operations at a SaaS company, are fluent in
+Salesforce and Gainsight, and have owned net revenue retention targets.
+
+Hybrid in San Mateo. Base $210,000 to $240,000.
+"""
+
+[context]
+connections = 12
+strong_relationships = 5
+
+[expected]
+role_family = "Business / Technology Operations"
+inferred_level = "DIRECTOR_EQUIVALENT"
+fit = [20, 50]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["LOW"]
+positive_reasons = []
+concerns = ["CAREER_DIRECTION_CONCERN", "SCOPE_CONCERN"]

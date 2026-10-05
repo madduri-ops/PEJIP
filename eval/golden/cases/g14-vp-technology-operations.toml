@@ -1,0 +1,42 @@
+id = "G14"
+name = "VP Technology Operations, global"
+categories = ["technology_operations", "excellent_match"]
+notes = "Close to ACH-3 at larger scope. Posted a day ago with one connection."
+
+[job]
+title = "Vice President, Technology Operations"
+company = "Cobalt Harbor Systems"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 30
+base_min_usd = 310_000
+base_max_usd = 360_000
+travel_percent = 15
+description = """
+Cobalt Harbor Systems seeks a Vice President of Technology Operations reporting to
+the CIO. You will lead global technology operations for a 4,000-person company:
+incident and problem management, release governance, vendor management, IT service
+management and the technology operating budget ($110M).
+
+You will lead a 250-person global organization across three regions through eight
+directors, present operating reviews to the executive leadership team, and drive
+continuous improvement across a matrixed organization.
+
+You have led technology operations at enterprise scale, built organizations of
+managers and partnered with C-suite stakeholders.
+
+Hybrid in Santa Clara. Base $310,000 to $360,000 plus bonus.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Technology Operations"
+inferred_level = "VP_EQUIVALENT"
+fit = [85, 100]
+confidence = ["HIGH"]
+priority = ["HIGH", "IMMEDIATE"]
+positive_reasons = ["OPERATIONS_LEADERSHIP_MATCH", "EXECUTIVE_SCOPE_MATCH"]
+concerns = []

@@ -1,0 +1,42 @@
+id = "G03"
+name = "Senior Director Portfolio Management, healthcare preferred"
+categories = ["good_match", "tpm_portfolio", "industry_specific"]
+notes = "Good but imperfect: the portfolio work matches ACH-2, but the role prefers healthcare payer experience the profile lacks. Preferred, not required, so a moderate gap."
+
+[job]
+title = "Senior Director, Enterprise Portfolio Management"
+company = "Bayview Health Partners"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 50
+base_min_usd = 260_000
+base_max_usd = 300_000
+travel_percent = 10
+description = """
+Bayview Health Partners seeks a Senior Director of Enterprise Portfolio Management
+to lead the enterprise PMO. Reporting to the CIO, you will own portfolio governance
+for 45 technology and business programs (about $75M), run the quarterly investment
+review with the executive team, and lead a team of 30 program managers through four
+managers.
+
+Required: 12+ years of program and portfolio leadership, experience building a PMO
+or transformation office, strong executive communication.
+
+Preferred: experience in healthcare payer or provider organizations and familiarity
+with HIPAA-regulated programs.
+
+Hybrid in Oakland, two days a week. Base $260,000 to $300,000.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Program / Portfolio Leadership"
+inferred_level = "SENIOR_DIRECTOR_EQUIVALENT"
+fit = [70, 86]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["HIGH", "MEDIUM"]
+positive_reasons = ["PORTFOLIO_LEADERSHIP_MATCH"]
+concerns = ["INDUSTRY_GAP"]

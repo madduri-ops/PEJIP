@@ -29,6 +29,7 @@ flowchart LR
     system --> dast
     sast --> dast
     deps --> dast
+    unit --> eval[Golden evaluation set]
     unit --> cov[Coverage gate]
     integration --> cov
     system --> cov
@@ -37,7 +38,7 @@ flowchart LR
 ```
 
 Hooks and the secrets scan run on every change. The other jobs run when app code,
-tests, gate scripts, `pyproject.toml`, the coverage baseline or the workflow change.
+tests, gate scripts, `pyproject.toml`, the coverage baseline, `eval/` or the workflow change.
 
 | Gate | Tool | Blocks on | Artifact |
 |---|---|---|---|
@@ -48,6 +49,7 @@ tests, gate scripts, `pyproject.toml`, the coverage baseline or the workflow cha
 | Dependency audit | grype via `ci/severity_gate.py` | high, critical | `dependency-audit-report` |
 | DAST | ZAP API scan via `ci/severity_gate.py` | high | `dast-report` |
 | Build artifact | `ci/check_wheel.py` | non-`pejip` or dev/demo/test files in the wheel | `wheel` |
+| Golden evaluation set | `python -m pejip.evaluation` ([0003](0003-golden-evaluation-set.md)) | invalid set; once a scorer is wired, any metric below `eval/baseline.json` | log |
 | API smoke | `tests/system/test_api_smoke.py` | any GET route not returning 200 | `coverage-system` |
 
 ## Interfaces

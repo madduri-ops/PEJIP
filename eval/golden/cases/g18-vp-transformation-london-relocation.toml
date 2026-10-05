@@ -1,0 +1,33 @@
+id = "G18"
+name = "Excellent fit that requires relocation abroad"
+categories = ["hard_filter", "transformation"]
+notes = "Spec 9.14 and 9.24: the profile's explicit NO_RELOCATION and US_BASED_EMPLOYMENT_ONLY hard filters exclude it. Fit stays high because location never changes Fit."
+
+[job]
+title = "Vice President, Enterprise Transformation"
+company = "Thamesgate Bank"
+location = "London, United Kingdom"
+work_model = "ONSITE"
+posted_hours_ago = 9
+description = """
+Thamesgate Bank is hiring a Vice President of Enterprise Transformation in London,
+reporting to the Group COO. You will lead the bank-wide transformation office, own a
+GBP 70M portfolio of change programs and lead a 100-person organization through six
+directors, reporting to the executive committee and the board.
+
+Relocation to London is required; the role is onsite five days a week. You have led
+enterprise-wide transformation and portfolio governance at scale.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Enterprise Transformation"
+inferred_level = "VP_EQUIVALENT"
+fit = [78, 96]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["EXCLUDED"]
+positive_reasons = ["STRONG_TRANSFORMATION_MATCH"]
+concerns = ["HARD_FILTER_TRIGGERED", "LOCATION_CONCERN"]

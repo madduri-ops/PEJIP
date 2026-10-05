@@ -44,6 +44,7 @@ jobs:
               - 'ci/**'
               - 'pyproject.toml'
               - '.coverage-baseline.json'
+              - 'eval/**'
               - '.github/workflows/ci.yml'
 
   # Hooks and the secrets scan run on every change, docs included.
@@ -136,6 +137,23 @@ jobs:
             .coverage.unit*
             reports/
           include-hidden-files: true
+
+  # Golden evaluation set (policy section 12, docs/design/0003-golden-evaluation-set.md).
+  # Validates the labelled set; the scoring pipeline adds its
+  # `python -m pejip.evaluation run --scorer ...` step here, which fails below
+  # eval/baseline.json.
+  eval:
+    name: Golden evaluation set
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: python -m pejip.evaluation validate
 
   integration:
     name: Integration tests

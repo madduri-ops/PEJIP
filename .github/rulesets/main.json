@@ -34,7 +34,8 @@
           { "context": "SAST", "integration_id": 15368 },
           { "context": "Dependency audit", "integration_id": 15368 },
           { "context": "DAST", "integration_id": 15368 },
-          { "context": "Coverage gate", "integration_id": 15368 }
+          { "context": "Coverage gate", "integration_id": 15368 },
+          { "context": "Golden evaluation set", "integration_id": 15368 }
         ]
       }
     }

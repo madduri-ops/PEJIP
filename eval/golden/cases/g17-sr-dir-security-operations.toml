@@ -1,0 +1,37 @@
+id = "G17"
+name = "Security operations role the profile can do but is moving away from"
+categories = ["security_adjacent", "career_direction_conflict", "borderline_match"]
+notes = "Spec 9.11-9.12 CAN DO vs WANTS TO DO NEXT: capability is high (ACH-6), but the profile lists hands-on security operations under moving_away_from."
+
+[job]
+title = "Senior Director, Security Operations"
+company = "Ironwood Payments"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 18
+base_min_usd = 270_000
+base_max_usd = 310_000
+description = """
+Ironwood Payments is hiring a Senior Director of Security Operations reporting to the
+CISO. You will run our 24x7 security operations center, incident response, threat
+detection engineering and SOC 2 and PCI compliance operations, leading a 60-person
+team through five managers.
+
+You have managed a security operations center, led incident response for a regulated
+company, and run SOC 2 and ISO 27001 programs.
+
+Hybrid in San Francisco. Base $270,000 to $310,000.
+"""
+
+[context]
+connections = 2
+strong_relationships = 0
+
+[expected]
+role_family = "Security / Risk / Governance-adjacent Technology Leadership"
+inferred_level = "SENIOR_DIRECTOR_EQUIVALENT"
+fit = [40, 65]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["LOW", "MEDIUM"]
+positive_reasons = []
+concerns = ["CAREER_DIRECTION_CONCERN"]

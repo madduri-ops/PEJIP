@@ -38,3 +38,13 @@ flowchart TB
 - **Data:** the `ai_spend` SQLite table (feature, model, tokens, cost; no personal
   data) and the price table `src/pejip/cost/pricing.json`.
 - **Design doc:** [0002: AI cost guard](../design/0002-ai-cost-guard.md).
+
+## Golden evaluation harness (`src/pejip/evaluation`)
+
+- **Responsibility:** scores any ranking implementation against the labelled golden
+  set and fails CI when a metric drops below the committed baseline.
+- **Interfaces:** consumes a scorer callable (`EvalInput` in, `Prediction` out);
+  exposes `python -m pejip.evaluation validate | run | ratchet`.
+- **Data:** reads `eval/golden/` (synthetic cases and profile) and
+  `eval/baseline.json`; writes an optional JSON report.
+- **Design doc:** [0003: Golden evaluation set](../design/0003-golden-evaluation-set.md).

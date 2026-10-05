@@ -47,6 +47,11 @@ baseline in `.coverage-baseline.json`. When your change raises coverage, run
 `python -m ci.coverage_gate --update` and commit the new baseline; it can never be
 lowered. Run the API locally with `python -m pejip.api` (http://127.0.0.1:8000/healthz).
 
+The golden evaluation set lives in `eval/` and its harness in `src/pejip/evaluation`
+(tests in `tests/unit/evaluation`). `python -m pejip.evaluation validate` checks the
+set. A change to prompts, models, ranking logic or scoring weights must hold the
+evaluation baseline; see [eval/README.md](eval/README.md).
+
 Language-specific setup for any other part of the app is added here as it lands.
 
 ## Making a change

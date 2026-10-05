@@ -1,0 +1,37 @@
+id = "G07"
+name = "Hands-on platform engineering lead"
+categories = ["hands_on", "platform_devprod", "borderline_match"]
+notes = "Spec 9.13 negative fit: primarily hands-on coding with a small team. Platform domain matches, the job shape does not."
+
+[job]
+title = "Head of Platform Engineering"
+company = "Tessellate Labs"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 12
+base_min_usd = 230_000
+base_max_usd = 260_000
+description = """
+Tessellate Labs needs a hands-on Head of Platform Engineering. Expect to spend about
+70% of your time writing code in Go and Terraform, running our Kubernetes clusters,
+and being in the on-call rotation.
+
+You will lead a team of six platform engineers, review pull requests daily, and own
+our AWS infrastructure end to end. Must have deep, current production experience
+with Kubernetes, Go and service meshes.
+
+Remote within the United States. Base $230,000 to $260,000.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Platform Operations"
+inferred_level = "DIRECTOR_EQUIVALENT"
+fit = [25, 55]
+confidence = ["HIGH"]
+priority = ["LOW"]
+positive_reasons = []
+concerns = ["HANDS_ON_CONCERN", "TECHNICAL_DEPTH_GAP", "SCOPE_CONCERN"]

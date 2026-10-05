@@ -88,7 +88,8 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 
 The Phase 1 (FIND) specification is complete. The build policy, repository hygiene,
 documentation skeletons and foundation AWS infrastructure are in place, along with
-the Python CI pipeline and a health endpoint; feature code has not landed yet.
+the Python CI pipeline, a health endpoint and the golden evaluation set for rankings;
+feature code has not landed yet.
 
 ## Getting started
 
@@ -108,6 +109,7 @@ part of the app lands.
 | [`src/pejip/`](src/pejip/) | Application code (Python package) |
 | [`tests/`](tests/) | Unit, integration and system tests |
 | [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) |
+| [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |
