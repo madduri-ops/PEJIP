@@ -68,7 +68,8 @@ takes any `pejip.portal.data.PortalData`:
 
 ```python
 class PortalData(Protocol):
-    is_sample: bool                       # shows the sample-data banner
+    is_sample: bool  # shows the sample-data banner
+
     def latest_run(self) -> SearchRun | None: ...
     def opportunities(self) -> list[Opportunity]: ...
 ```
