@@ -1,0 +1,36 @@
+id = "G23"
+name = "Marketing operations, outside every target family"
+categories = ["poor_match"]
+notes = "Shares the word 'operations' and nothing else."
+
+[job]
+title = "Director, Marketing Operations"
+company = "Juniper Lane Retail"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 7
+base_min_usd = 180_000
+base_max_usd = 210_000
+description = """
+Juniper Lane Retail is hiring a Director of Marketing Operations to own our
+marketing automation stack (Marketo, Salesforce), campaign operations, lead scoring
+and attribution reporting. You will lead a team of five and report to the CMO.
+
+You have five or more years in marketing operations and deep hands-on experience
+with marketing automation platforms.
+
+Hybrid in Emeryville. Base $180,000 to $210,000.
+"""
+
+[context]
+connections = 3
+strong_relationships = 0
+
+[expected]
+role_family = "Business / Technology Operations"
+inferred_level = "DIRECTOR_EQUIVALENT"
+fit = [0, 30]
+confidence = ["HIGH"]
+priority = ["LOW"]
+positive_reasons = []
+concerns = ["CAREER_DIRECTION_CONCERN"]

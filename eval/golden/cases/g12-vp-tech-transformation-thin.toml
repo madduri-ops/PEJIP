@@ -1,0 +1,33 @@
+id = "G12"
+name = "Strong apparent match with incomplete information"
+categories = ["missing_information", "transformation", "good_match"]
+notes = "Spec 9.28 Example D: looks like a strong match, but scope and pay are absent. Missing data lowers Confidence, not Fit (9.16)."
+
+[job]
+title = "Vice President, Technology Transformation"
+company = "Northgate Financial"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 14
+description = """
+Northgate Financial is seeking a Vice President of Technology Transformation to lead
+the modernization of our technology organization and operating model. You will
+drive the transformation roadmap, govern the portfolio of change programs, and
+report progress to executive leadership.
+
+Experience leading enterprise technology transformation in financial services is
+preferred. Remote within the United States.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Technology Transformation"
+inferred_level = "VP_EQUIVALENT"
+fit = [75, 95]
+confidence = ["LOW", "MEDIUM"]
+priority = ["MEDIUM"]
+positive_reasons = ["STRONG_TRANSFORMATION_MATCH"]
+concerns = ["MISSING_INFORMATION"]

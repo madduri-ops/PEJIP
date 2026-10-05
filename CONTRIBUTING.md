@@ -47,12 +47,18 @@ baseline in `.coverage-baseline.json`. When your change raises coverage, run
 `python -m ci.coverage_gate --update` and commit the new baseline; it can never be
 lowered. Run the API locally with `python -m pejip.api` (http://127.0.0.1:8000/healthz).
 
+The golden evaluation set lives in `eval/` and its harness in `src/pejip/evaluation`
+(tests in `tests/unit/evaluation`). `python -m pejip.evaluation validate` checks the
+set. A change to prompts, models, ranking logic or scoring weights must hold the
+evaluation baseline; see [eval/README.md](eval/README.md).
+
 Run the job search locally with `pejip run` (see the README's Getting started).
-`pejip eval` scores the golden set in `evals/` by replaying recorded AI output; CI
-runs it on every app change. `pejip eval --live` calls the model and needs
-`ANTHROPIC_API_KEY`; CI runs it when a prompt, the AI client, the analysis code,
-`config/search.yaml` or `evals/` changes. When an evaluation score rises, raise
-`evals/baseline.json` in the same PR; it may never go down.
+CI scores the golden set with the ranking pipeline from the model output recorded
+in `eval/recordings/` (`--scorer pejip.golden_eval:replay_scorer`) on every app
+change, and by calling the model (`live_scorer`, needs `ANTHROPIC_API_KEY`) when a
+prompt, the AI client, the analysis code, `config/search.yaml` or `eval/` changes.
+See [eval/README.md](eval/README.md) for refreshing the recordings and raising the
+baseline.
 
 Tests and examples use synthetic data only. Never commit a real `profile.yaml`,
 database or digest; `.gitignore` excludes them.

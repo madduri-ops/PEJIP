@@ -46,7 +46,7 @@ jobs:
               - 'pyproject.toml'
               - '.coverage-baseline.json'
               - 'config/**'
-              - 'evals/**'
+              - 'eval/**'
               - 'examples/**'
               - '.github/workflows/ci.yml'
             ai:
@@ -54,7 +54,8 @@ jobs:
               - 'src/pejip/ai/**'
               - 'src/pejip/analysis.py'
               - 'config/search.yaml'
-              - 'evals/**'
+              - 'src/pejip/golden_eval.py'
+              - 'eval/**'
 
   # Hooks and the secrets scan run on every change, docs included.
   hooks:
@@ -146,6 +147,31 @@ jobs:
             .coverage.unit*
             reports/
           include-hidden-files: true
+
+  # Golden evaluation set (policy section 12, docs/design/0003-golden-evaluation-set.md).
+  # Validates the labelled set, then scores it with the ranking pipeline from the
+  # recorded AI output in eval/recordings and fails below eval/baseline.json.
+  eval:
+    name: Golden evaluation set
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e '.[dev]'
+      - run: python -m pejip.evaluation validate
+      - run: >-
+          python -m pejip.evaluation run --scorer pejip.golden_eval:replay_scorer
+          --report eval-report.json
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-report
+          path: eval-report.json
+          if-no-files-found: ignore
 
   integration:
     name: Integration tests
@@ -253,24 +279,11 @@ jobs:
             audit/requirements.txt
           if-no-files-found: ignore
 
-  # Golden evaluation set (policy section 12): replays the recorded AI output of
-  # each case through the current scoring code and fails below evals/baseline.json.
-  eval:
-    name: Evaluation set (replay)
-    needs: unit
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-      - run: pip install -e .
-      - run: pejip eval
-
-  # Re-runs the golden set against the model when a prompt, the AI client, the
-  # analysis code, the AI config or the set itself changes. Pull requests only, as
-  # it costs money; it needs the ANTHROPIC_API_KEY secret and fails without it.
+  # Re-scores the golden set by calling the model when a prompt, the AI client, the
+  # analysis code, the AI config, the adapter or the set itself changes, and fails
+  # below eval/baseline.json. Pull requests only, as it costs a few dollars; it needs
+  # the ANTHROPIC_API_KEY secret. What the model returned is uploaded, and printed
+  # one line per case, so the recordings in eval/recordings can be refreshed.
   eval-live:
     name: Evaluation set (live model)
     needs: [changes, unit]
@@ -283,9 +296,26 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
       - run: pip install -e .
-      - run: pejip eval --live
+      - run: >-
+          python -m pejip.evaluation run --scorer pejip.golden_eval:live_scorer
+          --report eval-live-report.json
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PEJIP_EVAL_RECORD_DIR: recordings
+      - name: Print recordings
+        if: always()
+        run: |
+          for f in recordings/*.json; do
+            [ -e "$f" ] && echo "RECORDING $(basename "$f") $(jq -c . "$f")"
+          done
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: eval-live
+          path: |
+            eval-live-report.json
+            recordings/
+          if-no-files-found: ignore
 
   # Baseline scan plus active API scan of every route in the OpenAPI document,
   # against the installed app served the way production serves it.

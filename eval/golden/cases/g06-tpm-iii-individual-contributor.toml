@@ -1,0 +1,37 @@
+id = "G06"
+name = "Individual contributor TPM"
+categories = ["too_junior", "tpm_portfolio", "poor_match"]
+notes = "Right function, wrong level: an IC role with no reports."
+
+[job]
+title = "Technical Program Manager III"
+company = "Lumen Arc"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 8
+base_min_usd = 175_000
+base_max_usd = 210_000
+description = """
+Lumen Arc is looking for a Technical Program Manager III to drive delivery of our
+payments platform migration. As an individual contributor you will coordinate
+across three engineering teams, maintain the program plan and risk log, and run
+weekly status meetings.
+
+Requirements: 5+ years of technical program management, experience with agile
+delivery, strong written communication. This role has no direct reports.
+
+Hybrid in San Jose. Base $175,000 to $210,000.
+"""
+
+[context]
+connections = 2
+strong_relationships = 0
+
+[expected]
+role_family = "Technical Program Management"
+inferred_level = "INDIVIDUAL_CONTRIBUTOR"
+fit = [10, 40]
+confidence = ["HIGH"]
+priority = ["LOW"]
+positive_reasons = []
+concerns = ["SCOPE_CONCERN", "COMPENSATION_CONCERN"]

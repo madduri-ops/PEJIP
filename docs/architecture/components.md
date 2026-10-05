@@ -2,12 +2,12 @@
 
 The Phase 1 thin slice is one Python package, `pejip` (`src/pejip/`), run as a
 batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is in
-[design doc 0003](../design/0003-find-thin-slice.md).
+[design doc 0004](../design/0004-find-thin-slice.md).
 
 ```mermaid
 flowchart TB
     api[api: GET /healthz]
-    cli[cli: pejip run, purge, export, delete-all, eval]
+    cli[cli: pejip run, purge, export, delete-all]
     pipe[pipeline: one search run]
     src[sources: greenhouse, lever adapters]
     http[sources.http: PoliteClient + RateLimiter]
@@ -22,9 +22,8 @@ flowchart TB
     score[scoring: Fit, Confidence, Priority]
     explain[explain: cited explanations]
     digest[digest: Markdown digest]
-    evals[golden_eval: golden set]
+    evals[golden_eval: golden set adapter]
     cli --> pipe
-    cli --> evals
     pipe --> src --> http
     pipe --> disc
     pipe --> store
@@ -42,7 +41,7 @@ flowchart TB
 
 - **Responsibility:** command line entry point; wires configuration, profile,
   store, HTTP and AI clients together.
-- **Interfaces:** `pejip run | purge | export <file> | delete-all --yes | eval [--live]`;
+- **Interfaces:** `pejip run | purge | export <file> | delete-all --yes`;
   environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
   `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
   `ANTHROPIC_API_KEY`.
@@ -110,9 +109,12 @@ flowchart TB
 
 ## golden_eval
 
-- **Responsibility:** scores the golden set in replay (recorded AI output) or live
-  mode against the committed baseline.
-- **Interfaces:** `pejip eval [--live]`; data in `evals/`.
+- **Responsibility:** the scorer the golden evaluation harness runs: maps a golden
+  case and the synthetic profile onto this pipeline, scores it with `score_job`
+  and `build_explanation`, and translates reason codes into the set's vocabulary.
+- **Interfaces:** `replay_scorer` (from `eval/recordings/<case>.json`) and
+  `live_scorer` (calls the model; `PEJIP_EVAL_RECORD_DIR` saves its output), used as
+  `python -m pejip.evaluation run --scorer pejip.golden_eval:<scorer>`.
 
 ## API (`pejip.api`)
 
@@ -134,3 +136,13 @@ flowchart TB
 - **Data:** the `ai_spend` SQLite table (feature, model, tokens, cost; no personal
   data) and the price table `src/pejip/cost/pricing.json`.
 - **Design doc:** [0002: AI cost guard](../design/0002-ai-cost-guard.md).
+
+## Golden evaluation harness (`src/pejip/evaluation`)
+
+- **Responsibility:** scores any ranking implementation against the labelled golden
+  set and fails CI when a metric drops below the committed baseline.
+- **Interfaces:** consumes a scorer callable (`EvalInput` in, `Prediction` out);
+  exposes `python -m pejip.evaluation validate | run | ratchet`.
+- **Data:** reads `eval/golden/` (synthetic cases and profile) and
+  `eval/baseline.json`; writes an optional JSON report.
+- **Design doc:** [0003: Golden evaluation set](../design/0003-golden-evaluation-set.md).

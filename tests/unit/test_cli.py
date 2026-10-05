@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import json
+import runpy
+import shutil
+from pathlib import Path
+from typing import Any
+
+import pytest
+
+from pejip import cli
+from pejip.digest import Digest
+from pejip.store import Store
+from tests.conftest import NOW, ROOT
+
+
+@pytest.fixture
+def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    shutil.copy(ROOT / "examples" / "profile.example.yaml", tmp_path / "profile.yaml")
+    monkeypatch.setenv("PEJIP_CONFIG", str(ROOT / "config" / "search.yaml"))
+    monkeypatch.setenv("PEJIP_PROFILE", str(tmp_path / "profile.yaml"))
+    monkeypatch.setenv("PEJIP_DATABASE_URL", f"sqlite:///{tmp_path / 'cli.db'}")
+    monkeypatch.setenv("PEJIP_AI_LEDGER", str(tmp_path / "spend.db"))
+    monkeypatch.setenv("PEJIP_OUTPUT_DIR", str(tmp_path / "out"))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
+    return tmp_path
+
+
+@pytest.mark.parametrize(("status", "code"), [("SUCCESS", 0), ("PARTIAL", 0), ("FAILED", 1)])
+def test_run_writes_the_digest(
+    env: Path, monkeypatch: pytest.MonkeyPatch, status: str, code: int
+) -> None:
+    class StubPipeline:
+        def __init__(self, *args: Any) -> None:
+            self.args = args
+
+        def run(self) -> Digest:
+            return Digest("run-1", NOW, status, [])
+
+    monkeypatch.setattr(cli, "Pipeline", StubPipeline)
+    assert cli.main(["run"]) == code
+    written = list((env / "out").glob("digest-*.md"))
+    assert len(written) == 1
+    assert f"finished **{status}**" in written[0].read_text()
+
+
+def test_purge_export_and_delete(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    store = Store(f"sqlite:///{env / 'cli.db'}")
+    store.start_run("r1", NOW)
+    assert cli.main(["purge"]) == 0
+    out = env / "export.json"
+    assert cli.main(["export", str(out)]) == 0
+    assert json.loads(out.read_text())["runs"][0]["id"] == "r1"
+    assert cli.main(["delete-all"]) == 2
+    assert "Refusing" in capsys.readouterr().err
+    assert cli.main(["delete-all", "--yes"]) == 0
+    assert json.loads(store.export_all())["runs"] == []
+
+
+@pytest.mark.usefixtures("env")
+def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("sys.argv", ["pejip", "purge"])
+    with pytest.raises(SystemExit) as exit_info:
+        runpy.run_module("pejip", run_name="__main__")
+    assert exit_info.value.code == 0

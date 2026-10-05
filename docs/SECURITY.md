@@ -28,7 +28,7 @@ analyses and recommendations as personal data.
 - **Logs:** all logs go through a JSON formatter that redacts personal fields and
   scrubs e-mail addresses and phone numbers; `tests/unit/test_logs.py` proves it.
 - **Tests and examples:** synthetic data only (`examples/profile.example.yaml`,
-  `evals/golden.yaml`).
+  the golden set's `eval/golden/profile.toml`).
 
 ## Third parties that receive personal data
 

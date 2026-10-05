@@ -1,0 +1,39 @@
+id = "G24"
+name = "VP Cloud and Enterprise Technology in fintech"
+categories = ["good_match", "transformation"]
+notes = "Cloud migration program leadership in a familiar industry; somewhat more technical than the profile's centre of gravity."
+
+[job]
+title = "Vice President, Cloud & Enterprise Technology"
+company = "Clearwater Payments"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 60
+base_min_usd = 290_000
+base_max_usd = 340_000
+description = """
+Clearwater Payments is hiring a Vice President of Cloud & Enterprise Technology
+reporting to the CIO. You will lead the migration of our data centers to the public
+cloud, own enterprise technology services (collaboration, identity, end-user
+computing) and lead a 180-person organization through six directors with a $95M
+budget.
+
+You have led large cloud migration programs and enterprise technology organizations
+in financial services, managed managers and reported to executive leadership.
+Hands-on architecture depth in at least one major cloud provider is preferred.
+
+Remote within the United States. Base $290,000 to $340,000.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Cloud / Enterprise Technology"
+inferred_level = "VP_EQUIVALENT"
+fit = [72, 90]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["HIGH", "MEDIUM"]
+positive_reasons = ["STRONG_TRANSFORMATION_MATCH", "EXECUTIVE_SCOPE_MATCH"]
+concerns = []

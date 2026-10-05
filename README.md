@@ -91,9 +91,9 @@ command line tool: it fetches roles from configured Greenhouse and Lever company
 boards, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence. Network data, feedback,
 notifications, feature API endpoints and the web UI come next. The build policy, repository
-hygiene, the Python CI pipeline, a health endpoint and foundation AWS infrastructure
-are in place; the app is not deployed yet.
-See the [design doc](docs/design/0003-find-thin-slice.md) and the
+hygiene, the Python CI pipeline, a health endpoint, the golden evaluation set for
+rankings and foundation AWS infrastructure are in place; the app is not deployed yet.
+See the [design doc](docs/design/0004-find-thin-slice.md) and the
 [changelog](CHANGELOG.md).
 
 ## Getting started
@@ -118,7 +118,6 @@ are in [config/search.yaml](config/search.yaml).
 | [`src/pejip/`](src/pejip/) | The application package (CLI, pipeline, sources, AI client, scoring) |
 | [`config/`](config/) | Search, source, AI and scoring configuration |
 | [`tests/`](tests/) | Unit, integration and system tests |
-| [`evals/`](evals/) | Golden evaluation set and its baseline |
 | [`examples/`](examples/) | Synthetic example profile |
 | [`docs/spec/`](docs/spec/) | Product and engineering build specification (primary product reference) |
 | [`docs/BUILD_POLICY.md`](docs/BUILD_POLICY.md) | Binding CI/CD and engineering policy |
@@ -128,6 +127,7 @@ are in [config/search.yaml](config/search.yaml).
 | [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) |
 | [`docs/sources.md`](docs/sources.md) | Job sources we may fetch, with their terms |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Security posture and third parties that receive personal data |
+| [`eval/`](eval/) | Golden evaluation set and baseline that every ranking change must hold (see its README) |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |
 | [`.github/`](.github/) | CI workflows, Dependabot, PR template, branch protection ruleset |
 | [`CLAUDE.md`](CLAUDE.md) | Guidance for Claude working in this repo |

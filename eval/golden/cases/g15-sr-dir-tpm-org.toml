@@ -1,0 +1,40 @@
+id = "G15"
+name = "Senior Director TPM organization, three weeks old"
+categories = ["tpm_portfolio", "good_match"]
+notes = "Strong portfolio fit; the posting is 21 days old, which lowers urgency but not Fit (spec 9.21)."
+
+[job]
+title = "Senior Director, Technical Program Management"
+company = "Aster Robotics"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 504
+base_min_usd = 270_000
+base_max_usd = 310_000
+description = """
+Aster Robotics is hiring a Senior Director of Technical Program Management reporting
+to the CTO. You will lead a 40-person TPM organization through five managers, own
+portfolio governance for all hardware and software programs, and run the
+company-wide planning and dependency process.
+
+You will present portfolio health to the executive team monthly and partner with
+finance on capital allocation across 35 programs.
+
+You have built and led TPM or program management organizations, managed managers and
+run portfolio governance at enterprise scale.
+
+Hybrid in Fremont. Base $270,000 to $310,000 plus equity.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Technical Program Management"
+inferred_level = "SENIOR_DIRECTOR_EQUIVALENT"
+fit = [78, 92]
+confidence = ["HIGH"]
+priority = ["HIGH", "MEDIUM"]
+positive_reasons = ["PORTFOLIO_LEADERSHIP_MATCH", "EXECUTIVE_SCOPE_MATCH"]
+concerns = []

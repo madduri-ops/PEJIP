@@ -1,0 +1,41 @@
+id = "G05"
+name = "Director title, VP-equivalent developer productivity scope"
+categories = ["weak_title_strong_scope", "platform_devprod", "misleading_title"]
+notes = "Spec 9.9: a Director title can carry more scope than many VP roles. Reports to the CTO, manager of managers, enterprise-wide; matches ACH-4."
+
+[job]
+title = "Director, Engineering Effectiveness"
+company = "Halcyon Data"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 30
+base_min_usd = 280_000
+base_max_usd = 330_000
+description = """
+Halcyon Data is hiring a Director of Engineering Effectiveness reporting directly to
+the CTO. You will own developer productivity for all 1,400 engineers: the internal
+developer platform, CI/CD, build infrastructure and engineering metrics.
+
+You will lead a 160-person organization through six senior managers, own a $55M
+annual budget, and set enterprise-wide engineering standards with the executive
+leadership team. You will partner with product and finance on a multi-year platform
+investment roadmap.
+
+You have led platform or developer productivity organizations at enterprise scale,
+managed managers, and can show measurable improvements in delivery speed.
+
+Remote within the United States. Base $280,000 to $330,000 plus equity.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Developer Platforms / Developer Productivity"
+inferred_level = "VP_EQUIVALENT"
+fit = [80, 95]
+confidence = ["HIGH"]
+priority = ["HIGH", "IMMEDIATE"]
+positive_reasons = ["STRONG_PLATFORM_MATCH", "EXECUTIVE_SCOPE_MATCH"]
+concerns = []

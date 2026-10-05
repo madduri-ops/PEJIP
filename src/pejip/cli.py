@@ -1,4 +1,4 @@
-"""Command line entry point: ``pejip run|purge|export|delete-all|eval``."""
+"""Command line entry point: ``pejip run|purge|export|delete-all``."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from pejip.ai.client import AIClient
 from pejip.config import Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
-from pejip.golden_eval import EvalPaths, run_eval
 from pejip.logs import configure_logging
 from pejip.pipeline import Pipeline
 from pejip.profile import load_profile
@@ -73,11 +72,6 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("out", type=Path)
     delete = sub.add_parser("delete-all", help="delete all stored data")
     delete.add_argument("--yes", action="store_true", help="confirm deletion")
-    evaluate = sub.add_parser("eval", help="score the golden evaluation set")
-    evaluate.add_argument("--live", action="store_true", help="call the model instead of replaying")
-    evaluate.add_argument("--cases", type=Path, default=Path("evals/golden.yaml"))
-    evaluate.add_argument("--baseline", type=Path, default=Path("evals/baseline.json"))
-    evaluate.add_argument("--profile", type=Path, default=Path("examples/profile.example.yaml"))
     return parser
 
 
@@ -91,7 +85,4 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_purge(settings)
     if args.command == "export":
         return _cmd_export(settings, args.out)
-    if args.command == "delete-all":
-        return _cmd_delete_all(settings, args.yes)
-    paths = EvalPaths(settings.config_path, args.cases, args.baseline, args.profile)
-    return run_eval(paths, live=args.live)
+    return _cmd_delete_all(settings, args.yes)

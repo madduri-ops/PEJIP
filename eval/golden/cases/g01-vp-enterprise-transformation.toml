@@ -1,0 +1,47 @@
+id = "G01"
+name = "VP Enterprise Technology Transformation, fresh, strong network"
+categories = ["excellent_match", "transformation"]
+notes = "Spec 9.28 Example A. Scope, work and direction line up with ACH-1 and ACH-2; freshness, network, pay and location all raise priority."
+invariance_probe = true
+
+[job]
+title = "Vice President, Enterprise Technology Transformation"
+company = "Meridian Ledger Systems"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 5
+base_min_usd = 320_000
+base_max_usd = 380_000
+travel_percent = 15
+description = """
+Meridian Ledger Systems is looking for a Vice President of Enterprise Technology
+Transformation reporting to the Chief Operating Officer. You will lead an
+enterprise-wide, multi-year transformation roadmap across all eight business units,
+own a $90M transformation portfolio, and build the Transformation Management Office
+that tracks value delivered to the executive team and the board.
+
+You will lead a 120-person organization of program directors, transformation leads
+and portfolio analysts (manager of managers), partner with the CIO and CTO on
+operating-model redesign, and drive cross-functional leadership across a matrixed
+organization.
+
+What you bring: 15+ years leading large-scale transformation in enterprise software
+or financial technology; a track record of portfolio governance and executive
+communication; experience building organizations from the ground up.
+
+Hybrid, three days a week in our San Francisco office. Base salary $320,000 to
+$380,000 plus bonus and equity.
+"""
+
+[context]
+connections = 4
+strong_relationships = 1
+
+[expected]
+role_family = "Enterprise Transformation"
+inferred_level = "VP_EQUIVALENT"
+fit = [85, 100]
+confidence = ["HIGH"]
+priority = ["IMMEDIATE"]
+positive_reasons = ["STRONG_TRANSFORMATION_MATCH", "EXECUTIVE_SCOPE_MATCH", "PORTFOLIO_LEADERSHIP_MATCH"]
+concerns = []

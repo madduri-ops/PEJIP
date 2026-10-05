@@ -1,0 +1,40 @@
+id = "G20"
+name = "Global transformation office with heavy travel"
+categories = ["transformation", "good_match"]
+notes = "Spec 9.14: 60% travel is a concern, not a hard filter, for this profile (preferred max 25%)."
+
+[job]
+title = "Head of Global Transformation Office"
+company = "Summit Freight Logistics"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 48
+base_min_usd = 290_000
+base_max_usd = 330_000
+travel_percent = 60
+description = """
+Summit Freight Logistics is hiring a Head of the Global Transformation Office
+reporting to the CEO. You will run the enterprise transformation program across 22
+countries, own a $100M portfolio, and lead a 70-person office through six regional
+leads, reporting quarterly to the board.
+
+The role requires travel to regional operations about 60% of the time.
+
+You have led enterprise-wide transformation offices, portfolio governance and
+organizations of managers.
+
+Remote within the United States with extensive travel. Base $290,000 to $330,000.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Transformation Management Office / Value Management Office"
+inferred_level = "VP_EQUIVALENT"
+fit = [80, 95]
+confidence = ["HIGH"]
+priority = ["MEDIUM", "HIGH"]
+positive_reasons = ["STRONG_TRANSFORMATION_MATCH", "PORTFOLIO_LEADERSHIP_MATCH"]
+concerns = ["TRAVEL_CONCERN"]

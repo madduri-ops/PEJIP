@@ -1,0 +1,41 @@
+id = "G13"
+name = "Head of Product Operations"
+categories = ["product_operations", "good_match"]
+notes = "Right family and direction at the lower edge of the target level: a 25-person team reporting to the CPO."
+
+[job]
+title = "Head of Product Operations"
+company = "Brightwater SaaS"
+location = "San Francisco Bay Area"
+work_model = "HYBRID"
+posted_hours_ago = 40
+base_min_usd = 280_000
+base_max_usd = 320_000
+description = """
+Brightwater SaaS is hiring a Head of Product Operations reporting to the Chief
+Product Officer. You will own the product planning cycle, roadmap governance,
+launch readiness, and product metrics for a 300-person product and engineering
+organization.
+
+You will lead a 25-person team of product operations managers and analysts, run the
+quarterly planning process with executive stakeholders, and partner closely with
+engineering operations and finance.
+
+You have built product or technology operations functions, led cross-functional
+planning at scale and managed managers.
+
+Hybrid in San Francisco. Base $280,000 to $320,000 plus equity.
+"""
+
+[context]
+connections = 2
+strong_relationships = 0
+
+[expected]
+role_family = "Product Operations"
+inferred_level = "SENIOR_DIRECTOR_EQUIVALENT"
+fit = [68, 85]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["HIGH", "MEDIUM"]
+positive_reasons = ["OPERATIONS_LEADERSHIP_MATCH", "CAREER_DIRECTION_MATCH"]
+concerns = []

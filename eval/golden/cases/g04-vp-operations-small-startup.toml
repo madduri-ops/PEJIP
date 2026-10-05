@@ -1,0 +1,34 @@
+id = "G04"
+name = "VP Operations title with office-manager scope"
+categories = ["strong_title_weak_scope", "misleading_title", "poor_match"]
+notes = "Spec 9.9: title prestige is not scope. A VP title over three coordinators and office logistics is far below the target level and outside the target role families."
+
+[job]
+title = "VP of Operations"
+company = "Kitebright"
+location = "San Francisco Bay Area"
+work_model = "ONSITE"
+posted_hours_ago = 20
+description = """
+Kitebright is a 40-person seed-stage startup looking for a VP of Operations. You will
+manage our office, coordinate travel and events, run payroll with our outside
+provider, handle vendor contracts for facilities, and supervise our three operations
+coordinators.
+
+You will be the go-to person for everything that keeps the office running. Five
+years of operations or office management experience preferred. Onsite in Palo Alto
+five days a week.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Business / Technology Operations"
+inferred_level = "DIRECTOR_EQUIVALENT"
+fit = [10, 40]
+confidence = ["HIGH", "MEDIUM"]
+priority = ["LOW"]
+positive_reasons = []
+concerns = ["SCOPE_CONCERN"]

@@ -1,0 +1,37 @@
+id = "G19"
+name = "Good engineering operations fit with pay below minimum"
+categories = ["good_match", "technology_operations"]
+notes = "Spec 9.23 BELOW_MINIMUM. Minimum pay is a preference here, not a hard filter, so it lowers priority but not Fit and does not exclude."
+
+[job]
+title = "Senior Director, Engineering Operations"
+company = "Fernleaf Software"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 20
+base_min_usd = 170_000
+base_max_usd = 190_000
+description = """
+Fernleaf Software is hiring a Senior Director of Engineering Operations reporting to
+the CTO. You will own engineering planning, release governance, engineering metrics
+and the engineering budget for a 500-person organization, leading a 35-person team
+through four managers.
+
+You have run engineering or technology operations at scale, managed managers and
+partnered with executive stakeholders.
+
+Remote within the United States. Base salary $170,000 to $190,000.
+"""
+
+[context]
+connections = 0
+strong_relationships = 0
+
+[expected]
+role_family = "Engineering Operations"
+inferred_level = "SENIOR_DIRECTOR_EQUIVALENT"
+fit = [72, 90]
+confidence = ["HIGH"]
+priority = ["MEDIUM", "LOW"]
+positive_reasons = ["OPERATIONS_LEADERSHIP_MATCH"]
+concerns = ["COMPENSATION_CONCERN"]

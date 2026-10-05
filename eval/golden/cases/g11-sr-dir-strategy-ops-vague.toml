@@ -1,0 +1,33 @@
+id = "G11"
+name = "Vague strategy and operations posting"
+categories = ["ambiguous", "missing_information"]
+notes = "Spec 9.16-9.17 and 17.35: no team size, budget, reporting line, pay or work model. Confidence must be LOW and nothing may be invented."
+
+[job]
+title = "Senior Director, Strategy & Operations"
+company = "Silverline Networks"
+location = "San Francisco Bay Area"
+work_model = "UNKNOWN"
+posted_hours_ago = 26
+description = """
+Silverline Networks is growing fast and we are looking for a Senior Director of
+Strategy & Operations to help us scale. You will work on our most important
+initiatives, partner with leaders across the company, and bring structure to how we
+plan and execute.
+
+You are a strategic thinker who loves ambiguity and gets things done. Experience in
+operations, strategy or program leadership is a plus.
+"""
+
+[context]
+connections = 1
+strong_relationships = 0
+
+[expected]
+role_family = "Business / Technology Operations"
+inferred_level = "UNKNOWN"
+fit = [40, 75]
+confidence = ["LOW"]
+priority = ["MEDIUM", "LOW"]
+positive_reasons = []
+concerns = ["MISSING_INFORMATION"]

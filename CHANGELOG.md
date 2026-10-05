@@ -14,4 +14,5 @@ releases are tagged `vMAJOR.MINOR.PATCH` (build policy section 15).
   every ranking with cited evidence.
 - `pejip purge`, `pejip export` and `pejip delete-all` for retention, export and
   deletion of stored data.
-- `pejip eval` and a 10-case golden evaluation set.
+- The ranking pipeline is scored against the golden evaluation set in CI, from
+  recorded model output on every change and live when prompts or AI code change.

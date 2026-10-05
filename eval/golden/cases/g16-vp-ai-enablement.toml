@@ -1,0 +1,43 @@
+id = "G16"
+name = "VP AI Enablement and Transformation"
+categories = ["ai_transformation", "excellent_match"]
+notes = "Matches ACH-5 and the stated direction toward AI transformation. Fresh and remote."
+
+[job]
+title = "Vice President, AI Enablement & Transformation"
+company = "Granite Bay Insurance Technology"
+location = "United States (remote)"
+work_model = "REMOTE"
+posted_hours_ago = 3
+base_min_usd = 300_000
+base_max_usd = 360_000
+description = """
+Granite Bay Insurance Technology is hiring a Vice President of AI Enablement &
+Transformation reporting to the Chief Operating Officer. You will lead
+enterprise-wide AI adoption: set the AI transformation roadmap, stand up AI
+governance and model risk review, and move use cases from pilot to production
+across operations, finance and customer service.
+
+You will build a 50-person organization of program leaders, AI product managers and
+governance specialists, own a $30M investment portfolio, and report progress to the
+board's technology committee.
+
+You have led enterprise technology or AI transformation, built governance programs
+and organizations, and can partner with executive stakeholders. Deep ML research
+experience is not required.
+
+Remote within the United States. Base $300,000 to $360,000.
+"""
+
+[context]
+connections = 2
+strong_relationships = 1
+
+[expected]
+role_family = "AI / ML Transformation and Operations"
+inferred_level = "VP_EQUIVALENT"
+fit = [82, 98]
+confidence = ["HIGH"]
+priority = ["IMMEDIATE", "HIGH"]
+positive_reasons = ["AI_TRANSFORMATION_MATCH", "STRONG_TRANSFORMATION_MATCH", "CAREER_DIRECTION_MATCH"]
+concerns = []

@@ -12,7 +12,8 @@ the FIND specification's separation of Fit, Confidence and Priority.
 
 In scope: Greenhouse and Lever company boards, title and geography filtering,
 AI job analysis and evidence matching, deterministic scoring, cited explanations,
-a Markdown digest, retention, export and deletion, and a golden evaluation set.
+a Markdown digest, retention, export and deletion, scored against the golden
+evaluation set.
 
 Out of scope for this slice: aggregators and other source classes, LinkedIn
 connections (the digest says network data is not imported), feedback and learned
@@ -78,7 +79,7 @@ posting quote, a profile evidence id or a stored job field, and
 
 ## Interfaces
 
-- CLI: `pejip run | purge | export <file> | delete-all --yes | eval [--live]`.
+- CLI: `pejip run | purge | export <file> | delete-all --yes`.
 - Environment: `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
   `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (default `pejip-ai-spend.db`; keep it on
   persistent storage, since a fresh ledger restarts the month's spend at zero),
@@ -110,8 +111,10 @@ posting quote, a profile evidence id or a stored job field, and
 - **Reliability:** source failures and analysis failures are isolated and shown in
   the digest; a failed analysis is retried on the next run.
 - **Security and privacy:** see [docs/SECURITY.md](../SECURITY.md).
-- **Quality:** 100% line and branch coverage; the golden set runs in replay mode on
-  every PR and in live mode when prompts, the AI client or the model change.
+- **Quality:** 100% line and branch coverage. `pejip.golden_eval` scores the golden
+  evaluation set (design doc 0003) with this pipeline: from the model output recorded
+  in `eval/recordings/` on every change, and by calling the model when prompts, the
+  AI client, the analysis code or the AI config change.
 
 ## Alternatives considered
 
@@ -121,5 +124,6 @@ See [ADR-0003](../adr/0003-python-cli-first-slice.md).
 
 - Which company boards Babu wants searched; `config/search.yaml` starts with six
   examples.
-- The live evaluation baseline starts at 0 and should be raised to the first live
-  score.
+- Live and recorded runs share one baseline, so a live run whose model output
+  varies from the recordings may land just under it. If that happens often, the live
+  job needs its own, lower floor.
