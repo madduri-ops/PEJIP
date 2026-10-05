@@ -50,7 +50,8 @@ the `pejip-monthly` budget, and the hosting stack from
 public subnets, ALB and WAF `pejip-alb` with the certificate for
 `job-search.zephyr-mcg.com` (DNS records added by hand at the registrar), ECS
 cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule, the
-service alarms, and the job-alert inbox: SES receives
+service alarms, the search, error and stalled-run alarms and the `pejip`
+dashboard ([design 0011](../design/0011-monitoring.md)), and the job-alert inbox: SES receives
 `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket
 `pejip-inbox-275704950192` ([design 0010](../design/0010-job-alert-inbox.md)). Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The ALB signs every request in with Google
@@ -81,5 +82,6 @@ flowchart LR
     ecr --> svc
     svc --> kms[KMS: alias/pejip]
     svc --> logs[CloudWatch /ecs/pejip-prod]
-    logs --> alarms[Alarms] --> sns[SNS: pejip-alerts] --> mail([Email to Babu])
+    logs -- metric filters --> alarms[Alarms] --> sns[SNS: pejip-alerts] --> mail([Email to Babu])
+    logs --> dash[Dashboard: pejip]
 ```

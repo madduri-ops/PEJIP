@@ -20,6 +20,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Monitoring: email alerts when a search run fails, a job source can't be
+  fetched, the app logs an error, or (once the daily search runs) no search has
+  finished in 26 hours, plus a `pejip` CloudWatch dashboard for search runs,
+  source failures, errors, Claude spend and every alarm.
 - Job-alert inbox: `alerts@inbox.job-search.zephyr-mcg.com` receives career-site job
   alerts through Amazon SES into an encrypted bucket kept for 90 days.
 - `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts
