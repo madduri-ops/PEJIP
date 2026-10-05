@@ -300,7 +300,7 @@ jobs:
   eval-live:
     name: Evaluation set (live model)
     needs: [changes, unit]
-    if: github.event_name == 'pull_request' && needs.changes.outputs.ai == 'true'
+    if: contains(github.event.pull_request.labels.*.name, 'live-eval')
     runs-on: ubuntu-latest
     permissions:
       contents: read
