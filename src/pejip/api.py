@@ -1,8 +1,8 @@
 """HTTP surface of PEJIP.
 
-Today it serves only the health endpoint that the post-deploy gate and the load
-balancer poll. Feature endpoints are added here as they land; the system smoke test
-and DAST exercise every route in the OpenAPI document automatically.
+It serves the health endpoint that the post-deploy gate and the load balancer poll,
+and the web portal's pages (``pejip.portal``, design doc 0011). The system smoke
+test and DAST exercise every route in the OpenAPI document automatically.
 
 Every route except ``/healthz`` requires Babu's Google sign-in, checked by
 ``pejip.auth`` against the token the load balancer adds (ADR-0006).
@@ -15,7 +15,7 @@ import uvicorn
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
-from pejip import __version__
+from pejip import __version__, portal
 from pejip.auth import (
     OIDC_DATA_HEADER,
     PUBLIC_PATHS,
@@ -24,8 +24,11 @@ from pejip.auth import (
     AuthSettings,
     SignInRequiredError,
 )
+from pejip.portal.data import PortalData
+from pejip.portal.sample import SampleData
 
-# Sent on every response. The API serves JSON only, so the CSP denies everything.
+# Sent on every response. JSON responses get a CSP that denies everything; HTML
+# pages get PAGE_CSP instead.
 SECURITY_HEADERS = {
     "Cache-Control": "no-store",
     "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
@@ -36,11 +39,20 @@ SECURITY_HEADERS = {
     "X-Frame-Options": "DENY",
 }
 
+# Portal pages: no script at all, styles only from the app and Google Fonts (the
+# IBM Plex typefaces), forms post only back to the app.
+PAGE_CSP = (
+    "default-src 'none'; style-src 'self' https://fonts.googleapis.com; "
+    "font-src https://fonts.gstatic.com; img-src 'self'; form-action 'self'; "
+    "base-uri 'none'; frame-ancestors 'none'"
+)
 
-def create_app(env: Mapping[str, str] | None = None) -> FastAPI:
+
+def create_app(env: Mapping[str, str] | None = None, data: PortalData | None = None) -> FastAPI:
     """Build the API. Interactive docs are off; the OpenAPI document stays for DAST.
 
-    Sign-in settings come from ``env`` (the process environment by default).
+    Sign-in settings come from ``env`` (the process environment by default). The
+    portal reads ``data``, sample data by default until the database lands.
     """
     app = FastAPI(title="PEJIP", version=__version__, docs_url=None, redoc_url=None)
     settings = AuthSettings.from_env(os.environ if env is None else env)
@@ -69,6 +81,8 @@ def create_app(env: Mapping[str, str] | None = None) -> FastAPI:
     ) -> Response:
         response = await call_next(request)
         response.headers.update(SECURITY_HEADERS)
+        if response.headers.get("content-type", "").startswith("text/html"):
+            response.headers["Content-Security-Policy"] = PAGE_CSP
         return response
 
     @app.get("/healthz")
@@ -76,6 +90,7 @@ def create_app(env: Mapping[str, str] | None = None) -> FastAPI:
         """Liveness check used by the load balancer and the post-deploy health gate."""
         return {"status": "ok", "version": __version__}
 
+    app.include_router(portal.router(SampleData() if data is None else data))
     return app
 
 

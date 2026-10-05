@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from ci.alb_token import AlbSigner
 from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
+from pejip.portal.data import Opportunity
 from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 
 
@@ -42,6 +43,36 @@ def test_every_response_carries_security_headers(client: Client) -> None:
         headers = client.get(path).headers
         for name, value in api.SECURITY_HEADERS.items():
             assert headers[name] == value
+
+
+def test_html_pages_get_the_page_policy(signer: AlbSigner) -> None:
+    with key_server(signer) as key_url:
+        app = api.create_app(env=auth_env(key_url))
+        response = _get(app, "/", signer.token(ALLOWED_EMAIL))
+
+    assert response.status_code == 200
+    assert response.headers["Content-Security-Policy"] == api.PAGE_CSP
+    assert "script-src" not in api.PAGE_CSP
+    assert "unsafe-inline" not in api.PAGE_CSP
+    assert response.headers["X-Frame-Options"] == "DENY"
+
+
+def test_portal_reads_the_data_it_is_given(signer: AlbSigner) -> None:
+    class NoData:
+        is_sample = False
+
+        def latest_run(self) -> None:
+            return None
+
+        def opportunities(self) -> list[Opportunity]:
+            return []
+
+    with key_server(signer) as key_url:
+        app = api.create_app(env=auth_env(key_url), data=NoData())
+        html = _get(app, "/", signer.token(ALLOWED_EMAIL)).text
+
+    assert "Sample data" not in html
+    assert "No search has run yet" in html
 
 
 def test_main_binds_to_localhost_by_default(

@@ -69,7 +69,7 @@ class ScoringConfig(_Strict):
     priority_min_fit: dict[str, float]
     immediate_max_age_days: int = Field(ge=0)
     strong_match_fit: float
-    # Priority points a role gains from the network (design doc 0011). Never negative,
+    # Priority points a role gains from the network (design doc 0014). Never negative,
     # so having no connections never lowers a role.
     network_priority_boost: dict[
         Literal["MATURED", "CONNECTED"], Annotated[float, Field(ge=0, le=25)]
@@ -142,7 +142,7 @@ class Settings:
             inbox_bucket=e.get("PEJIP_INBOX_BUCKET") or None,
             aws_region=e.get("AWS_REGION") or None,
             # A LinkedIn Connections export and the candidate's network decisions, both
-            # kept outside the repository (design doc 0011).
+            # kept outside the repository (design doc 0014).
             connections_path=_optional_path(e.get("PEJIP_CONNECTIONS")),
             network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
         )

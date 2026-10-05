@@ -1,4 +1,4 @@
-# Your answers to the questions connection matching cannot settle (design doc 0011).
+# Your answers to the questions connection matching cannot settle (design doc 0014).
 # Copy this file outside the repository and point PEJIP_NETWORK_DECISIONS at it.
 companies:
   # An employer name as imported, mapped to a tracked company, or null to leave it

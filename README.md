@@ -97,8 +97,10 @@ The Phase 1 (FIND) specification is complete, and the first end-to-end slice is 
 command line tool: it fetches roles from configured Greenhouse and Lever company
 boards and from career-site job-alert emails sent to PEJIP's own inbox, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence, including matured LinkedIn
-connections at the hiring company ([design 0011](docs/design/0011-connection-matching.md)).
-Feedback, notifications, feature API endpoints and the web UI come next. The build policy,
+connections at the hiring company ([design 0014](docs/design/0014-connection-matching.md)).
+Feedback, notifications and feature API endpoints come next. The web portal's Home,
+Opportunities and detail pages are live on sample data until the database is
+connected ([design 0013](docs/design/0013-web-portal.md)). The build policy,
 repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
 set for rankings and foundation AWS infrastructure are in place. The hosting stack
 and continuous deploy for `job-search.zephyr-mcg.com` are defined

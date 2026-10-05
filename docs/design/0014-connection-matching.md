@@ -1,4 +1,4 @@
-# 0011: Connection matching
+# 0014: Connection matching
 
 _Status: implemented. Last updated: 2026-10-05._
 

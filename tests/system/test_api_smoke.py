@@ -8,16 +8,19 @@ source tree.
 """
 
 import os
+import re
 import socket
 import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from typing import Any
 
 import httpx
 import pytest
 
 from ci.alb_token import AlbSigner
+from pejip.api import PAGE_CSP
 from pejip.auth import OIDC_DATA_HEADER, PUBLIC_PATHS
 from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 
@@ -59,11 +62,21 @@ def base_url() -> Iterator[str]:
             process.wait(timeout=10)
 
 
+def _with_examples(path: str, operation: dict[str, Any]) -> str:
+    """Fill each path parameter with the first example the OpenAPI document gives."""
+    for param in operation.get("parameters", []):
+        if param["in"] == "path":
+            example = next(iter(param["examples"].values()))["value"]
+            path = path.replace("{" + param["name"] + "}", str(example))
+    assert not re.search(r"\{\w+\}", path), f"{path} has a path parameter with no example"
+    return path
+
+
 @pytest.fixture(scope="module")
 def get_paths(base_url: str) -> list[str]:
     signed_in = {OIDC_DATA_HEADER: SIGNER.token(ALLOWED_EMAIL)}
     paths = httpx.get(f"{base_url}/openapi.json", headers=signed_in).json()["paths"]
-    found = [path for path, ops in paths.items() if "get" in ops]
+    found = [_with_examples(path, ops["get"]) for path, ops in paths.items() if "get" in ops]
     assert found, "OpenAPI document lists no GET endpoints"
     return found
 
@@ -82,6 +95,14 @@ def test_every_protected_endpoint_requires_sign_in(base_url: str, get_paths: lis
             continue
         assert httpx.get(f"{base_url}{path}").status_code == 401, path
         assert httpx.get(f"{base_url}{path}", headers=other_account).status_code == 403, path
+
+
+def test_portal_pages_carry_the_page_policy(base_url: str) -> None:
+    signed_in = {OIDC_DATA_HEADER: SIGNER.token(ALLOWED_EMAIL)}
+    for path in ("/", "/opportunities", "/opportunities/1"):
+        response = httpx.get(f"{base_url}{path}", headers=signed_in)
+        assert response.headers["content-security-policy"] == PAGE_CSP, path
+        assert "<script" not in response.text, path
 
 
 def test_server_hides_its_identity(base_url: str) -> None:

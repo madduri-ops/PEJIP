@@ -31,7 +31,7 @@ recommendations as personal data.
   (`PEJIP_CONNECTIONS`, and the decisions file `PEJIP_NETWORK_DECISIONS`; both
   git-ignored names). PEJIP never needs a LinkedIn login, drops e-mail addresses as
   it reads the file, sends no connection data to Claude or any other service, and
-  logs no names or profile URLs ([design 0011](design/0011-connection-matching.md)).
+  logs no names or profile URLs ([design 0014](design/0014-connection-matching.md)).
 - **Retention:** each run deletes jobs, analyses, recommendations, AI usage and run
   records older than 90 days (`pejip purge` does the same on demand).
 - **Export and deletion:** `pejip export <file>` writes every stored row as JSON;
@@ -48,13 +48,17 @@ recommendations as personal data.
 | Anthropic API (Claude) | Job posting text, and from the profile only the headline, target seniority, career direction and evidence items (`CareerProfile.ai_view`) | Job analysis and requirement-to-evidence matching | Name, e-mail, compensation preferences, anything else in the profile |
 | Google (sign-in) | Nothing from PEJIP: Babu signs in to their own Google account, and the load balancer receives their e-mail address and Google ID back ([ADR-0006](adr/0006-google-sign-in-at-the-load-balancer.md)) | Only Babu can use `job-search.zephyr-mcg.com` | Any career data |
 
+| Google Fonts | Nothing from PEJIP: the browser fetches the IBM Plex font files for the portal pages, with no referrer | The portal's typefaces | Any page content or career data |
+
 Job sources (docs/sources.md) receive only anonymous GET requests with our user
 agent; no personal data is sent to them.
 
 ## Access to the hosted app
 
 Every route except `/healthz` needs Google sign-in at the load balancer, and the
-app admits only the configured address (`pejip.auth`, ADR-0006). The OAuth client
+app admits only the configured address (`pejip.auth`, ADR-0006). Portal pages run
+no script and send a strict content security policy; every value they show is
+HTML-escaped ([design 0013](design/0013-web-portal.md)). The OAuth client
 ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted with
 `alias/pejip`), never in the repository.
 

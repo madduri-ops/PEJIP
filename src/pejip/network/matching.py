@@ -1,4 +1,4 @@
-"""Matured connections for a role (spec 8.22 to 8.26, design doc 0011).
+"""Matured connections for a role (spec 8.22 to 8.26, design doc 0014).
 
 A **matured connection** is a first-degree connection who, as of the last import,
 works at the hiring company in a position comparable to the role's level or more

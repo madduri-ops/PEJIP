@@ -1,4 +1,4 @@
-"""Load network inputs from local files for a run (design doc 0011).
+"""Load network inputs from local files for a run (design doc 0014).
 
 Until the portal stores imports, a run reads the candidate's LinkedIn export from
 ``PEJIP_CONNECTIONS`` and their decisions from ``PEJIP_NETWORK_DECISIONS``. Both

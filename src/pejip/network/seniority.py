@@ -1,4 +1,4 @@
-"""Seniority levels read from a connection's job title (design doc 0011).
+"""Seniority levels read from a connection's job title (design doc 0014).
 
 A title maps to the same ladder the scorer uses for roles. When a title has no clear
 level ("Partner", "Principal", "Managing Director", "Former VP") the answer is

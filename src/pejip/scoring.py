@@ -76,7 +76,7 @@ class Component:
 
 @dataclass(frozen=True)
 class NetworkFacts:
-    """Who the candidate knows at the hiring company (spec 9.22, design doc 0011).
+    """Who the candidate knows at the hiring company (spec 9.22, design doc 0014).
 
     Counts of first-degree connections there, of those that are matured for this
     role, and of those whose level waits on the candidate's call. Priority only.
