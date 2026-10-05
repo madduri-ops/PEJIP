@@ -53,7 +53,7 @@ resource "aws_lb_listener_rule" "healthz" {
 # sign-in completes.
 resource "aws_vpc_security_group_egress_rule" "alb_to_google" {
   security_group_id = aws_security_group.alb.id
-  description       = "HTTPS to Google's sign-in endpoints"
+  description       = "HTTPS to the Google sign-in endpoints"
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "tcp"
   from_port         = 443
