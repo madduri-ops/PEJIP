@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, Response
 
 from pejip.portal import render
 from pejip.portal.data import PortalData
-from pejip.portal.views import Filters, list_companies, list_opportunities
+from pejip.portal.views import Filters, list_companies, list_opportunities, watchlist
 
 STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encoding="utf-8")
 
@@ -119,6 +119,17 @@ def router(data: PortalData, clock: Clock | None = None) -> APIRouter:
             subtitle="Companies that matter to your career, whether or not they have a "
             "matching opening today.",
             body=render.companies_body(listing, now_fn()),
+        )
+
+    @routes.get("/watchlist")
+    def watched() -> str:
+        """What changed in watched jobs and companies (spec 12.22)."""
+        listing = watchlist(data.companies(), data.opportunities(), now_fn())
+        return frame(
+            active="watchlist",
+            heading="Watchlist",
+            subtitle="What changed in the jobs and companies you are watching.",
+            body=render.watchlist_body(listing, now_fn()),
         )
 
     @routes.get("/search-health")

@@ -10,7 +10,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 
-from pejip.portal.data import PRIORITY_ORDER, Company, Opportunity
+from pejip.portal.data import PRIORITY_ORDER, Company, Opportunity, Signal
 
 HIGH_FIT = 85
 # Bands the default views show; LOW and below appear only in "All active".
@@ -212,6 +212,51 @@ def list_companies(
         [r for r in shown if r.company.target],
         [r for r in shown if not r.company.target],
         counts,
+    )
+
+
+# ── Watchlist (spec 12.22) ───────────────────────────────────────────────────
+RECENT_SIGNAL = timedelta(days=7)
+
+
+def latest_signal(company: Company) -> Signal | None:
+    return max(company.signals, key=lambda s: s.seen_at, default=None)
+
+
+@dataclass(frozen=True)
+class Watchlist:
+    """What changed in what Babu watches, then everything watched."""
+
+    changed_jobs: list[Opportunity]
+    new_at_watched: list[Opportunity]
+    new_signals: list[tuple[CompanyRow, Signal]]
+    jobs: list[Opportunity]
+    companies: list[CompanyRow]
+
+
+def watchlist(companies: list[Company], items: list[Opportunity], now: datetime) -> Watchlist:
+    """Changes first (spec 12.22): changed watched jobs, new roles at watched
+    companies and watched companies with a signal from the last seven days."""
+    ranked = rank(items)
+    watched = [r for r in company_rows(companies, items) if r.company.watching]
+    watched_names = {r.company.name for r in watched}
+
+    newest = [(r, latest_signal(r.company)) for r in watched]
+
+    return Watchlist(
+        changed_jobs=[o for o in ranked if o.watched and o.discovery == "MATERIALLY_CHANGED"],
+        new_at_watched=[
+            o
+            for o in ranked
+            if o.company in watched_names
+            and o.discovery == "NEW_POSTING"
+            and o.priority in SHOWN_BANDS
+        ],
+        new_signals=[
+            (r, s) for r, s in newest if s is not None and now - s.seen_at <= RECENT_SIGNAL
+        ],
+        jobs=[o for o in ranked if o.watched],
+        companies=watched,
     )
 
 
