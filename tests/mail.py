@@ -8,9 +8,14 @@ from typing import Any
 from botocore.exceptions import BotoCoreError, ClientError
 
 
-def email(body: str, subtype: str = "html", subject: str = "New jobs for you") -> bytes:
+def email(
+    body: str,
+    subtype: str = "html",
+    subject: str = "New jobs for you",
+    sender: str = "Example Careers <alerts@careers.example.com>",
+) -> bytes:
     message = EmailMessage()
-    message["From"] = "Example Careers <alerts@careers.example.com>"
+    message["From"] = sender
     message["To"] = "alerts@inbox.test"
     message["Subject"] = subject
     message.set_content(body, subtype=subtype)
@@ -32,14 +37,19 @@ class Body:
 class FakeS3:
     """An in-memory stand-in for the boto3 S3 client, paging two keys at a time."""
 
-    def __init__(self, objects: dict[str, bytes], fail: str | None = None) -> None:
+    def __init__(
+        self, objects: dict[str, bytes], fail: str | None = None, fail_after: int = 0
+    ) -> None:
         self.objects = dict(objects)
         self.fail = fail
+        self.fail_after = fail_after
         self.calls: list[tuple[str, dict[str, Any]]] = []
         self.bodies: list[Body] = []
 
     def _check(self, name: str, kwargs: dict[str, Any]) -> None:
         self.calls.append((name, kwargs))
+        if sum(call[0] == name for call in self.calls) <= self.fail_after:
+            return
         if self.fail == name:
             raise ClientError({"Error": {"Code": "AccessDenied", "Message": "no"}}, name)
         if self.fail == f"{name}-transport":

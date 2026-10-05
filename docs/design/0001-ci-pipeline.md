@@ -75,6 +75,9 @@ personal data.
 - **Security:** the scanners above; the API sends a deny-all CSP and other
   hardening headers, verified by unit tests and the ZAP scan.
 - **Reliability:** the smoke test starts the installed app as its own process.
+- **Speed:** grype restores its vulnerability DB from the Actions cache
+  (`cache-db`) and still updates it when a newer one is published, which saves
+  about 70 seconds on the dependency audit, the slowest job before DAST.
 - **Performance and accessibility:** no user-facing surface yet; tests come with it.
 
 ## Alternatives considered

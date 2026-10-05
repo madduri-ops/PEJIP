@@ -110,6 +110,7 @@ jobs:
         uses: anchore/scan-action@v7
         with:
           image: pejip:ci
+          cache-db: true
           fail-build: false
           output-format: json
           output-file: grype-image-report.json
