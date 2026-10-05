@@ -36,7 +36,9 @@ and Priority with deterministic rules, and writes a Markdown digest. See
 - **Cost:** every AI call reserves its worst-case cost with the AI cost guard,
   which enforces the $100 monthly cap before the call is made.
 - **Quality:** deterministic scoring gated by the golden evaluation set.
-- **Performance and accessibility:** targets are set with the API and web UI.
+- **Performance and accessibility:** the web portal is server-rendered with no
+  script, uses real links and labelled controls, and stacks at phone width
+  ([design 0013](../design/0013-web-portal.md)).
 
 ## Deployment
 

@@ -7,6 +7,8 @@ batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is
 ```mermaid
 flowchart TB
     api[api: GET /healthz]
+    portal[portal: Home, Opportunities, detail pages]
+    api --> portal
     cli[cli: pejip run, purge, export, delete-all]
     pipe[pipeline: one search run]
     src[sources: greenhouse, lever adapters, email_alerts]
@@ -128,9 +130,10 @@ flowchart TB
 
 ## API (`pejip.api`)
 
-- **Responsibility:** the HTTP surface of PEJIP. Today it serves only the health
-  endpoint; feature endpoints are added here.
-- **Interfaces:** `GET /healthz`; the OpenAPI document at `/openapi.json`. Run with
+- **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
+  portal's pages.
+- **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
+  `/opportunities/{id}` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
   `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and
@@ -139,6 +142,17 @@ flowchart TB
 - **Deployment:** the image's default command; runs as ECS service `pejip-prod`
   behind `pejip-alb` ([0005: App hosting and deploy](../design/0005-app-hosting-and-deploy.md)).
 - **Design doc:** [0001: CI pipeline and health endpoint](../design/0001-ci-pipeline.md).
+
+## Portal (`pejip.portal`)
+
+- **Responsibility:** server-rendered Home, Opportunities and Opportunity detail
+  pages built from the portal mocks; ranking, saved views, filters and Pacific time
+  display.
+- **Interfaces:** `portal.router(data, clock)` mounted by `create_app`; reads a
+  `PortalData` (`is_sample`, `latest_run()`, `opportunities()`). Pages get their own
+  content security policy (`PAGE_CSP`), with no script.
+- **Data:** none stored. `SampleData` (synthetic) until a store-backed reader lands.
+- **Design doc:** [0013: Web portal](../design/0013-web-portal.md).
 
 
 ## AI cost guard
