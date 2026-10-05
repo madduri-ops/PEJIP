@@ -49,9 +49,10 @@ ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted wit
 
 ## Secrets
 
-- `ANTHROPIC_API_KEY` is read from the environment by the Anthropic SDK. It is never
-  logged or committed; locally it lives in your shell environment, in CI it is the
-  `ANTHROPIC_API_KEY` repository secret used only by the live evaluation job.
+- No Claude API key exists in CI or AWS: jobs and the app get short-lived Claude
+  tokens through Workload Identity Federation (ADR-0004). Locally, `ANTHROPIC_API_KEY`
+  or `ant auth login` is read by the Anthropic SDK; a key is never logged or
+  committed and lives only in your shell environment.
 - Gitleaks runs in pre-commit and CI and blocks on any finding.
 
 ## Automated gates

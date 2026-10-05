@@ -41,6 +41,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - Keyless Claude access: CI and the app authenticate to the Claude API through
   Workload Identity Federation (GitHub Actions OIDC, AWS STS) instead of an API key.
 - The app's ECS task role can now request identity tokens for the Claude API only.
+- `AIClient` and the live evaluation job sign in to Claude without an API key; the
+  `ANTHROPIC_API_KEY` secret is no longer used by CI.
 - Google sign-in on `https://job-search.zephyr-mcg.com`: the load balancer signs
   every request in with Google and the app admits only Babu's account. Only
   `/healthz` stays open, for the deploy health gate.
