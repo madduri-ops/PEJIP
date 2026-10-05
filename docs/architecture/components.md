@@ -58,3 +58,16 @@ flowchart TB
   `cutoff`.
 - **Data:** none of its own; deletes expired digest and export files.
 - **Design doc:** [0004: Data retention](../design/0004-data-retention.md).
+
+## Claude credentials (`pejip.claude_auth`)
+
+- **Responsibility:** gives every Claude caller short-lived credentials through
+  Workload Identity Federation, so no Claude API key exists in CI or AWS
+  ([ADR-0004](../adr/0004-keyless-claude-access.md)).
+- **Interfaces:** `federation_credentials(env, sts=...)` returns the arguments for
+  the SDK's `WorkloadIdentityCredentials` (or `None` on a developer machine); reads
+  `PEJIP_CLAUDE_IDENTITY` and the `ANTHROPIC_*` federation IDs; raises
+  `ClaudeAuthError` on misconfiguration or a leftover API key. Consumes the GitHub
+  Actions OIDC endpoint or AWS STS `GetWebIdentityToken`.
+- **Data:** none stored; tokens live in memory only.
+- **Design doc:** [0007: Keyless Claude access](../design/0007-claude-identity-federation.md).

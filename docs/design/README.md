@@ -15,3 +15,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0003: Golden evaluation set](0003-golden-evaluation-set.md) | Implemented |
 | [0004: Data retention](0004-data-retention.md) | Implemented (store hooks with the first FIND slice) |
 | [0006: Releases and rollback](0006-releases-and-rollback.md) | Implemented (production rollback workflow with deploy) |
+| [0007: Keyless Claude access](0007-claude-identity-federation.md) | Accepted |

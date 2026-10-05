@@ -10,6 +10,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ## Unreleased
 
+### Security
+
+- Keyless Claude access: CI and the app authenticate to the Claude API through
+  Workload Identity Federation (GitHub Actions OIDC, AWS STS) instead of an API key.
+
 ## 0.1.0 - 2026-10-05
 
 ### Added
