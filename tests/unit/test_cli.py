@@ -13,10 +13,12 @@ import pytest
 from pejip import cli
 from pejip.config import Settings
 from pejip.digest import Digest
+from pejip.network.loader import CONNECTIONS_KEY
 from pejip.network.matching import NetworkIndex
 from pejip.store import Store
 from tests.conftest import NOW, ROOT
 from tests.linkedin import export, row
+from tests.unit.network.test_matching import UploadS3
 from tests.unit.test_delivery import FakeSns
 from tests.unit.test_profile_parameter import FakeSsm
 
@@ -198,6 +200,7 @@ def test_run_uses_connections_only_when_an_export_is_named(
         ("bad.csv", None, "the LinkedIn export could not be read (no 'First Name,"),
         ("good.csv", "missing.yaml", "a network file could not be opened"),
         ("good.csv", "bad.yaml", "the network decisions file has an invalid entry"),
+        ("good.csv", "broken.yaml", "the network decisions file is not valid YAML"),
     ],
 )
 def test_a_bad_network_file_is_noted_and_never_stops_the_run(
@@ -212,6 +215,7 @@ def test_a_bad_network_file_is_noted_and_never_stops_the_run(
     (env / "bad.yaml").write_text(
         "titles: [{company: A, position: Secret Title, role_level: KING, matured: true}]\n"
     )
+    (env / "broken.yaml").write_text("titles: [{company: Secret Co\n")
     built: list[dict[str, Any]] = []
 
     class StubPipeline:
@@ -364,3 +368,39 @@ def test_a_failed_digest_email_still_purges_old_digests(
     with pytest.raises(SendFailedError):
         cli.main(["run"])
     assert not old.exists()
+
+
+@pytest.mark.usefixtures("env")
+def test_on_aws_connections_are_read_from_the_uploads_bucket(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    RecordingPipeline.built.clear()
+    uploads = UploadS3({CONNECTIONS_KEY: export(row(company="Anthropic", position="SVP"))})
+    regions: list[str | None] = []
+
+    def fake_s3(region: str | None) -> UploadS3:
+        regions.append(region)
+        return uploads
+
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_s3_client", fake_s3)
+    monkeypatch.setenv("AWS_REGION", "us-west-2")
+    monkeypatch.setenv("PEJIP_NETWORK_BUCKET", "pejip-inbox-111111111111")
+    assert cli.main(["run"]) == 0
+    network = RecordingPipeline.built[-1][1]["network"]
+    assert isinstance(network, NetworkIndex)
+    assert "Anthropic" in network.by_company
+    assert regions == ["us-west-2"]
+
+    monkeypatch.setattr(cli, "make_s3_client", lambda _r: UploadS3({}))
+    assert cli.main(["run"]) == 0
+    assert RecordingPipeline.built[-1][1]["network"] is None
+
+
+def test_an_unreadable_upload_is_noted(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_s3_client", lambda _r: UploadS3({}, error="AccessDenied"))
+    monkeypatch.setenv("PEJIP_NETWORK_BUCKET", "pejip-inbox-111111111111")
+    assert cli.main(["run"]) == 0
+    [digest] = list((env / "out").glob("digest-*.md"))
+    assert "a network file could not be opened (ClientError)" in digest.read_text()

@@ -9,6 +9,8 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+import yaml
+from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import ValidationError
 
 from pejip.ai.client import AIClient
@@ -18,7 +20,7 @@ from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import render
 from pejip.logs import configure_logging
 from pejip.network.linkedin import ExportError
-from pejip.network.loader import load_index
+from pejip.network.loader import load_index, load_index_s3
 from pejip.network.matching import YOUR_CALL, NetworkIndex
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile, load_profile, load_profile_parameter, make_ssm_client
@@ -28,6 +30,9 @@ from pejip.sources.http import PoliteClient
 from pejip.store import Store
 
 log = logging.getLogger("pejip")
+
+# What a bad or missing network file raises.
+_FILE_ERRORS = (ExportError, OSError, ValidationError, yaml.YAMLError)
 
 
 def _load_profile(settings: Settings) -> CareerProfile | None:
@@ -94,11 +99,16 @@ def _cmd_run(settings: Settings) -> int:
 
 def _network(config: SearchConfig, settings: Settings) -> tuple[NetworkIndex | None, str | None]:
     """The connections index, or the reason it is unusable; a bad file never stops a run."""
-    if settings.connections_path is None:
-        return None, None
     try:
-        _, index = load_index(config, settings.connections_path, settings.network_decisions_path)
-    except (ExportError, OSError, ValidationError) as exc:
+        if settings.connections_path is not None:
+            paths = settings.connections_path, settings.network_decisions_path
+            index: NetworkIndex | None = load_index(config, *paths)[1]
+        elif settings.network_bucket:
+            client = make_s3_client(settings.aws_region)
+            index = load_index_s3(client, settings.network_bucket, config)
+        else:
+            index = None
+    except (*_FILE_ERRORS, ClientError, BotoCoreError) as exc:
         # Only the error type is logged: the message can quote the files' contents.
         log.warning("network_unavailable", extra={"error_type": type(exc).__name__})
         return None, _problem(exc)
@@ -111,6 +121,8 @@ def _problem(exc: Exception) -> str:
         return f"the LinkedIn export could not be read ({exc})"
     if isinstance(exc, ValidationError):
         return "the network decisions file has an invalid entry"
+    if isinstance(exc, yaml.YAMLError):
+        return "the network decisions file is not valid YAML"
     return f"a network file could not be opened ({type(exc).__name__})"
 
 
@@ -119,7 +131,7 @@ def _cmd_connections(settings: Settings, path: Path) -> int:
     config = load_config(settings.config_path)
     try:
         preview, index = load_index(config, path, settings.network_decisions_path)
-    except (ExportError, OSError, ValidationError) as exc:
+    except _FILE_ERRORS as exc:
         sys.stderr.write(f"Cannot use {path}: {_problem(exc)}\n")
         return 2
     out = [

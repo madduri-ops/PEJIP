@@ -46,6 +46,8 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
     network = Settings.from_env({"PEJIP_CONNECTIONS": "c.csv", "PEJIP_NETWORK_DECISIONS": "d.yaml"})
     assert network.connections_path == Path("c.csv")
     assert network.network_decisions_path == Path("d.yaml")
+    assert defaults.network_bucket is None
+    assert Settings.from_env({"PEJIP_NETWORK_BUCKET": "b"}).network_bucket == "b"
     assert (defaults.profile_parameter, defaults.digest_topic_arn) == (None, None)
     assert defaults.ai_enabled
     aws = Settings.from_env(

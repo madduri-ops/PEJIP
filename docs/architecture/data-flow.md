@@ -41,7 +41,7 @@ machine, sent to the Anthropic API for matching (see
 | `recommendations` | Scores, components, reasons, explanation | scoring (via pipeline) | 90 days |
 | `runs` | Run status and per-source results | pipeline | 90 days |
 | `profile.yaml` or SSM `/pejip/profile` | Career profile (personal data; a local file, or on AWS a SecureString Babu stores) | Babu | Babu's own |
-| LinkedIn export and decisions file | First-degree connections and Babu's network decisions (personal data, local files at `PEJIP_CONNECTIONS`, `PEJIP_NETWORK_DECISIONS`) | Babu | Babu's own files until the database stores imports (90 days after import) |
+| LinkedIn export and decisions file | First-degree connections and Babu's network decisions (personal data; local files at `PEJIP_CONNECTIONS`, `PEJIP_NETWORK_DECISIONS`, or on AWS `network/` in the inbox bucket) | Babu | Local files: Babu's own. On AWS: 90 days after upload |
 | `output/digest-*.md` | Digest per run (on AWS also emailed through `pejip-digest`) | cli | 90 days |
 | `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |
 

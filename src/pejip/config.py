@@ -170,6 +170,7 @@ class Settings:
     aws_region: str | None = None
     connections_path: Path | None = None
     network_decisions_path: Path | None = None
+    network_bucket: str | None = None
     profile_parameter: str | None = None
     digest_topic_arn: str | None = None
     ai_enabled: bool = True
@@ -190,6 +191,8 @@ class Settings:
             # kept outside the repository (design doc 0014).
             connections_path=_optional_path(e.get("PEJIP_CONNECTIONS")),
             network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
+            # On AWS they are uploaded to network/ in this bucket instead.
+            network_bucket=e.get("PEJIP_NETWORK_BUCKET") or None,
             # In AWS the profile is an encrypted SSM parameter, not a file.
             profile_parameter=e.get("PEJIP_PROFILE_PARAMETER") or None,
             # Where `pejip run` emails the digest (an SNS topic), when set.

@@ -83,7 +83,7 @@ resource "aws_iam_role_policy" "ecs_execution" {
 }
 
 # Used by the running app: PEJIP metrics (the AI cost guard), the job-alert
-# inbox, the data file system (efs.tf), the career profile parameter and the
+# inbox and the network uploads beside it, the data file system (efs.tf), the career profile parameter and the
 # digest topic (digest.tf).
 resource "aws_iam_role" "ecs_task" {
   name               = "pejip-ecs-task"
@@ -123,6 +123,27 @@ data "aws_iam_policy_document" "ecs_task" {
     sid       = "InboxMessages"
     actions   = ["s3:GetObject", "s3:DeleteObject"]
     resources = ["${aws_s3_bucket.inbox.arn}/${local.inbox_prefix}*"]
+  }
+
+  # Babu's LinkedIn export and network decisions, uploaded to network/ in the
+  # same encrypted, 90-day bucket (design doc 0014). Read only: the run never
+  # writes or deletes them.
+  statement {
+    sid       = "NetworkList"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.inbox.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${local.network_prefix}*"]
+    }
+  }
+
+  statement {
+    sid       = "NetworkRead"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.inbox.arn}/${local.network_prefix}*"]
   }
 
   statement {
@@ -248,6 +269,7 @@ locals {
     { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },
     { name = "PEJIP_OUTPUT_DIR", value = "${local.data_dir}/output" },
     { name = "PEJIP_INBOX_BUCKET", value = aws_s3_bucket.inbox.id },
+    { name = "PEJIP_NETWORK_BUCKET", value = aws_s3_bucket.inbox.id },
     { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
     { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
   ]

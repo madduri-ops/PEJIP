@@ -2,17 +2,22 @@ from __future__ import annotations
 
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
+from botocore.exceptions import ClientError
 from pydantic import ValidationError
 
 from pejip.config import SearchConfig
 from pejip.network.companies import CompanyDirectory
-from pejip.network.linkedin import Connection, parse_export
+from pejip.network.linkedin import MAX_EXPORT_BYTES, Connection, ExportError, parse_export
 from pejip.network.loader import (
+    CONNECTIONS_KEY,
+    DECISIONS_KEY,
     directory_for,
     load_decisions,
     load_index,
+    load_index_s3,
     tracked_companies,
 )
 from pejip.network.matching import (
@@ -25,6 +30,7 @@ from pejip.network.matching import (
 from pejip.scoring import NetworkFacts
 from tests.conftest import NOW, ROOT
 from tests.linkedin import export, row
+from tests.mail import Body
 
 
 def connections(*rows: str) -> tuple[Connection, ...]:
@@ -165,3 +171,65 @@ def test_load_index_uses_the_file_time_as_the_import_date(config: SearchConfig) 
     assert set(index.by_company) == {"Anthropic", "Meta", "Scale AI", "Stripe"}
     signal = index.signal("Anthropic", "VP")
     assert signal.facts() == NetworkFacts(first_degree=4, matured=3, your_call=0)
+
+
+class UploadS3:
+    """The network/ uploads a run reads, answering as boto3 does."""
+
+    def __init__(self, objects: dict[str, bytes], error: str | None = None) -> None:
+        self.objects = objects
+        self.error = error
+        self.bodies: list[Body] = []
+
+    def list_objects_v2(self, **kwargs: Any) -> dict[str, Any]:
+        if self.error:
+            raise ClientError({"Error": {"Code": self.error, "Message": "no"}}, "ListObjectsV2")
+        keys = [k for k in self.objects if k.startswith(kwargs["Prefix"])]
+        return {"Contents": [{"Key": k} for k in keys]} if keys else {}
+
+    def get_object(self, **kwargs: Any) -> dict[str, Any]:
+        data = self.objects[kwargs["Key"]]
+        self.bodies.append(Body(data))
+        return {"Body": self.bodies[-1], "ContentLength": len(data), "LastModified": NOW}
+
+    def delete_object(self, **_kwargs: Any) -> dict[str, Any]:  # pragma: no cover
+        raise NotImplementedError
+
+
+def test_an_uploaded_export_and_decisions_are_read_from_s3(config: SearchConfig) -> None:
+    s3 = UploadS3(
+        {
+            CONNECTIONS_KEY: (ROOT / "examples" / "Connections.example.csv").read_bytes(),
+            DECISIONS_KEY: (ROOT / "examples" / "network-decisions.example.yaml").read_bytes(),
+        }
+    )
+    index = load_index_s3(s3, "bucket", config)
+    assert index is not None
+    assert index.imported_at == NOW
+    assert index.signal("Anthropic", "VP").facts() == NetworkFacts(4, 3, 0)
+    assert all(body.closed for body in s3.bodies)
+    assert len(s3.bodies) == 2
+
+
+def test_an_upload_without_decisions_uses_none(config: SearchConfig) -> None:
+    s3 = UploadS3({CONNECTIONS_KEY: export(row(company="Anthropic", position="SVP"))})
+    index = load_index_s3(s3, "bucket", config)
+    assert index is not None
+    assert index.signal("Anthropic", "VP").facts().matured == 1
+
+
+def test_no_upload_means_no_network_and_other_errors_are_raised(config: SearchConfig) -> None:
+    assert load_index_s3(UploadS3({}), "bucket", config) is None
+    assert load_index_s3(UploadS3({DECISIONS_KEY: b"titles: []"}), "bucket", config) is None
+    with pytest.raises(ClientError):
+        load_index_s3(UploadS3({}, error="AccessDenied"), "bucket", config)
+
+
+def test_an_oversized_upload_is_refused_unread(config: SearchConfig) -> None:
+    s3 = UploadS3({CONNECTIONS_KEY: b"x"})
+    body = Body(b"")
+    oversized = {"Body": body, "ContentLength": MAX_EXPORT_BYTES + 1}
+    s3.get_object = lambda **_k: oversized  # type: ignore[method-assign]
+    with pytest.raises(ExportError, match="larger than"):
+        load_index_s3(s3, "bucket", config)
+    assert body.closed

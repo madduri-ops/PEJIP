@@ -52,7 +52,8 @@ flowchart TB
   SQLite file), `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM
   instead of a file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest),
   `PEJIP_AI_ENABLED`, `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the
-  LinkedIn export and the candidate's network decisions), and Claude
+  LinkedIn export and the candidate's network decisions), `PEJIP_NETWORK_BUCKET`
+  (where they are uploaded on AWS), and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
   emails it through `pejip.delivery`.
@@ -95,7 +96,8 @@ flowchart TB
   for a role. Unclear titles and ambiguous employers wait for the candidate.
 - **Interfaces:** `linkedin.parse_export`, `linkedin.compare_imports`,
   `companies.CompanyDirectory`, `seniority.title_level`,
-  `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`.
+  `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`,
+  `loader.load_index_s3`.
 - **Data:** imports are not stored yet; reads the export and decisions files named in the
   environment. The "Who you know" lines are saved inside each recommendation.
 

@@ -47,6 +47,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   (`PEJIP_NETWORK_DECISIONS`).
 - `pejip connections <file>` checks an export before use: counts, rejected rows,
   connections per tracked company and employer names to review.
+- On AWS the daily run reads the LinkedIn export and network decisions Babu uploads
+  to `network/` in the encrypted inbox bucket (deleted after 90 days).
+- A network decisions file that is not valid YAML no longer stops a run; the digest
+  says so instead.
 - The portal has a Search Health page at `/search-health`: the latest search, any
   failed sources with their impact and last success, every source searched, and
   recent runs.

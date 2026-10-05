@@ -123,6 +123,7 @@ pejip run                                        # writes output/digest-*.md
 
 To add who you know, point `PEJIP_CONNECTIONS` at your LinkedIn Connections export
 (kept outside the repository) and check it first with `pejip connections <file>`.
+On AWS, upload it instead as described in [infra/README.md](infra/README.md).
 
 Which boards are searched, the title taxonomy, geography, model and scoring weights
 are in [config/search.yaml](config/search.yaml).
