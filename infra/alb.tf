@@ -1,5 +1,5 @@
 # Load balancer, certificate and firewall for job-search.zephyr-mcg.com
-# (ADR-0001, ADR-0004). DNS stays at Babu's registrar: the certificate's
+# (ADR-0001, ADR-0005). DNS stays at Babu's registrar: the certificate's
 # validation record and the hostname's CNAME are added there by hand from the
 # outputs (infra/README.md, "First deploy").
 
@@ -64,8 +64,8 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_tasks" {
 
 # ── Load balancer ────────────────────────────────────────────────────────────
 resource "aws_lb" "app" {
-  #checkov:skip=CKV2_AWS_76:Log4j is covered by the known-bad-inputs rule group; the anonymous IP list it also demands would block Babu on a VPN and the GitHub-hosted health gate (ADR-0004)
-  #checkov:skip=CKV_AWS_91:Access logs need an SSE-S3 bucket (ALB cannot write with a KMS key); request data comes from app logs, WAF metrics and flow logs instead (ADR-0004)
+  #checkov:skip=CKV2_AWS_76:Log4j is covered by the known-bad-inputs rule group; the anonymous IP list it also demands would block Babu on a VPN and the GitHub-hosted health gate (ADR-0005)
+  #checkov:skip=CKV_AWS_91:Access logs need an SSE-S3 bucket (ALB cannot write with a KMS key); request data comes from app logs, WAF metrics and flow logs instead (ADR-0005)
   name                       = "pejip-alb"
   load_balancer_type         = "application"
   internal                   = false

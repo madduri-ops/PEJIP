@@ -1,4 +1,4 @@
-# Network (ADR-0001, ADR-0004). pejip-vpc has public subnets only: the ALB and
+# Network (ADR-0001, ADR-0005). pejip-vpc has public subnets only: the ALB and
 # the Fargate tasks both live in them, which avoids a NAT gateway. Tasks get a
 # public IP for outbound calls (ECR, CloudWatch, job sources, the Anthropic API),
 # but their security group accepts traffic only from the ALB, so nothing on the

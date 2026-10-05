@@ -55,7 +55,7 @@ evaluation baseline; see [eval/README.md](eval/README.md).
 ### Container image
 
 The production image is built from the root `Dockerfile` (see
-[ADR-0004](docs/adr/0004-app-hosting-and-continuous-deploy.md)). The `hadolint`
+[ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)). The `hadolint`
 pre-commit hook lints it and needs Docker. To check it the way CI does:
 
 ```sh

@@ -7,7 +7,7 @@ _Status: implemented. Last updated: 2026-10-05._
 Serve PEJIP at `https://job-search.zephyr-mcg.com` and ship every change merged to
 `main` without a manual step, with a health gate, automatic rollback and email on
 the result (build policy sections 5, 6 and 15). The decision record is
-[ADR-0004](../adr/0004-app-hosting-and-continuous-deploy.md).
+[ADR-0005](../adr/0005-app-hosting-and-continuous-deploy.md).
 
 ## Scope
 
@@ -89,14 +89,14 @@ days. The task has no data access yet beyond publishing `PEJIP` metrics.
 - **Reliability:** ALB health checks, ECS circuit breaker with rollback, the
   workflow's own rollback on a failed health gate, and alarms on 5xx, unhealthy
   targets and missing tasks.
-- **Cost:** about $35 to $40 a month (ADR-0004).
+- **Cost:** about $35 to $40 a month (ADR-0005).
 - **Testing:** every pull request that can change the image builds and smoke tests
   it; Terraform is linted, scanned and planned on every infra PR. The rollback path
   runs in production only today; a rehearsed rollback belongs to the releases work.
 
 ## Alternatives considered
 
-See [ADR-0004](../adr/0004-app-hosting-and-continuous-deploy.md).
+See [ADR-0005](../adr/0005-app-hosting-and-continuous-deploy.md).
 
 ## Open questions
 

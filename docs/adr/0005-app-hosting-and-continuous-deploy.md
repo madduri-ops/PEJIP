@@ -1,4 +1,4 @@
-# ADR-0004: Serve PEJIP from Fargate in public subnets behind a WAF-fronted ALB, deployed by GitHub Actions
+# ADR-0005: Serve PEJIP from Fargate in public subnets behind a WAF-fronted ALB, deployed by GitHub Actions
 
 **Status:** Accepted (2026-10-05)
 

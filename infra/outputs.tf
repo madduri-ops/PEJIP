@@ -23,6 +23,16 @@ output "ai_spend_alarm_names" {
   value       = sort([for alarm in aws_cloudwatch_metric_alarm.ai_spend : alarm.alarm_name])
 }
 
+output "claude_federation_issuer_url" {
+  description = "Register as the AWS issuer in the Claude Console (Settings > Workload identity)."
+  value       = aws_iam_outbound_web_identity_federation.this.issuer_identifier
+}
+
+output "claude_federation_policy_arn" {
+  description = "Attach to any PEJIP role that calls Claude (the ECS task role)."
+  value       = aws_iam_policy.claude_federation.arn
+}
+
 output "certificate_validation_records" {
   description = "Add each as a CNAME at the zephyr-mcg.com registrar so ACM can issue the certificate."
   value = [for o in aws_acm_certificate.app.domain_validation_options : {

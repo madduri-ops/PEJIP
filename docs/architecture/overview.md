@@ -29,7 +29,7 @@ isolated from the CyberSecurity-KRI dashboard; see
 Everything is Terraform in [infra/](../../infra/README.md): the adopted KMS key,
 ECR repository `pejip`, the GitHub deploy and plan roles, the `pejip-alerts` topic,
 the `pejip-monthly` budget, and the hosting stack from
-[ADR-0004](../adr/0004-app-hosting-and-continuous-deploy.md): `pejip-vpc` with two
+[ADR-0005](../adr/0005-app-hosting-and-continuous-deploy.md): `pejip-vpc` with two
 public subnets, ALB and WAF `pejip-alb` with the certificate for
 `job-search.zephyr-mcg.com` (DNS records added by hand at the registrar), ECS
 cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule and the
@@ -37,6 +37,11 @@ service alarms. Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The Deploy workflow builds and scans the image
 on every pull request and ships `main` with a health gate and automatic rollback
 ([design 0005](../design/0005-app-hosting-and-deploy.md)).
+
+Neither CI nor the app holds a Claude API key: both swap a short-lived identity
+token (GitHub Actions OIDC, or AWS STS for the ECS task role) for a short-lived
+Claude token through Workload Identity Federation
+([ADR-0004](../adr/0004-keyless-claude-access.md)).
 
 ```mermaid
 flowchart LR

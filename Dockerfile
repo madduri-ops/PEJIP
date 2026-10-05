@@ -1,4 +1,4 @@
-# PEJIP container image (ADR-0004). Built and scanned on every pull request that
+# PEJIP container image (ADR-0005). Built and scanned on every pull request that
 # can change it, and pushed to ECR by the Deploy workflow on main.
 #
 # The default command serves the API. Batch commands run as one-off tasks from

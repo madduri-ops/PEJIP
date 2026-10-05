@@ -1,5 +1,5 @@
 # Container image and continuous deploy (docs/BUILD_POLICY.md sections 5, 6
-# and 15, ADR-0004).
+# and 15, ADR-0005).
 #
 # Pull requests: build the image, run it read-only and hit /healthz, then scan it
 # (grype) with ci/severity_gate.py blocking on high and critical findings.

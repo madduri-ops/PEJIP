@@ -90,7 +90,7 @@ The Phase 1 (FIND) specification is complete. The build policy, repository hygie
 documentation skeletons and foundation AWS infrastructure are in place, along with
 the Python CI pipeline, a health endpoint and the golden evaluation set for rankings.
 The hosting stack and continuous deploy for `job-search.zephyr-mcg.com` are defined
-([ADR-0004](docs/adr/0004-app-hosting-and-continuous-deploy.md)); feature code has
+([ADR-0005](docs/adr/0005-app-hosting-and-continuous-deploy.md)); feature code has
 not landed yet.
 
 ## Getting started

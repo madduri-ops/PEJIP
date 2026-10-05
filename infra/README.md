@@ -13,6 +13,7 @@ section 5.1.
 | `ecr.tf` | ECR repository `pejip`, immutable tags, scan on push, KMS-encrypted, keeps the last 10 images plus up to 100 release images tagged `v*` |
 | `iam_github.tf` | `pejip-github-deploy` (main only) and `pejip-github-plan` (pull requests, read only) |
 | `alerts.tf` | SNS topic `pejip-alerts` with Babu's email, and the `pejip-monthly` budget on `Project = PEJIP` |
+| `claude_federation.tf` | Outbound web identity federation for the account and policy `pejip-claude-federation`, so the app gets short-lived Claude tokens with no API key ([design](../docs/design/0007-claude-identity-federation.md)) |
 | `ai_cost.tf` | Alarms `pejip-ai-spend-50pct` to `-100pct` on the app's month-to-date Claude spend, emailing through `pejip-alerts` ([design](../docs/design/0002-ai-cost-guard.md)) |
 | `network.tf` | `pejip-vpc` (`10.20.0.0/16`), two public subnets, internet gateway, locked default security group, VPC flow logs |
 | `alb.tf` | ACM certificate for `job-search.zephyr-mcg.com`, ALB `pejip-alb` (HTTPS, HTTP redirect), WAF `pejip-alb` with blocked-request logs |
@@ -21,7 +22,7 @@ section 5.1.
 | `alarms.tf` | 5xx, unhealthy target, tasks-below-desired, CPU and memory alarms to `pejip-alerts` |
 
 The hosting decisions (public subnets without NAT, WAF rules, DNS at the registrar,
-cost) are in [ADR-0004](../docs/adr/0004-app-hosting-and-continuous-deploy.md) and
+cost) are in [ADR-0005](../docs/adr/0005-app-hosting-and-continuous-deploy.md) and
 [design 0005](../docs/design/0005-app-hosting-and-deploy.md).
 
 ## Bootstrap (done once, by hand)

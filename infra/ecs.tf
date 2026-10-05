@@ -1,4 +1,4 @@
-# ECS Fargate service for the PEJIP API (ADR-0001, ADR-0004).
+# ECS Fargate service for the PEJIP API (ADR-0001, ADR-0005).
 #
 # Terraform owns the cluster, service and the shape of the task definition. The
 # Deploy workflow owns which image runs: it copies the latest pejip-prod task
@@ -205,7 +205,7 @@ resource "aws_ecs_service" "app" {
   network_configuration {
     subnets         = aws_subnet.public[*].id
     security_groups = [aws_security_group.tasks.id]
-    #checkov:skip=CKV_AWS_333:No NAT gateway (ADR-0004); the task security group admits only the ALB
+    #checkov:skip=CKV_AWS_333:No NAT gateway (ADR-0005); the task security group admits only the ALB
     assign_public_ip = true
   }
 
