@@ -9,7 +9,7 @@ import pytest
 
 from pejip.config import FetchConfig, SourceConfig
 from pejip.sources.greenhouse import fetch_greenhouse
-from pejip.sources.http import FetchError, PoliteClient, RateLimiter, RobotsDisallowed
+from pejip.sources.http import FetchError, PoliteClient, RateLimiter, RobotsDisallowedError
 from pejip.sources.lever import fetch_lever
 
 FETCH = FetchConfig(
@@ -69,7 +69,7 @@ class TestPoliteClient:
         polite = client(
             routes({"/robots.txt": httpx.Response(200, text="User-agent: *\nDisallow: /private\n")})
         )
-        with pytest.raises(RobotsDisallowed):
+        with pytest.raises(RobotsDisallowedError):
             polite.get_json("https://h.test/private/jobs")
 
     @pytest.mark.parametrize(("status", "allowed"), [(404, True), (403, False), (401, False)])
@@ -80,7 +80,7 @@ class TestPoliteClient:
         if allowed:
             assert polite.get_json("https://h.test/jobs") == []
         else:
-            with pytest.raises(RobotsDisallowed):
+            with pytest.raises(RobotsDisallowedError):
                 polite.get_json("https://h.test/jobs")
 
     def test_robots_server_error_fails_the_source(self) -> None:
@@ -123,7 +123,7 @@ class TestPoliteClient:
                 {"/robots.txt": httpx.Response(404), "/jobs": httpx.Response(200, text="<html>")}
             )
         )
-        with pytest.raises(FetchError, match="invalid JSON"):
+        with pytest.raises(FetchError, match="unexpected payload from"):
             polite.get_json("https://h.test/jobs")
 
     def test_default_limiter_is_built_from_config(self) -> None:
@@ -173,7 +173,8 @@ def test_greenhouse_adapter_maps_postings() -> None:
     assert first.location == "San Francisco, CA"
     assert first.description == "Lead operations.\n\nPay $300,000 - $350,000."
     assert first.posted_at == datetime.fromisoformat("2026-10-01T09:00:00-07:00")
-    assert first.compensation is not None and first.compensation.maximum == 350000
+    assert first.compensation is not None
+    assert first.compensation.maximum == 350000
     assert (second.location, second.posted_at, second.compensation) == ("", None, None)
     assert third.posted_at is None
 
@@ -188,7 +189,7 @@ def test_greenhouse_adapter_rejects_unexpected_payload() -> None:
             }
         )
     )
-    with pytest.raises(FetchError, match="unexpected Greenhouse payload"):
+    with pytest.raises(FetchError, match="unexpected payload from Greenhouse board"):
         fetch_greenhouse(polite, gh)
 
 
@@ -243,14 +244,16 @@ def test_lever_adapter_maps_postings() -> None:
     )
     assert first.posted_at == datetime.fromtimestamp(1759600000, tz=UTC)
     assert first.work_model_hint == "REMOTE"
-    assert first.compensation is not None and (
+    assert first.compensation is not None
+    assert (
         first.compensation.minimum,
         first.compensation.currency,
     ) == (300000, "USD")
-    assert (
-        hourly.compensation is None and hourly.work_model_hint is None and hourly.posted_at is None
-    )
-    assert no_numbers.compensation is None and no_numbers.work_model_hint == "ONSITE"
+    assert hourly.compensation is None
+    assert hourly.work_model_hint is None
+    assert hourly.posted_at is None
+    assert no_numbers.compensation is None
+    assert no_numbers.work_model_hint == "ONSITE"
     assert max_only.compensation is not None
     assert (
         max_only.compensation.minimum,
@@ -270,7 +273,7 @@ def test_lever_adapter_rejects_unexpected_payload() -> None:
             }
         )
     )
-    with pytest.raises(FetchError, match="unexpected Lever payload"):
+    with pytest.raises(FetchError, match="unexpected payload from Lever board"):
         fetch_lever(polite, lv)
 
 

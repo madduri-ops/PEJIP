@@ -26,6 +26,13 @@ Seniority = Literal[
 EvidenceKind = Literal["EXPERIENCE", "ACHIEVEMENT", "CAPABILITY", "SCOPE"]
 
 
+class DuplicateEvidenceIdError(ValueError):
+    """Two evidence items share an id, so citations would be ambiguous."""
+
+    def __init__(self) -> None:
+        super().__init__("evidence ids must be unique")
+
+
 class _Strict(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -56,7 +63,7 @@ class CareerProfile(_Strict):
     def _unique_evidence_ids(self) -> CareerProfile:
         ids = [e.id for e in self.evidence]
         if len(ids) != len(set(ids)):
-            raise ValueError("evidence ids must be unique")
+            raise DuplicateEvidenceIdError
         return self
 
     def evidence_by_id(self) -> dict[str, Evidence]:

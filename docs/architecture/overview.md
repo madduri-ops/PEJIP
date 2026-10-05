@@ -18,7 +18,7 @@ flowchart LR
 ```
 
 The first slice is a Python batch CLI that Babu runs locally
-([ADR-0002](../adr/0002-python-cli-first-slice.md)). Each run fetches configured
+([ADR-0003](../adr/0003-python-cli-first-slice.md)). Each run fetches configured
 company boards, filters roles by the search taxonomy and geography, has Claude
 extract requirements and match them to profile evidence, computes Fit, Confidence
 and Priority with deterministic rules, and writes a Markdown digest. See

@@ -1,4 +1,4 @@
-# ADR-0002: Build the first FIND slice as a Python batch CLI with a portable store
+# ADR-0003: Build the first FIND slice as a Python batch CLI with a portable store
 
 **Status:** Accepted (2026-10-05)
 
@@ -17,7 +17,8 @@ Babu can read a digest file.
 
 ## Decision
 
-- The first slice is a Python 3.11+ package, `pejip`, run as a command line batch
+- The first slice is part of the Python 3.12 package `pejip` (toolchain in
+  [ADR-0002](0002-python-toolchain-and-ci-gates.md)), run as a command line batch
   job (`pejip run`). It writes a Markdown digest per run.
 - Persistence uses SQLAlchemy Core with portable types. It runs on SQLite locally
   and in tests, and on PostgreSQL unchanged when the service is deployed.
@@ -35,7 +36,7 @@ Babu can read a digest file.
 
 - Babu can run PEJIP today with a profile file and an API key, before any hosting
   work.
-- FastAPI, the scheduler, the worker pool and the frontend are still to come; the
+- Feature API endpoints, the scheduler, the worker pool and the frontend are still to come; the
   pipeline is written as a plain function of its inputs so it can run inside a
   worker unchanged.
 - Spend-threshold alerts are emitted as structured `ai_spend_threshold` log events;

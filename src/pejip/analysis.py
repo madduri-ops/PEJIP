@@ -8,8 +8,9 @@ posting, requirement ids must be known, and evidence ids must exist in the profi
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -35,6 +36,15 @@ MissingInfo = Literal[
     "COMPENSATION", "ORG_SCOPE", "TEAM_SIZE", "BUDGET", "REPORTING_LINE", "WORK_MODEL", "LOCATION"
 ]
 Level = Literal["HIGH", "MEDIUM", "LOW"]
+
+
+class UngroundedAnalysisError(AIError):
+    """Most extracted requirements quote text that is not in the posting."""
+
+    def __init__(self) -> None:
+        super().__init__("most requirements were not grounded in the posting")
+
+
 Strength = Literal[
     "STRONG_MATCH", "GOOD_MATCH", "PARTIAL_MATCH", "WEAK_MATCH", "NO_MATCH", "UNKNOWN"
 ]
@@ -118,7 +128,7 @@ def ground_analysis(analysis: JobAnalysis, posting_text: str) -> tuple[JobAnalys
             seen.add(req.id)
     dropped = len(analysis.requirements) - len(kept)
     if analysis.requirements and len(kept) / len(analysis.requirements) < MIN_GROUNDED_SHARE:
-        raise AIError("most requirements were not grounded in the posting")
+        raise UngroundedAnalysisError
     grounded = analysis.model_copy(
         update={
             "requirements": kept,
@@ -172,17 +182,25 @@ def _posting_message(title: str, company: str, location: str, description: str) 
     )
 
 
-def analyze_job(
-    ai: AIClient,
-    profile: CareerProfile,
-    *,
-    title: str,
-    company: str,
-    location: str,
-    description: str,
-) -> AnalysisOutcome:
+@dataclass(frozen=True)
+class PostingText:
+    """The parts of a stored posting the model reads."""
+
+    title: str
+    company: str
+    location: str
+    description: str
+
+    @classmethod
+    def from_job(cls, job: Mapping[str, Any]) -> PostingText:
+        return cls(job["title"], job["company"], job["location"], job["description"])
+
+
+def analyze_job(ai: AIClient, profile: CareerProfile, posting: PostingText) -> AnalysisOutcome:
     """Run job analysis then evidence matching, validating each step."""
-    posting_text = _posting_message(title, company, location, description)
+    posting_text = _posting_message(
+        posting.title, posting.company, posting.location, posting.description
+    )
     analysed = ai.structured(
         feature="job_analysis",
         prompt=load_prompt("JOB_ANALYSIS"),

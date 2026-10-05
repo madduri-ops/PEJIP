@@ -65,7 +65,8 @@ def test_render_groups_items_and_shows_search_health() -> None:
     sections = text.split("\n## ")
     assert "[Top](https://jobs/Top) at Co **New**" in sections[1]
     assert "Strong new" in sections[2]
-    assert "Changed** " not in text and "**Changed**" in sections[3]
+    assert "Changed** " not in text
+    assert "**Changed**" in sections[3]
     assert "Location not stated" in sections[3]
     assert "Unranked: analysis failed" in sections[4]
     assert "Unranked: not analysed yet" in sections[4]

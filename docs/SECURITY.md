@@ -48,7 +48,7 @@ agent; no personal data is sent to them.
 
 ## Automated gates
 
-Lint, SAST (bandit; high severity blocks, full report uploaded), dependency audit
-(pip-audit; any known vulnerability blocks), secrets scanning, and the Terraform
-gates in the Infra workflow. DAST and the API smoke test are added with the first
-HTTP endpoint.
+The CI workflow runs lint, SAST (bandit), dependency audit (grype) and DAST (ZAP
+against the health endpoint), with high and critical findings blocking, plus the
+secrets scan (any finding blocks) and the Terraform gates in the Infra workflow.
+See [ADR-0002](adr/0002-python-toolchain-and-ci-gates.md).

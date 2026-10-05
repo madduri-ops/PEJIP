@@ -7,7 +7,7 @@ from typing import Any
 
 from pejip.config import SourceConfig
 from pejip.models import Compensation, Posting
-from pejip.sources.http import FetchError, PoliteClient
+from pejip.sources.http import InvalidPayloadError, PoliteClient
 from pejip.sources.text import html_to_text
 
 DEFAULT_API_BASE = "https://api.lever.co"
@@ -19,7 +19,7 @@ def fetch_lever(client: PoliteClient, source: SourceConfig) -> list[Posting]:
     url = f"{base}/v0/postings/{source.board}"
     payload = client.get_json(url, params={"mode": "json"})
     if not isinstance(payload, list):
-        raise FetchError(f"unexpected Lever payload for site {source.board}")
+        raise InvalidPayloadError("Lever", source.board)
     return [_to_posting(source, job) for job in payload]
 
 

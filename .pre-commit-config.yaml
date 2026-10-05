@@ -18,7 +18,7 @@ repos:
       - id: ruff-format
         args: [--check]
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.21.2
+    rev: v8.30.1
     hooks:
       - id: gitleaks
   # Needs terraform and tflint on PATH (see CONTRIBUTING.md).
@@ -28,3 +28,17 @@ repos:
       - id: terraform_fmt
       - id: terraform_tflint
         args: ['--args=--config=__GIT_WORKING_DIR__/infra/.tflint.hcl']
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.10
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+  # Uses the mypy from `pip install -e '.[dev]'` so it sees the app's dependencies.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        entry: mypy
+        language: system
+        types: [python]
+        pass_filenames: false

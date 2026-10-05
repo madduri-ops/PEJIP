@@ -13,6 +13,7 @@ from __future__ import annotations
 import threading
 import time
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any
 from urllib.parse import urlsplit
 from urllib.robotparser import RobotFileParser
@@ -26,8 +27,33 @@ class FetchError(Exception):
     """A source could not be fetched; the run records it and carries on."""
 
 
-class RobotsDisallowed(FetchError):
+class RobotsDisallowedError(FetchError):
     """``robots.txt`` does not allow this fetch."""
+
+    def __init__(self, url: str) -> None:
+        super().__init__(f"robots.txt disallows {url}")
+
+
+class HTTPStatusError(FetchError):
+    """The source answered with a status the client cannot use."""
+
+    def __init__(self, url: str, status: int) -> None:
+        super().__init__(f"{url} returned HTTP {status}")
+
+
+class InvalidPayloadError(FetchError):
+    """The source answered, but not with the data the adapter expects."""
+
+    def __init__(self, origin: str, board: str | None = None) -> None:
+        where = origin if board is None else f"{origin} board {board}"
+        super().__init__(f"unexpected payload from {where}")
+
+
+class TransportError(FetchError):
+    """The request failed on every attempt before any response arrived."""
+
+    def __init__(self, url: str, cause: Exception) -> None:
+        super().__init__(f"{url} failed: {type(cause).__name__}")
 
 
 class RateLimiter:
@@ -86,14 +112,14 @@ class PoliteClient:
     def get_json(self, url: str, params: dict[str, str] | None = None) -> Any:
         """GET ``url`` politely and decode its JSON body."""
         if not self._allowed(url):
-            raise RobotsDisallowed(f"robots.txt disallows {url}")
+            raise RobotsDisallowedError(url)
         response = self._get(url, params)
-        if response.status_code != 200:
-            raise FetchError(f"{url} returned HTTP {response.status_code}")
+        if response.status_code != HTTPStatus.OK:
+            raise HTTPStatusError(url, response.status_code)
         try:
             return response.json()
         except ValueError as exc:
-            raise FetchError(f"{url} returned invalid JSON") from exc
+            raise InvalidPayloadError(url) from exc
 
     def _get(self, url: str, params: dict[str, str] | None) -> httpx.Response:
         host = urlsplit(url).netloc
@@ -104,7 +130,7 @@ class PoliteClient:
                 response = self._http.get(url, params=params)
             except httpx.HTTPError as exc:
                 if attempt >= self._config.max_retries:
-                    raise FetchError(f"{url} failed: {type(exc).__name__}") from exc
+                    raise TransportError(url, exc) from exc
             else:
                 if response.status_code not in self.RETRY_STATUSES:
                     return response
@@ -126,12 +152,13 @@ class PoliteClient:
         # Same status rules as urllib.robotparser.RobotFileParser.read().
         parser = RobotFileParser()
         response = self._get(f"{origin}/robots.txt", None)
-        if response.status_code in (401, 403):
+        status = response.status_code
+        if status in (HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN):
             parser.parse(["User-agent: *", "Disallow: /"])
-        elif 400 <= response.status_code < 500:
+        elif HTTPStatus.BAD_REQUEST <= status < HTTPStatus.INTERNAL_SERVER_ERROR:
             parser.parse([])
-        elif response.status_code == 200:
+        elif status == HTTPStatus.OK:
             parser.parse(response.text.splitlines())
         else:
-            raise FetchError(f"{origin}/robots.txt returned HTTP {response.status_code}")
+            raise HTTPStatusError(f"{origin}/robots.txt", status)
         return parser

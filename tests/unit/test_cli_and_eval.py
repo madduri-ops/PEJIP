@@ -4,16 +4,19 @@ import json
 import runpy
 import shutil
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
+import yaml
 
-from pejip import cli, evaluation
+from pejip import cli, golden_eval
 from pejip.ai.client import AIClient
 from pejip.config import SearchConfig
 from pejip.digest import Digest
-from pejip.evaluation import run_eval
-from pejip.store import Store
+from pejip.explain import UnsupportedClaimError
+from pejip.golden_eval import EvalPaths, run_eval
+from pejip.store import AIUsage, Store
 from tests.conftest import NOW, ROOT, FakeMessages, response
 
 
@@ -42,12 +45,13 @@ def test_run_writes_the_digest(
     monkeypatch.setattr(cli, "Pipeline", StubPipeline)
     assert cli.main(["run"]) == code
     written = list((env / "out").glob("digest-*.md"))
-    assert len(written) == 1 and f"finished **{status}**" in written[0].read_text()
+    assert len(written) == 1
+    assert f"finished **{status}**" in written[0].read_text()
 
 
 def test_purge_export_and_delete(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     store = Store(f"sqlite:///{env / 'cli.db'}")
-    store.record_ai_usage("f", "m", 1, 1, 0.5, NOW)
+    store.record_ai_usage(AIUsage("f", "m", 1, 1, 0.5, NOW))
     assert cli.main(["purge"]) == 0
     out = env / "export.json"
     assert cli.main(["export", str(out)]) == 0
@@ -58,7 +62,8 @@ def test_purge_export_and_delete(env: Path, capsys: pytest.CaptureFixture[str]) 
     assert json.loads(store.export_all())["ai_usage"] == []
 
 
-def test_eval_replay_via_cli(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.usefixtures("env")
+def test_eval_replay_via_cli(capsys: pytest.CaptureFixture[str]) -> None:
     code = cli.main(
         [
             "eval",
@@ -76,30 +81,31 @@ def test_eval_replay_via_cli(env: Path, capsys: pytest.CaptureFixture[str]) -> N
     assert report["score"] >= report["baseline"]
 
 
-def test_module_entry_point(env: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.usefixtures("env")
+def test_module_entry_point(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("sys.argv", ["pejip", "purge"])
     with pytest.raises(SystemExit) as exit_info:
         runpy.run_module("pejip", run_name="__main__")
     assert exit_info.value.code == 0
 
 
-def eval_args(tmp_path: Path, baseline: dict[str, float]) -> dict[str, Any]:
+def eval_args(tmp_path: Path, baseline: dict[str, float]) -> EvalPaths:
     path = tmp_path / "baseline.json"
     path.write_text(json.dumps(baseline))
-    return {
-        "config_path": ROOT / "config" / "search.yaml",
-        "cases_path": ROOT / "evals" / "golden.yaml",
-        "baseline_path": path,
-        "profile_path": ROOT / "examples" / "profile.example.yaml",
-    }
+    return EvalPaths(
+        config=ROOT / "config" / "search.yaml",
+        cases=ROOT / "evals" / "golden.yaml",
+        baseline=path,
+        profile=ROOT / "examples" / "profile.example.yaml",
+    )
 
 
 def test_eval_fails_below_baseline_and_asks_to_ratchet_above_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    assert run_eval(live=False, **eval_args(tmp_path, {"replay": 1.01, "live": 0})) == 1
+    assert run_eval(eval_args(tmp_path, {"replay": 1.01, "live": 0}), live=False) == 1
     assert "below the replay baseline" in capsys.readouterr().err
-    assert run_eval(live=False, **eval_args(tmp_path, {"replay": 0.5, "live": 0})) == 0
+    assert run_eval(eval_args(tmp_path, {"replay": 0.5, "live": 0}), live=False) == 0
     assert "raise evals/baseline.json" in capsys.readouterr().err
 
 
@@ -107,12 +113,12 @@ def test_live_eval_needs_a_key(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    assert run_eval(live=True, **eval_args(tmp_path, {"replay": 1, "live": 0})) == 2
+    assert run_eval(eval_args(tmp_path, {"replay": 1, "live": 0}), live=True) == 2
     assert "ANTHROPIC_API_KEY" in capsys.readouterr().err
 
 
 def test_live_eval_builds_a_client_from_the_key(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, config: SearchConfig
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-real")
     built: list[AIClient] = []
@@ -122,16 +128,14 @@ def test_live_eval_builds_a_client_from_the_key(
         built.append(client)
         return client
 
-    monkeypatch.setattr(evaluation, "AIClient", fake_client)
-    assert run_eval(live=True, **eval_args(tmp_path, {"replay": 1, "live": 0})) == 0
+    monkeypatch.setattr(golden_eval, "AIClient", fake_client)
+    assert run_eval(eval_args(tmp_path, {"replay": 1, "live": 0}), live=True) == 0
     assert len(built) == 1
 
 
 def test_live_eval_replays_recorded_outputs_through_the_model_path(
     tmp_path: Path, config: SearchConfig, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    import yaml
-
     cases = yaml.safe_load((ROOT / "evals" / "golden.yaml").read_text())
     queue = []
     for case in cases:
@@ -139,7 +143,7 @@ def test_live_eval_replays_recorded_outputs_through_the_model_path(
     client = AIClient(
         config.ai, Store("sqlite://"), messages=FakeMessages(*queue), clock=lambda: NOW
     )
-    assert run_eval(live=True, ai=client, **eval_args(tmp_path, {"replay": 1, "live": 1.0})) == 0
+    assert run_eval(eval_args(tmp_path, {"replay": 1, "live": 1.0}), live=True, ai=client) == 0
     assert json.loads(capsys.readouterr().out)["score"] == 1.0
 
 
@@ -152,7 +156,7 @@ def test_live_eval_counts_model_failures(
         messages=FakeMessages(*[response("bad")] * 40),
         clock=lambda: NOW,
     )
-    assert run_eval(live=True, ai=client, **eval_args(tmp_path, {"replay": 1, "live": 0.5})) == 1
+    assert run_eval(eval_args(tmp_path, {"replay": 1, "live": 0.5}), live=True, ai=client) == 1
     report = json.loads(capsys.readouterr().out)
     assert report["score"] == 0.0
     assert report["cases"][0]["failures"][0].startswith("analysis failed")
@@ -161,21 +165,21 @@ def test_live_eval_counts_model_failures(
 def test_unsupported_claims_fail_a_case(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    def reject(*_args: Any) -> None:
-        raise evaluation.UnsupportedClaim("unresolved citation")
+    claim = UnsupportedClaimError({"type": "posting"}, "Strong match")
 
-    monkeypatch.setattr(evaluation, "verify_citations", reject)
-    assert run_eval(live=False, **eval_args(tmp_path, {"replay": 0, "live": 0})) == 0
+    def reject(*_args: Any) -> None:
+        raise claim
+
+    monkeypatch.setattr(golden_eval, "verify_citations", reject)
+    assert run_eval(eval_args(tmp_path, {"replay": 0, "live": 0}), live=False) == 0
     report = json.loads(capsys.readouterr().out)
     assert report["score"] == 0.0
-    assert "unresolved citation" in report["cases"][0]["failures"]
+    assert str(claim) in report["cases"][0]["failures"]
 
 
 def test_expectation_checks_report_each_mismatch() -> None:
-    from types import SimpleNamespace
-
     rec = SimpleNamespace(fit=None, confidence="LOW", priority="LOW", reason_codes=["X"])
-    failures = evaluation.check_expectations(
+    failures = golden_eval.check_expectations(
         rec,  # type: ignore[arg-type]
         {
             "fit": [80, 100],

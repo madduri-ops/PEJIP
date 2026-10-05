@@ -3,16 +3,16 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
-build/
 dist/
+build/
 .coverage
+.coverage.*
 coverage.json
-coverage.xml
-htmlcov/
-.pytest_cache/
+coverage-html/
+reports/
 .mypy_cache/
 .ruff_cache/
-reports/
+.pytest_cache/
 
 # Local runtime data: personal data never enters the repository.
 *.db

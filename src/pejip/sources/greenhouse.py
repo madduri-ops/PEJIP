@@ -7,7 +7,7 @@ from typing import Any
 
 from pejip.config import SourceConfig
 from pejip.models import Compensation, Posting
-from pejip.sources.http import FetchError, PoliteClient
+from pejip.sources.http import InvalidPayloadError, PoliteClient
 from pejip.sources.text import extract_salary_range, html_to_text
 
 DEFAULT_API_BASE = "https://boards-api.greenhouse.io"
@@ -18,7 +18,7 @@ def fetch_greenhouse(client: PoliteClient, source: SourceConfig) -> list[Posting
     url = f"{base}/v1/boards/{source.board}/jobs"
     payload = client.get_json(url, params={"content": "true"})
     if not isinstance(payload, dict) or not isinstance(payload.get("jobs"), list):
-        raise FetchError(f"unexpected Greenhouse payload for board {source.board}")
+        raise InvalidPayloadError("Greenhouse", source.board)
     return [_to_posting(source, job) for job in payload["jobs"]]
 
 

@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from pejip.ai.client import AIBudgetExceeded, AIClient, AIError
-from pejip.analysis import EvidenceMatching, JobAnalysis, analyze_job
+from pejip.ai.client import AIBudgetExceededError, AIClient, AIError
+from pejip.analysis import EvidenceMatching, JobAnalysis, PostingText, analyze_job
 from pejip.config import SearchConfig, SourceConfig
 from pejip.digest import Digest, DigestItem, SourceResult
 from pejip.discovery import classify_location, is_candidate
@@ -26,7 +26,7 @@ from pejip.scoring import JobFacts, score_job
 from pejip.sources.greenhouse import fetch_greenhouse
 from pejip.sources.http import FetchError, PoliteClient
 from pejip.sources.lever import fetch_lever
-from pejip.store import Store
+from pejip.store import AnalysisRecord, RecommendationRecord, Store
 
 log = logging.getLogger(__name__)
 
@@ -130,7 +130,7 @@ class Pipeline:
             self._analysed += 1
             try:
                 latest = self._analyse(job, now)
-            except AIBudgetExceeded as exc:
+            except AIBudgetExceededError as exc:
                 self._budget_error = str(exc)
                 return DigestItem(job, discovery, None, self._budget_error)
             if latest is None:
@@ -140,19 +140,14 @@ class Pipeline:
     def _analyse(self, job: dict[str, Any], now: datetime) -> dict[str, Any] | None:
         job_id, content_hash = job["id"], job["content_hash"]
         try:
-            outcome = analyze_job(
-                self.ai,
-                self.profile,
-                title=job["title"],
-                company=job["company"],
-                location=job["location"],
-                description=job["description"],
-            )
-        except AIBudgetExceeded:
+            outcome = analyze_job(self.ai, self.profile, PostingText.from_job(job))
+        except AIBudgetExceededError:
             raise
         except AIError as exc:
             log.warning("analysis_failed", extra={"job_id": job_id, "error": str(exc)})
-            self.store.add_analysis(job_id, content_hash, "FAILED", None, str(exc), {}, now)
+            self.store.add_analysis(
+                AnalysisRecord(job_id, content_hash, "FAILED", None, str(exc), {}, now)
+            )
             return None
         payload = {
             "analysis": outcome.analysis.model_dump(),
@@ -160,7 +155,7 @@ class Pipeline:
             "dropped_requirements": outcome.dropped_requirements,
         }
         analysis_id = self.store.add_analysis(
-            job_id, content_hash, "OK", payload, None, outcome.provenance, now
+            AnalysisRecord(job_id, content_hash, "OK", payload, None, outcome.provenance, now)
         )
         return {"id": analysis_id, "status": "OK", "payload": payload}
 
@@ -177,20 +172,23 @@ class Pipeline:
             comp_min=job["comp_min"],
             comp_max=job["comp_max"],
             location_preference=geo.preference,
+            as_of=now,
         )
-        rec = score_job(analysis, matching, self.profile, facts, self.config.scoring, now)
+        rec = score_job(analysis, matching, self.profile, facts, self.config.scoring)
         explanation = build_explanation(analysis, matching, rec, job)
         verify_citations(explanation, job, self.profile)
         detail = {**rec.to_dict(), "explanation": explanation}
         self.store.add_recommendation(
-            job["id"],
-            analysis_row["id"],
-            rec.fit,
-            rec.confidence,
-            rec.priority,
-            detail,
-            rec.scoring_version,
-            now,
+            RecommendationRecord(
+                job_id=job["id"],
+                analysis_id=analysis_row["id"],
+                fit=rec.fit,
+                confidence=rec.confidence,
+                priority=rec.priority,
+                detail=detail,
+                scoring_version=rec.scoring_version,
+                created_at=now,
+            )
         )
         return {
             "fit": rec.fit,

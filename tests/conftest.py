@@ -39,8 +39,7 @@ def response(
     *,
     model: str = "claude-opus-5-5",
     stop_reason: str = "end_turn",
-    input_tokens: int = 1000,
-    output_tokens: int = 500,
+    usage: tuple[int, int] = (1000, 500),
     text: bool = True,
 ) -> SimpleNamespace:
     """A stand-in for an Anthropic Messages API response."""
@@ -48,13 +47,13 @@ def response(
     content = [SimpleNamespace(type="thinking", thinking="")]
     if text:
         content.append(SimpleNamespace(type="text", text=body))
-    usage = SimpleNamespace(
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
+    tokens = SimpleNamespace(
+        input_tokens=usage[0],
+        output_tokens=usage[1],
         cache_creation_input_tokens=None,
         cache_read_input_tokens=None,
     )
-    return SimpleNamespace(content=content, model=model, usage=usage, stop_reason=stop_reason)
+    return SimpleNamespace(content=content, model=model, usage=tokens, stop_reason=stop_reason)
 
 
 class FakeMessages:

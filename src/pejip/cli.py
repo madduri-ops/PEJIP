@@ -12,7 +12,7 @@ from pathlib import Path
 from pejip.ai.client import AIClient
 from pejip.config import Settings, load_config
 from pejip.digest import render
-from pejip.evaluation import run_eval
+from pejip.golden_eval import EvalPaths, run_eval
 from pejip.logs import configure_logging
 from pejip.pipeline import Pipeline
 from pejip.profile import load_profile
@@ -54,7 +54,7 @@ def _cmd_export(settings: Settings, out: Path) -> int:
 
 def _cmd_delete_all(settings: Settings, confirmed: bool) -> int:
     if not confirmed:
-        print("Refusing to delete without --yes.", file=sys.stderr)
+        sys.stderr.write("Refusing to delete without --yes.\n")
         return 2
     Store(settings.database_url).delete_all()
     log.info("all_data_deleted")
@@ -90,10 +90,5 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_export(settings, args.out)
     if args.command == "delete-all":
         return _cmd_delete_all(settings, args.yes)
-    return run_eval(
-        config_path=settings.config_path,
-        cases_path=args.cases,
-        baseline_path=args.baseline,
-        profile_path=args.profile,
-        live=args.live,
-    )
+    paths = EvalPaths(settings.config_path, args.cases, args.baseline, args.profile)
+    return run_eval(paths, live=args.live)

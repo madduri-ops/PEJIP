@@ -14,29 +14,44 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Generic, Protocol, TypeVar
+from typing import Any, Protocol
 
 import anthropic
 from pydantic import BaseModel, ValidationError
 
 from pejip.ai.prompts import Prompt
 from pejip.config import AIConfig
-from pejip.store import Store
+from pejip.store import AIUsage, Store
 
 log = logging.getLogger(__name__)
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 SCHEMA_ATTEMPTS = 2
 
-T = TypeVar("T", bound=BaseModel)
-
 
 class AIError(Exception):
     """The model call failed or returned unusable output."""
 
 
-class AIBudgetExceeded(AIError):
+class AIBudgetExceededError(AIError):
     """This month's AI spend has reached the configured cap."""
+
+    def __init__(self, cap_usd: float) -> None:
+        super().__init__(f"monthly AI cap of ${cap_usd:.2f} reached")
+
+
+class ModelCallError(AIError):
+    """The API rejected or failed the request."""
+
+    def __init__(self, cause: Exception) -> None:
+        super().__init__(f"model call failed: {type(cause).__name__}")
+
+
+class IncompleteOutputError(AIError):
+    """The model stopped before finishing its answer."""
+
+    def __init__(self, stop_reason: object) -> None:
+        super().__init__(f"model stopped with {stop_reason}")
 
 
 class MessagesAPI(Protocol):
@@ -44,7 +59,7 @@ class MessagesAPI(Protocol):
 
 
 @dataclass(frozen=True)
-class AIResult(Generic[T]):
+class AIResult[T: BaseModel]:
     output: T
     model: str
     prompt_id: str
@@ -113,7 +128,7 @@ class AIClient:
         )
         return dollars / 1_000_000
 
-    def structured(
+    def structured[T: BaseModel](
         self,
         *,
         feature: str,
@@ -150,7 +165,7 @@ class AIClient:
         now = self._clock()
         before = self._store.month_spend(now)
         if before >= self._config.monthly_cap_usd:
-            raise AIBudgetExceeded(f"monthly AI cap of ${self._config.monthly_cap_usd:.2f} reached")
+            raise AIBudgetExceededError(self._config.monthly_cap_usd)
         try:
             response = self._messages.create(
                 model=self._config.model,
@@ -165,15 +180,17 @@ class AIClient:
                 fallbacks="default",
             )
         except anthropic.APIError as exc:
-            raise AIError(f"model call failed: {type(exc).__name__}") from exc
+            raise ModelCallError(exc) from exc
         model = str(response.model)
         cost = self.cost_usd(model, response.usage)
         self._store.record_ai_usage(
-            feature, model, response.usage.input_tokens, response.usage.output_tokens, cost, now
+            AIUsage(
+                feature, model, response.usage.input_tokens, response.usage.output_tokens, cost, now
+            )
         )
         self._alert_thresholds(before, before + cost)
         if response.stop_reason != "end_turn":
-            raise AIError(f"model stopped with {response.stop_reason}")
+            raise IncompleteOutputError(response.stop_reason)
         return response
 
     def _alert_thresholds(self, before: float, after: float) -> None:

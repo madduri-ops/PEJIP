@@ -10,4 +10,5 @@ consequences also get an ADR in [docs/adr/](../adr/).
 
 | Doc | Status |
 |---|---|
-| [0001-find-thin-slice.md](0001-find-thin-slice.md) | Implemented |
+| [0001: CI pipeline and health endpoint](0001-ci-pipeline.md) | Implemented |
+| [0003: FIND thin slice](0003-find-thin-slice.md) | Implemented |

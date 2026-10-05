@@ -20,32 +20,39 @@ Infrastructure work in `infra/` also needs [Terraform](https://developer.hashico
 the pre-commit hooks run `terraform fmt` and `tflint`, and CI adds `terraform validate`,
 checkov and, on pull requests, `terraform plan`. See [infra/README.md](infra/README.md).
 
-### Python app
+### Python
 
-Python 3.11 or later (CI uses 3.12).
-
-```sh
-python -m venv .venv && . .venv/bin/activate
-pip install -e ".[dev]"
-pre-commit install
-```
-
-Checks, the same ones CI runs:
+The app is Python 3.12 in `src/pejip/` (see
+[ADR-0002](docs/adr/0002-python-toolchain-and-ci-gates.md)). Install it with its dev
+tools into a virtual environment; the pre-commit `mypy` hook uses this install:
 
 ```sh
-ruff check . && ruff format --check . && mypy        # lint and types
-pytest tests/unit                                     # unit tests
-pytest -m "not system" --cov --cov-branch --cov-report=json \
-  && python scripts/check_coverage.py                 # coverage gate and ratchet
-pytest -m system                                      # CLI end to end against stub servers
-pejip eval                                            # golden set, replaying recorded AI output
-bandit -r src --severity-level high                   # SAST
+python3.12 -m venv .venv && . .venv/bin/activate
+pip install -e '.[dev]'
 ```
 
-`pejip eval --live` calls the model and needs `ANTHROPIC_API_KEY`; CI runs it when a
-prompt, the AI client, the analysis code, `config/search.yaml` or `evals/` changes.
-When coverage or an evaluation score rises, raise `coverage-baseline.json` or
-`evals/baseline.json` in the same PR; neither may go down.
+Run what CI runs:
+
+```sh
+ruff check . && ruff format --check . && mypy          # lint
+COVERAGE_FILE=.coverage.unit pytest tests/unit --cov --cov-report=
+COVERAGE_FILE=.coverage.integration pytest tests/integration --cov --cov-report=
+COVERAGE_FILE=.coverage.system pytest tests/system --cov --cov-report=
+coverage combine && coverage json -o coverage.json && python -m ci.coverage_gate
+```
+
+Tests go in `tests/unit/`, `tests/integration/` or `tests/system/`; the directory
+decides the CI stage. Coverage must stay at 100% line and at or above the branch
+baseline in `.coverage-baseline.json`. When your change raises coverage, run
+`python -m ci.coverage_gate --update` and commit the new baseline; it can never be
+lowered. Run the API locally with `python -m pejip.api` (http://127.0.0.1:8000/healthz).
+
+Run the job search locally with `pejip run` (see the README's Getting started).
+`pejip eval` scores the golden set in `evals/` by replaying recorded AI output; CI
+runs it on every app change. `pejip eval --live` calls the model and needs
+`ANTHROPIC_API_KEY`; CI runs it when a prompt, the AI client, the analysis code,
+`config/search.yaml` or `evals/` changes. When an evaluation score rises, raise
+`evals/baseline.json` in the same PR; it may never go down.
 
 Tests and examples use synthetic data only. Never commit a real `profile.yaml`,
 database or digest; `.gitignore` excludes them.

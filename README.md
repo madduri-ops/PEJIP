@@ -90,9 +90,10 @@ The Phase 1 (FIND) specification is complete, and the first end-to-end slice is 
 command line tool: it fetches roles from configured Greenhouse and Lever company
 boards, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence. Network data, feedback,
-notifications, the API and the web UI come next. The build policy, repository
-hygiene and foundation AWS infrastructure are in place; the app is not deployed yet.
-See the [design doc](docs/design/0001-find-thin-slice.md) and the
+notifications, feature API endpoints and the web UI come next. The build policy, repository
+hygiene, the Python CI pipeline, a health endpoint and foundation AWS infrastructure
+are in place; the app is not deployed yet.
+See the [design doc](docs/design/0003-find-thin-slice.md) and the
 [changelog](CHANGELOG.md).
 
 ## Getting started
@@ -124,6 +125,7 @@ are in [config/search.yaml](config/search.yaml).
 | [`docs/architecture/`](docs/architecture/) | System overview, components, data flow |
 | [`docs/design/`](docs/design/) | One design doc per feature |
 | [`docs/adr/`](docs/adr/) | Architecture decision records |
+| [`ci/`](ci/) | CI gate scripts (coverage ratchet, severity gate, build-artifact check) |
 | [`docs/sources.md`](docs/sources.md) | Job sources we may fetch, with their terms |
 | [`docs/SECURITY.md`](docs/SECURITY.md) | Security posture and third parties that receive personal data |
 | [`infra/`](infra/) | Terraform for the AWS footprint (see its README) |

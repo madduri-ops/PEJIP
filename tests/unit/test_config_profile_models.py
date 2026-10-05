@@ -49,8 +49,10 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
 def test_profile_ai_view_leaves_out_contact_details(profile: CareerProfile) -> None:
     view = profile.ai_view()
     assert profile.name not in view
-    assert profile.email is not None and profile.email not in view
-    assert "E1" in view and "career_direction" in view
+    assert profile.email is not None
+    assert profile.email not in view
+    assert "E1" in view
+    assert "career_direction" in view
     assert set(profile.evidence_by_id()) == {f"E{i}" for i in range(1, 9)}
 
 

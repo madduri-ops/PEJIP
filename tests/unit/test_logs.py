@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 
 from pejip.logs import REDACTED, JsonFormatter, configure_logging, redact, run_id_var
 
@@ -38,7 +39,9 @@ def test_personal_fields_are_redacted_from_log_lines() -> None:
     assert entry["compensation"] == REDACTED
     assert entry["notes"] == REDACTED
     assert entry["job_id"] == 7
-    assert "Alex" not in line and "alex@" not in line and "350000" not in line
+    assert "Alex" not in line
+    assert "alex@" not in line
+    assert "350000" not in line
 
 
 def test_redact_walks_nested_values() -> None:
@@ -47,11 +50,14 @@ def test_redact_walks_nested_values() -> None:
 
 
 def test_exception_type_is_logged_without_message() -> None:
-    try:
-        raise ValueError("secret detail")
-    except ValueError:
-        import sys
+    detail = "secret detail"
 
+    def fail() -> None:
+        raise ValueError(detail)
+
+    try:
+        fail()
+    except ValueError:
         rec = logging.LogRecord("x", logging.ERROR, __file__, 1, "failed", None, sys.exc_info())
     entry = json.loads(JsonFormatter().format(rec))
     assert entry["error_type"] == "ValueError"

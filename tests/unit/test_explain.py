@@ -7,7 +7,7 @@ import pytest
 
 from pejip.analysis import EvidenceMatching, JobAnalysis
 from pejip.config import SearchConfig
-from pejip.explain import UnsupportedClaim, build_explanation, verify_citations
+from pejip.explain import UnsupportedClaimError, build_explanation, verify_citations
 from pejip.profile import CareerProfile
 from pejip.scoring import JobFacts, score_job
 from tests import factories as f
@@ -63,8 +63,10 @@ def build(
     )
     matching = EvidenceMatching.model_validate(f.matching(matches))
     j = job(**job_overrides)
-    facts = JobFacts(j["posted_at"], j["first_seen_at"], j["comp_min"], j["comp_max"], location_fit)
-    rec = score_job(analysis, matching, profile, facts, config.scoring, NOW)
+    facts = JobFacts(
+        j["posted_at"], j["first_seen_at"], j["comp_min"], j["comp_max"], location_fit, NOW
+    )
+    rec = score_job(analysis, matching, profile, facts, config.scoring)
     return build_explanation(analysis, matching, rec, j), j
 
 
@@ -150,7 +152,7 @@ def test_pay_and_first_seen_wording(profile: CareerProfile, config: SearchConfig
 )
 def test_unresolvable_citations_fail(profile: CareerProfile, citation: dict[str, str]) -> None:
     explanation = {"why_it_fits": [{"text": "claim", "citations": [citation]}]}
-    with pytest.raises(UnsupportedClaim):
+    with pytest.raises(UnsupportedClaimError):
         verify_citations(explanation, job(comp_min=None), profile)
 
 

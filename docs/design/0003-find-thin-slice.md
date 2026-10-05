@@ -111,7 +111,7 @@ posting quote, a profile evidence id or a stored job field, and
 
 ## Alternatives considered
 
-See [ADR-0002](../adr/0002-python-cli-first-slice.md).
+See [ADR-0003](../adr/0003-python-cli-first-slice.md).
 
 ## Open questions
 

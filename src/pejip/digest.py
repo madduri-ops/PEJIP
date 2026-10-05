@@ -9,6 +9,9 @@ from typing import Any
 SECTION_ORDER = ("IMMEDIATE", "HIGH")
 
 
+MAX_QUOTE_CHARS = 120
+
+
 @dataclass(frozen=True)
 class DigestItem:
     job: dict[str, Any]
@@ -39,7 +42,9 @@ class Digest:
 def _cite(cite: dict[str, str]) -> str:
     if cite["type"] == "posting":
         quote = cite["quote"]
-        return f'"{quote[:117]}..."' if len(quote) > 120 else f'"{quote}"'
+        if len(quote) > MAX_QUOTE_CHARS:
+            return f'"{quote[: MAX_QUOTE_CHARS - 3]}..."'
+        return f'"{quote}"'
     if cite["type"] == "profile":
         return cite["evidence_id"]
     return f"job {cite['field']}"

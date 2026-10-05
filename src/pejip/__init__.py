@@ -1,3 +1,5 @@
-"""PEJIP: a personal analyst for executive and senior-leadership roles."""
+"""PEJIP: Personal Executive Job Intelligence Platform."""
 
-__version__ = "0.1.0"
+from importlib.metadata import version
+
+__version__ = version("pejip")

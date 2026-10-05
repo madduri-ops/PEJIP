@@ -20,6 +20,20 @@ class PromptError(Exception):
     pass
 
 
+class MissingHeaderError(PromptError):
+    """A prompt file lacks its id/version front-matter header."""
+
+    def __init__(self) -> None:
+        super().__init__("prompt file needs an id/version front-matter header")
+
+
+class UnknownPromptError(PromptError):
+    """No shipped prompt has the requested id."""
+
+    def __init__(self, prompt_id: str) -> None:
+        super().__init__(f"no prompt with id {prompt_id}")
+
+
 @dataclass(frozen=True)
 class Prompt:
     id: str
@@ -30,7 +44,7 @@ class Prompt:
 def parse_prompt(raw: str) -> Prompt:
     match = _HEADER.match(raw)
     if match is None:
-        raise PromptError("prompt file needs an id/version front-matter header")
+        raise MissingHeaderError
     return Prompt(match["id"], int(match["version"]), match["body"].strip())
 
 
@@ -43,5 +57,5 @@ def load_prompt(prompt_id: str) -> Prompt:
             if prompt.id == prompt_id:
                 found.append(prompt)
     if not found:
-        raise PromptError(f"no prompt with id {prompt_id}")
+        raise UnknownPromptError(prompt_id)
     return max(found, key=lambda p: p.version)

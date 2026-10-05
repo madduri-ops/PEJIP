@@ -8,7 +8,7 @@ import pytest
 from pejip.analysis import EvidenceMatching, JobAnalysis
 from pejip.config import ScoringConfig, SearchConfig
 from pejip.profile import CareerProfile
-from pejip.scoring import JobFacts, compensation_fit, score_job
+from pejip.scoring import JobFacts, Recommendation, compensation_fit, score_job
 from tests import factories as f
 from tests.conftest import NOW
 
@@ -25,6 +25,7 @@ def facts(
         comp_min=comp[0],
         comp_max=comp[1],
         location_preference=location,
+        as_of=NOW,
     )
 
 
@@ -48,7 +49,7 @@ def score(
     analysis: dict[str, Any] | None = None,
     matching: dict[str, Any] | None = None,
     job: JobFacts | None = None,
-):  # type: ignore[no-untyped-def]
+) -> Recommendation:
     reqs, matches = all_categories()
     return score_job(
         JobAnalysis.model_validate(analysis or f.analysis(reqs)),
@@ -56,7 +57,6 @@ def score(
         profile,
         job or facts(),
         cfg,
-        NOW,
     )
 
 
@@ -262,7 +262,8 @@ def test_medium_confidence_band(profile: CareerProfile, config: SearchConfig) ->
 def test_middling_fit_cannot_reach_top_bands(profile: CareerProfile, config: SearchConfig) -> None:
     reqs, matches = all_categories("GOOD_MATCH")
     rec = score(profile, config.scoring, f.analysis(reqs), f.matching(matches, direction="LATERAL"))
-    assert rec.fit is not None and rec.fit < 85
+    assert rec.fit is not None
+    assert rec.fit < 85
     assert rec.priority in ("HIGH", "MEDIUM")
     weak_reqs, weak = all_categories("WEAK_MATCH")
     rec = score(profile, config.scoring, f.analysis(weak_reqs), f.matching(weak, direction="AWAY"))

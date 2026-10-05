@@ -6,6 +6,7 @@ from pejip.ai.client import AIClient, AIError
 from pejip.analysis import (
     EvidenceMatching,
     JobAnalysis,
+    PostingText,
     analyze_job,
     ground_analysis,
     ground_matching,
@@ -56,7 +57,8 @@ def test_ground_analysis_rejects_mostly_invented_output() -> None:
 
 def test_ground_analysis_accepts_no_requirements() -> None:
     grounded, dropped = ground_analysis(JobAnalysis.model_validate(f.analysis([])), f.POSTING_TEXT)
-    assert grounded.requirements == [] and dropped == 0
+    assert grounded.requirements == []
+    assert dropped == 0
 
 
 def test_ground_matching(profile: CareerProfile) -> None:
@@ -93,9 +95,7 @@ def test_analyze_job_runs_both_prompts(
 ) -> None:
     fake = FakeMessages(response(f.analysis()), response(f.matching()))
     ai = AIClient(config.ai, store, messages=fake, clock=lambda: NOW)
-    outcome = analyze_job(
-        ai, profile, title="VP Ops", company="Co", location="SF", description=f.POSTING_TEXT
-    )
+    outcome = analyze_job(ai, profile, PostingText("VP Ops", "Co", "SF", f.POSTING_TEXT))
     assert outcome.matching.matches[0].match_strength == "STRONG_MATCH"
     assert outcome.dropped_requirements == 0
     assert set(outcome.provenance) == {"analysis", "matching"}

@@ -23,8 +23,6 @@ import yaml
 from tests import factories as f
 from tests.conftest import ROOT
 
-pytestmark = pytest.mark.system
-
 BOARD = {
     "jobs": [
         {
@@ -103,6 +101,8 @@ def server() -> Iterator[str]:
     thread.start()
     yield f"http://127.0.0.1:{httpd.server_address[1]}"
     httpd.shutdown()
+    thread.join()
+    httpd.server_close()
 
 
 def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> None:
@@ -153,7 +153,8 @@ def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> No
 
     exported = tmp_path / "export.json"
     subprocess.run(
-        [sys.executable, "-m", "pejip", "export", str(exported)],
+        [sys.executable, "-m", "pejip", "export", "export.json"],
+        cwd=tmp_path,
         env=env,
         check=True,
         capture_output=True,

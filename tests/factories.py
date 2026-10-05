@@ -12,11 +12,10 @@ def requirement(
     classification: str = "REQUIRED",
     importance: str = "CORE",
     quote: str = "Lead technology operations",
-    text: str | None = None,
 ) -> dict[str, Any]:
     return {
         "id": rid,
-        "text": text or f"Requirement {rid}",
+        "text": f"Requirement {rid}",
         "category": category,
         "classification": classification,
         "importance": importance,

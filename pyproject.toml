@@ -1,29 +1,33 @@
 [build-system]
-requires = ["setuptools==84.0.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling==1.32.4"]
+build-backend = "hatchling.build"
 
 [project]
 name = "pejip"
 version = "0.1.0"
 description = "Personal Executive Job Intelligence Platform: finds, ranks and explains senior-leadership roles."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 license = "LicenseRef-Proprietary"
+# Runtime dependencies, pinned exactly. Dependabot (pip) keeps them current.
 dependencies = [
     "anthropic==1.11.0",
+    "fastapi==0.142.2",
     "httpx==0.28.1",
     "pydantic==2.13.5",
     "PyYAML==6.0.3",
     "SQLAlchemy==2.1.3",
+    "uvicorn==0.54.0",
 ]
 
 [project.optional-dependencies]
+# Everything a contributor and CI need: tests, lint, types, SAST, packaging.
 dev = [
     "bandit==1.9.4",
-    "build==1.3.0",
+    "build==1.6.1",
+    "coverage[toml]==7.16.2",
     "mypy==2.4.0",
-    "pip-audit==2.9.0",
-    "pre-commit==4.3.0",
+    "pre-commit==4.6.2",
     "pytest==9.1.1",
     "pytest-cov==7.1.0",
     "respx==0.23.1",
@@ -34,44 +38,65 @@ dev = [
 [project.scripts]
 pejip = "pejip.cli:main"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/pejip"]
 
-[tool.setuptools.package-data]
-pejip = ["prompts/*.md"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-
-[tool.ruff.lint]
-select = ["E", "W", "F", "I", "B", "UP", "S", "SIM", "RUF", "PL", "C90"]
-ignore = ["PLR0913", "PLR0917", "PLR2004"]
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "S603", "PLR0915", "PLC0415"]
-"scripts/**" = ["S603"]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 12
-
-[tool.mypy]
-strict = true
-packages = ["pejip"]
-mypy_path = "src"
-plugins = ["pydantic.mypy"]
+[tool.hatch.build.targets.sdist]
+include = ["src/pejip"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-markers = [
-    "integration: exercises several components together with stubbed I/O",
-    "system: runs the installed CLI end to end against local stub servers",
-]
+# `ci` holds the CI gate scripts; they are tested like application code.
+pythonpath = ["."]
+addopts = ["--strict-markers", "--strict-config", "-ra"]
+xfail_strict = true
+filterwarnings = ["error"]
 
 [tool.coverage.run]
 branch = true
-source = ["pejip"]
+source = ["pejip", "ci"]
+# Each CI stage writes its own data file; the coverage job combines them.
+parallel = true
+# System tests run the app as its own process; measure it too.
+patch = ["subprocess"]
+
+[tool.coverage.paths]
+# Map the installed wheel used by system tests back to the source tree.
+source = ["src/pejip", "*/site-packages/pejip"]
 
 [tool.coverage.report]
 show_missing = true
-skip_covered = true
+skip_covered = false
+exclude_also = ["if __name__ == .__main__.:"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "ci"]
+
+[tool.ruff.lint]
+# Ruff has no warning level: every enabled rule is an error, so the lint
+# warning threshold is zero.
+select = [
+    "E", "W", "F", "I", "B", "UP", "S", "BLE", "A", "C4", "SIM", "PT", "RET",
+    "ARG", "PTH", "PL", "RUF", "N", "ERA", "T20", "DTZ", "TRY", "PERF",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["pejip", "ci"]
+
+[tool.ruff.lint.per-file-ignores]
+# assert is how pytest checks; magic values are fine in tests.
+"tests/**" = ["S101", "PLR2004"]
+# Gate scripts print their findings for the CI log.
+"ci/**" = ["T201"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = ["src", "."]
+packages = ["pejip", "ci", "tests"]
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]

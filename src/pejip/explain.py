@@ -30,8 +30,11 @@ MISSING_TEXT = {
 }
 
 
-class UnsupportedClaim(Exception):
+class UnsupportedClaimError(Exception):
     """An explanation point cites something that is not in stored data."""
+
+    def __init__(self, citation: dict[str, str], text: str) -> None:
+        super().__init__(f"unresolved citation {citation!r} for {text!r}")
 
 
 def _point(text: str, citations: list[dict[str, str]]) -> dict[str, Any]:
@@ -86,10 +89,10 @@ def build_explanation(
                         [_posting(req.quote)],
                     )
                 )
-    for signal in analysis.negative_signals:
-        concerns.append(
-            _point(f"Possible negative fit ({signal.code.lower()})", [_posting(signal.quote)])
-        )
+    concerns.extend(
+        _point(f"Possible negative fit ({signal.code.lower()})", [_posting(signal.quote)])
+        for signal in analysis.negative_signals
+    )
     if analysis.missing_information:
         missing = ", ".join(MISSING_TEXT[m] for m in analysis.missing_information)
         concerns.append(_point(f"The posting does not state: {missing}", []))
@@ -125,7 +128,7 @@ def build_explanation(
 def verify_citations(
     explanation: dict[str, list[dict[str, Any]]], job: dict[str, Any], profile: CareerProfile
 ) -> None:
-    """Raise :class:`UnsupportedClaim` if any citation does not resolve."""
+    """Raise :class:`UnsupportedClaimError` if any citation does not resolve."""
     evidence_ids = set(profile.evidence_by_id())
     posting_text = "\n".join([job["title"], job["company"], job["location"], job["description"]])
     for section in explanation.values():
@@ -142,4 +145,4 @@ def verify_citations(
                     and job.get(cite["field"]) is not None
                 ):
                     continue
-                raise UnsupportedClaim(f"unresolved citation {cite!r} for {point['text']!r}")
+                raise UnsupportedClaimError(cite, point["text"])

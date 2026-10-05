@@ -8,7 +8,7 @@ PostgreSQL (spec 14.5) when the service is deployed. Everything here is kept for
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -114,6 +114,43 @@ class UpsertResult:
     discovery: str  # NEW_POSTING, PREVIOUSLY_SEEN or MATERIALLY_CHANGED
 
 
+@dataclass(frozen=True)
+class AnalysisRecord:
+    """One stored analysis attempt; ``payload`` is None when it failed."""
+
+    job_id: int
+    content_hash: str
+    status: str
+    payload: dict[str, Any] | None
+    error: str | None
+    provenance: dict[str, Any]
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class RecommendationRecord:
+    job_id: int
+    analysis_id: int
+    fit: float | None
+    confidence: str
+    priority: str
+    detail: dict[str, Any]
+    scoring_version: str
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class AIUsage:
+    """Tokens and cost of one model call."""
+
+    feature: str
+    model: str
+    input_tokens: int
+    output_tokens: int
+    cost_usd: float
+    at: datetime
+
+
 def _aware(value: datetime | None) -> datetime | None:
     """SQLite drops tzinfo; every stored time is UTC."""
     if value is not None and value.tzinfo is None:
@@ -187,56 +224,16 @@ class Store:
             )
         return dict(row) if row else None
 
-    def add_analysis(
-        self,
-        job_id: int,
-        content_hash: str,
-        status: str,
-        payload: dict[str, Any] | None,
-        error: str | None,
-        provenance: dict[str, Any],
-        now: datetime,
-    ) -> int:
+    def add_analysis(self, record: AnalysisRecord) -> int:
         with self.engine.begin() as conn:
             analysis_id = conn.execute(
-                insert(analyses)
-                .values(
-                    job_id=job_id,
-                    content_hash=content_hash,
-                    status=status,
-                    payload=payload,
-                    error=error,
-                    provenance=provenance,
-                    created_at=now,
-                )
-                .returning(analyses.c.id)
+                insert(analyses).values(asdict(record)).returning(analyses.c.id)
             ).scalar_one()
         return int(analysis_id)
 
-    def add_recommendation(
-        self,
-        job_id: int,
-        analysis_id: int,
-        fit: float | None,
-        confidence: str,
-        priority: str,
-        detail: dict[str, Any],
-        scoring_version: str,
-        now: datetime,
-    ) -> None:
+    def add_recommendation(self, record: RecommendationRecord) -> None:
         with self.engine.begin() as conn:
-            conn.execute(
-                insert(recommendations).values(
-                    job_id=job_id,
-                    analysis_id=analysis_id,
-                    fit=fit,
-                    confidence=confidence,
-                    priority=priority,
-                    detail=detail,
-                    scoring_version=scoring_version,
-                    created_at=now,
-                )
-            )
+            conn.execute(insert(recommendations).values(asdict(record)))
 
     def latest_recommendation(self, job_id: int) -> dict[str, Any] | None:
         with self.engine.connect() as conn:
@@ -254,26 +251,9 @@ class Store:
 
     # AI spend -------------------------------------------------------------
 
-    def record_ai_usage(
-        self,
-        feature: str,
-        model: str,
-        input_tokens: int,
-        output_tokens: int,
-        cost_usd: float,
-        now: datetime,
-    ) -> None:
+    def record_ai_usage(self, usage: AIUsage) -> None:
         with self.engine.begin() as conn:
-            conn.execute(
-                insert(ai_usage).values(
-                    at=now,
-                    feature=feature,
-                    model=model,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                    cost_usd=cost_usd,
-                )
-            )
+            conn.execute(insert(ai_usage).values(asdict(usage)))
 
     def month_spend(self, now: datetime) -> float:
         start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)

@@ -14,12 +14,10 @@ from pejip.config import SearchConfig, SourceConfig
 from pejip.digest import render
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile
-from pejip.sources.http import FetchError, PoliteClient
-from pejip.store import Store
+from pejip.sources.http import HTTPStatusError, PoliteClient
+from pejip.store import AIUsage, Store
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages, response
-
-pytestmark = pytest.mark.integration
 
 BODY = "<p>Lead technology operations for the company.</p><p>Own portfolio governance.</p>"
 
@@ -40,7 +38,8 @@ def gh_job(
 class Boards:
     """A stub Greenhouse host whose jobs and failures the test controls."""
 
-    def __init__(self) -> None:
+    def __init__(self, sources: tuple[str, ...] = ("alpha",)) -> None:
+        self.sources = sources
         self.jobs: dict[str, list[dict[str, Any]]] = {
             "alpha": [
                 gh_job(1, "VP, Technology Operations"),
@@ -82,10 +81,13 @@ def build(
     store: Store,
     boards: Boards,
     fake: FakeMessages,
-    sources: list[str] | None = None,
-    clock_days: int = 0,
-    **ai: Any,
+    **options: Any,
 ) -> Pipeline:
+    """Wire a pipeline to the stub boards and model.
+
+    ``clock_days`` moves the clock forward; any other option overrides AI config.
+    """
+    clock_days = options.pop("clock_days", 0)
     cfg = config.model_copy(
         update={
             "sources": [
@@ -95,9 +97,9 @@ def build(
                     board=name,
                     api_base="https://gh.test",
                 )
-                for name in (sources or ["alpha"])
+                for name in boards.sources
             ],
-            "ai": config.ai.model_copy(update=ai),
+            "ai": config.ai.model_copy(update=options),
         }
     )
     when = NOW + timedelta(days=clock_days)
@@ -124,15 +126,17 @@ def test_run_finds_scores_and_explains(
     assert set(titles) == {"VP, Technology Operations", "Head of Engineering Operations"}
     top = titles["VP, Technology Operations"]
     assert top.discovery == "NEW_POSTING"
-    assert top.recommendation is not None and top.recommendation["fit"] == 100.0
+    assert top.recommendation is not None
+    assert top.recommendation["fit"] == 100.0
     stored = store.latest_recommendation(top.job["id"])
-    assert stored is not None and stored["priority"] == top.recommendation["priority"]
+    assert stored is not None
+    assert stored["priority"] == top.recommendation["priority"]
     analysis = store.latest_analysis(top.job["id"])
-    assert (
-        analysis is not None and analysis["provenance"]["analysis"]["prompt_id"] == "JOB_ANALYSIS"
-    )
+    assert analysis is not None
+    assert analysis["provenance"]["analysis"]["prompt_id"] == "JOB_ANALYSIS"
     text = render(digest, config.scoring.strong_match_fit)
-    assert "Requires your attention" in text and '"Lead technology operations"' in text
+    assert "Requires your attention" in text
+    assert '"Lead technology operations"' in text
 
 
 def test_second_run_reuses_analysis_until_the_posting_changes(
@@ -160,19 +164,22 @@ def test_second_run_reuses_analysis_until_the_posting_changes(
 def test_failures_are_isolated_and_visible(
     config: SearchConfig, profile: CareerProfile, store: Store
 ) -> None:
-    boards = Boards()
+    boards = Boards(sources=("alpha", "beta"))
     boards.down.add("beta")
     fake = FakeMessages()
     fake.responder = model_responder(fail_titles=("Head of Engineering Operations",))
-    digest = build(config, profile, store, boards, fake, sources=["alpha", "beta"]).run()
+    digest = build(config, profile, store, boards, fake).run()
 
     assert digest.status == "PARTIAL"
     assert [s.status for s in digest.sources] == ["OK", "FAILED"]
-    assert digest.sources[1].error is not None and "HTTP 404" in digest.sources[1].error
+    assert digest.sources[1].error is not None
+    assert "HTTP 404" in digest.sources[1].error
     failed = next(i for i in digest.items if i.job["title"] == "Head of Engineering Operations")
-    assert failed.recommendation is None and failed.failure == "analysis failed"
+    assert failed.recommendation is None
+    assert failed.failure == "analysis failed"
     stored = store.latest_analysis(failed.job["id"])
-    assert stored is not None and stored["status"] == "FAILED"
+    assert stored is not None
+    assert stored["status"] == "FAILED"
 
 
 def test_all_sources_failing_fails_the_run(
@@ -197,13 +204,14 @@ def test_no_sources_is_an_empty_success(
 def test_spend_cap_leaves_remaining_roles_unranked(
     config: SearchConfig, profile: CareerProfile, store: Store
 ) -> None:
-    store.record_ai_usage("earlier", "claude-opus-5-5", 0, 0, 100.0, NOW)
+    store.record_ai_usage(AIUsage("earlier", "claude-opus-5-5", 0, 0, 100.0, NOW))
     fake = FakeMessages()
     digest = build(config, profile, store, Boards(), fake).run()
     assert fake.calls == []
     assert digest.status == "PARTIAL"
     assert all(i.recommendation is None and i.failure and "cap" in i.failure for i in digest.items)
-    assert digest.notes and "cap" in digest.notes[0]
+    assert digest.notes
+    assert "cap" in digest.notes[0]
 
 
 def test_per_run_limit_defers_analysis(
@@ -220,10 +228,10 @@ def test_run_record_reflects_failed_sources(
     config: SearchConfig, profile: CareerProfile, store: Store, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     def boom(_client: PoliteClient, _source: SourceConfig) -> list[Any]:
-        raise FetchError("stub failure")
+        raise HTTPStatusError("stub", 503)
 
     monkeypatch.setitem(__import__("pejip.pipeline").pipeline.FETCHERS, "greenhouse", boom)
     digest = build(config, profile, store, Boards(), FakeMessages()).run()
-    assert digest.sources[0].error == "stub failure"
+    assert digest.sources[0].error == "stub returned HTTP 503"
     runs = json.loads(store.export_all())["runs"]
     assert runs[0]["status"] == "FAILED"

@@ -1,11 +1,12 @@
 # Components
 
 The Phase 1 thin slice is one Python package, `pejip` (`src/pejip/`), run as a
-batch CLI ([ADR-0002](../adr/0002-python-cli-first-slice.md)). Feature detail is in
-[design doc 0001](../design/0001-find-thin-slice.md).
+batch CLI ([ADR-0003](../adr/0003-python-cli-first-slice.md)). Feature detail is in
+[design doc 0003](../design/0003-find-thin-slice.md).
 
 ```mermaid
 flowchart TB
+    api[api: GET /healthz]
     cli[cli: pejip run, purge, export, delete-all, eval]
     pipe[pipeline: one search run]
     src[sources: greenhouse, lever adapters]
@@ -18,7 +19,7 @@ flowchart TB
     score[scoring: Fit, Confidence, Priority]
     explain[explain: cited explanations]
     digest[digest: Markdown digest]
-    evals[evaluation: golden set]
+    evals[golden_eval: golden set]
     cli --> pipe
     cli --> evals
     pipe --> src --> http
@@ -101,8 +102,17 @@ flowchart TB
 - **Responsibility:** JSON log lines with the run id; redacts personal fields and
   scrubs e-mail addresses and phone numbers.
 
-## evaluation
+## golden_eval
 
 - **Responsibility:** scores the golden set in replay (recorded AI output) or live
   mode against the committed baseline.
 - **Interfaces:** `pejip eval [--live]`; data in `evals/`.
+
+## API (`pejip.api`)
+
+- **Responsibility:** the HTTP surface of PEJIP. Today it serves only the health
+  endpoint; feature endpoints are added here.
+- **Interfaces:** `GET /healthz`; the OpenAPI document at `/openapi.json`. Run with
+  `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`).
+- **Data:** none.
+- **Design doc:** [0001: CI pipeline and health endpoint](../design/0001-ci-pipeline.md).

@@ -34,6 +34,12 @@ SENIORITY_RANK = {
     "BELOW_DIRECTOR": 1,
 }
 DIRECTION_VALUE = {"ADVANCES": 1.0, "ALIGNED": 0.8, "LATERAL": 0.5, "AWAY": 0.1}
+# Priority freshness by posting age: (maximum age in days, value).
+FRESH_POSTING_DAYS = 2
+FRESHNESS_STEPS = ((FRESH_POSTING_DAYS, 1.0), (7, 0.7), (30, 0.4))
+STALE_FRESHNESS = 0.2
+# Below this share of Fit weight with known values, confidence drops.
+MIN_KNOWN_FIT_WEIGHT = 0.5
 LOCATION_VALUE = {"PREFERRED": 1.0, "ACCEPTABLE": 0.7, "UNDESIRABLE": 0.2}
 COMPENSATION_VALUE = {
     "STRONG": 1.0,
@@ -70,13 +76,17 @@ class Component:
 
 @dataclass(frozen=True)
 class JobFacts:
-    """Stored facts about the posting that Priority uses (not career evidence)."""
+    """Stored facts about the posting that Priority uses (not career evidence).
+
+    ``as_of`` is the moment the role is scored; posting age is measured from it.
+    """
 
     posted_at: datetime | None
     first_seen_at: datetime
     comp_min: float | None
     comp_max: float | None
     location_preference: str  # PREFERRED, ACCEPTABLE, UNDESIRABLE or UNKNOWN
+    as_of: datetime
 
 
 @dataclass(frozen=True)
@@ -170,13 +180,10 @@ def compensation_fit(facts: JobFacts, profile: CareerProfile) -> str:
 
 
 def _freshness(age_days: int) -> float:
-    if age_days <= 2:
-        return 1.0
-    if age_days <= 7:
-        return 0.7
-    if age_days <= 30:
-        return 0.4
-    return 0.2
+    for max_age, value in FRESHNESS_STEPS:
+        if age_days <= max_age:
+            return value
+    return STALE_FRESHNESS
 
 
 def _confidence(
@@ -204,7 +211,7 @@ def _confidence(
         factors.append("AMBIGUOUS_POSTING")
     total_weight = sum(c.weight for c in components)
     known_weight = sum(c.weight for c in components if c.value is not None)
-    if total_weight and known_weight / total_weight < 0.5:
+    if total_weight and known_weight / total_weight < MIN_KNOWN_FIT_WEIGHT:
         score -= 0.2
         factors.append("MOST_FIT_COMPONENTS_UNKNOWN")
     return max(0.0, round(score, 3)), factors
@@ -223,7 +230,6 @@ def score_job(
     profile: CareerProfile,
     facts: JobFacts,
     cfg: ScoringConfig,
-    now: datetime,
 ) -> Recommendation:
     components = fit_components(analysis, matching, profile, cfg)
     known = [c for c in components if c.value is not None]
@@ -254,7 +260,7 @@ def score_job(
     )
 
     reference = facts.posted_at or facts.first_seen_at
-    age_days = max(0, (now - reference).days)
+    age_days = max(0, (facts.as_of - reference).days)
     comp = compensation_fit(facts, profile)
     location = facts.location_preference
     reasons = [
@@ -295,7 +301,7 @@ def score_job(
     elif hard_excluded:
         priority = "EXCLUDED"
 
-    if age_days <= 2:
+    if age_days <= FRESH_POSTING_DAYS:
         reasons.append("FRESH_POSTING")
     if comp in ("BELOW_PREFERENCE", "BELOW_MINIMUM"):
         reasons.append("COMPENSATION_CONCERN")

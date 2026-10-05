@@ -4,20 +4,20 @@ import logging
 from types import SimpleNamespace
 
 import anthropic
-import httpx
+import httpx2
 import pytest
 from pydantic import BaseModel
 
 from pejip.ai.client import (
     FALLBACK_BETA,
-    AIBudgetExceeded,
+    AIBudgetExceededError,
     AIClient,
     AIError,
     strict_schema,
 )
 from pejip.ai.prompts import Prompt
 from pejip.config import SearchConfig
-from pejip.store import Store
+from pejip.store import AIUsage, Store
 from tests.conftest import NOW, FakeMessages, response
 
 PROMPT = Prompt("TEST", 3, "Do the thing.")
@@ -53,12 +53,13 @@ def test_strict_schema_requires_every_property_and_forbids_extras() -> None:
     assert schema["additionalProperties"] is False
     assert schema["required"] == ["name", "inner", "items"]
     inner = schema["$defs"]["Inner"]
-    assert inner["required"] == ["value"] and inner["additionalProperties"] is False
+    assert inner["required"] == ["value"]
+    assert inner["additionalProperties"] is False
     assert "title" not in schema
 
 
 def test_structured_call_records_spend_and_provenance(config: SearchConfig, store: Store) -> None:
-    fake = FakeMessages(response(GOOD, input_tokens=1_000_000, output_tokens=100_000))
+    fake = FakeMessages(response(GOOD, usage=(1_000_000, 100_000)))
     client = make(config, store, fake)
     result = client.structured(
         feature="test", prompt=PROMPT, content="input", schema=Output, schema_version="s1"
@@ -75,7 +76,8 @@ def test_structured_call_records_spend_and_provenance(config: SearchConfig, stor
     request = fake.calls[0]
     assert request["model"] == "claude-opus-5-5"
     assert request["system"] == "Do the thing."
-    assert request["betas"] == [FALLBACK_BETA] and request["fallbacks"] == "default"
+    assert request["betas"] == [FALLBACK_BETA]
+    assert request["fallbacks"] == "default"
     assert request["output_config"]["effort"] == "medium"
     assert request["output_config"]["format"]["type"] == "json_schema"
     assert store.month_spend(NOW) == pytest.approx(4.0 + 2.0)
@@ -120,16 +122,16 @@ def test_refusal_and_truncation_are_errors(config: SearchConfig, store: Store) -
 
 
 def test_api_errors_are_wrapped(config: SearchConfig, store: Store) -> None:
-    request = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    request = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
     fake = FakeMessages(anthropic.APIConnectionError(request=request))
     with pytest.raises(AIError, match="APIConnectionError"):
         call(make(config, store, fake))
 
 
 def test_budget_cap_blocks_calls(config: SearchConfig, store: Store) -> None:
-    store.record_ai_usage("other", "m", 0, 0, 100.0, NOW)
+    store.record_ai_usage(AIUsage("other", "m", 0, 0, 100.0, NOW))
     fake = FakeMessages(response(GOOD))
-    with pytest.raises(AIBudgetExceeded):
+    with pytest.raises(AIBudgetExceededError):
         call(make(config, store, fake))
     assert fake.calls == []
 
@@ -137,8 +139,8 @@ def test_budget_cap_blocks_calls(config: SearchConfig, store: Store) -> None:
 def test_threshold_alerts(
     config: SearchConfig, store: Store, caplog: pytest.LogCaptureFixture
 ) -> None:
-    store.record_ai_usage("other", "m", 0, 0, 45.0, NOW)
-    fake = FakeMessages(response(GOOD, input_tokens=0, output_tokens=1_000_000))  # $20
+    store.record_ai_usage(AIUsage("other", "m", 0, 0, 45.0, NOW))
+    fake = FakeMessages(response(GOOD, usage=(0, 1_000_000)))  # $20
     with caplog.at_level(logging.WARNING):
         call(make(config, store, fake))
     alerts = [r for r in caplog.records if r.msg == "ai_spend_threshold"]

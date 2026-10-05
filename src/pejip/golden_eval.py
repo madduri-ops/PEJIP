@@ -23,13 +23,14 @@ from pejip.ai.client import AIClient, AIError
 from pejip.analysis import (
     EvidenceMatching,
     JobAnalysis,
+    PostingText,
     analyze_job,
     ground_analysis,
     ground_matching,
 )
 from pejip.config import SearchConfig, load_config
 from pejip.discovery import classify_location
-from pejip.explain import UnsupportedClaim, build_explanation, verify_citations
+from pejip.explain import UnsupportedClaimError, build_explanation, verify_citations
 from pejip.profile import CareerProfile, load_profile
 from pejip.scoring import JobFacts, Recommendation, score_job
 from pejip.store import Store
@@ -92,14 +93,7 @@ def evaluate_case(
                 EvidenceMatching.model_validate(case["recorded"]["matching"]), analysis, profile
             )
         else:
-            outcome = analyze_job(
-                ai,
-                profile,
-                title=job["title"],
-                company=job["company"],
-                location=job["location"],
-                description=job["description"],
-            )
+            outcome = analyze_job(ai, profile, PostingText.from_job(job))
             analysis, matching = outcome.analysis, outcome.matching
     except AIError as exc:
         return CaseResult(case["id"], False, failures=[f"analysis failed: {exc}"])
@@ -109,51 +103,51 @@ def evaluate_case(
         comp_min=job["comp_min"],
         comp_max=job["comp_max"],
         location_preference=classify_location(job["location"], config.geography).preference,
+        as_of=EVAL_NOW,
     )
-    rec = score_job(analysis, matching, profile, facts, config.scoring, EVAL_NOW)
+    rec = score_job(analysis, matching, profile, facts, config.scoring)
     failures = check_expectations(rec, case["expected"])
     try:
         verify_citations(build_explanation(analysis, matching, rec, job), job, profile)
-    except UnsupportedClaim as exc:
+    except UnsupportedClaimError as exc:
         failures.append(str(exc))
     return CaseResult(case["id"], not failures, rec.fit, rec.confidence, rec.priority, failures)
 
 
-def run_eval(
-    *,
-    config_path: Path,
-    cases_path: Path,
-    baseline_path: Path,
-    profile_path: Path,
-    live: bool,
-    ai: AIClient | None = None,
-) -> int:
-    config = load_config(config_path)
-    profile = load_profile(profile_path)
-    cases = yaml.safe_load(cases_path.read_text(encoding="utf-8"))
+@dataclass(frozen=True)
+class EvalPaths:
+    config: Path
+    cases: Path
+    baseline: Path
+    profile: Path
+
+
+def run_eval(paths: EvalPaths, *, live: bool, ai: AIClient | None = None) -> int:
+    config = load_config(paths.config)
+    profile = load_profile(paths.profile)
+    cases = yaml.safe_load(paths.cases.read_text(encoding="utf-8"))
     mode = "live" if live else "replay"
     if live and ai is None:
         if not os.environ.get("ANTHROPIC_API_KEY"):
-            print("Live evaluation needs ANTHROPIC_API_KEY.", file=sys.stderr)
+            sys.stderr.write("Live evaluation needs ANTHROPIC_API_KEY.\n")
             return 2
         ai = AIClient(config.ai, Store("sqlite://"))
     results = [evaluate_case(c, config, profile, ai if live else None) for c in cases]
     score = round(sum(r.passed for r in results) / len(results), 4)
-    baseline = float(json.loads(baseline_path.read_text(encoding="utf-8"))[mode])
+    baseline = float(json.loads(paths.baseline.read_text(encoding="utf-8"))[mode])
     report = {
         "mode": mode,
         "score": score,
         "baseline": baseline,
         "cases": [vars(r) for r in results],
     }
-    print(json.dumps(report, indent=2))
+    sys.stdout.write(json.dumps(report, indent=2) + "\n")
     if score < baseline:
-        print(f"Evaluation score {score} is below the {mode} baseline {baseline}.", file=sys.stderr)
+        sys.stderr.write(f"Evaluation score {score} is below the {mode} baseline {baseline}.\n")
         return 1
     if score > baseline:
-        print(
+        sys.stderr.write(
             f"Evaluation score {score} beats the {mode} baseline {baseline}; "
-            "raise evals/baseline.json in this PR.",
-            file=sys.stderr,
+            "raise evals/baseline.json in this PR.\n"
         )
     return 0
