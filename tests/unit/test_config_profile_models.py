@@ -42,6 +42,10 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
     assert defaults.database_url == "sqlite:///pejip.db"
     assert defaults.ai_ledger_path == Path("pejip-ai-spend.db")
     assert (defaults.inbox_bucket, defaults.aws_region) == (None, None)
+    assert (defaults.connections_path, defaults.network_decisions_path) == (None, None)
+    network = Settings.from_env({"PEJIP_CONNECTIONS": "c.csv", "PEJIP_NETWORK_DECISIONS": "d.yaml"})
+    assert network.connections_path == Path("c.csv")
+    assert network.network_decisions_path == Path("d.yaml")
     inbox = Settings.from_env({"PEJIP_INBOX_BUCKET": "b", "AWS_REGION": "us-west-2"})
     assert (inbox.inbox_bucket, inbox.aws_region) == ("b", "us-west-2")
     custom = Settings.from_env(

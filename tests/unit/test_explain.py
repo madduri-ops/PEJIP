@@ -7,11 +7,20 @@ import pytest
 
 from pejip.analysis import EvidenceMatching, JobAnalysis
 from pejip.config import SearchConfig
-from pejip.explain import UnsupportedClaimError, build_explanation, verify_citations
+from pejip.explain import (
+    UnsupportedClaimError,
+    build_explanation,
+    network_points,
+    verify_citations,
+)
+from pejip.network.companies import CompanyDirectory
+from pejip.network.linkedin import parse_export
+from pejip.network.matching import NetworkIndex, NetworkSignal, TitleDecision
 from pejip.profile import CareerProfile
 from pejip.scoring import JobFacts, score_job
 from tests import factories as f
 from tests.conftest import NOW
+from tests.linkedin import export, row
 
 DESCRIPTION = (
     "Lead technology operations. Own portfolio governance. Manage a budget above $30M. "
@@ -175,3 +184,70 @@ def test_location_points(
     explanation, _ = build(profile, config, MATCHES, location_fit=location_fit)
     texts = [p["text"] for p in explanation["why_now"]]
     assert (expected in texts) if expected else not any("location" in t for t in texts)
+
+
+def signal_for(role_level: str, *rows: str) -> NetworkSignal:
+    directory = CompanyDirectory.build(["Co"])
+    people = parse_export(export(*rows), NOW).connections if rows else ()
+    return NetworkIndex.build(people, directory).signal("Co", role_level)
+
+
+def test_who_you_know_names_matured_connections_and_asks_about_unclear_titles(
+    profile: CareerProfile,
+) -> None:
+    signal = signal_for(
+        "VP",
+        row("Avery", company="Co", position="SVP Technology"),
+        row("Casey", company="Co", position="Principal, Technology Strategy"),
+        row("Devon", company="Co", position="Director"),
+        row("Emery", company="Co", position="Engineer"),
+    )
+    points = network_points(signal, "Co")
+    assert [p["text"] for p in points] == [
+        "Matured connection: Avery Example, SVP Technology",
+        "Your call: Casey Example, Principal, Technology Strategy. This title has no clear"
+        " level. Is it comparable to VP or more senior?",
+        "2 other first-degree connections below VP level.",
+        "As of your LinkedIn import on October 5, 2026; people may have moved since.",
+    ]
+    assert points[0]["citations"] == [
+        {"type": "network", "connection_id": signal.matches[0].connection.connection_id}
+    ]
+    verify_citations({"who_you_know": points}, job(), profile, signal)
+    with pytest.raises(UnsupportedClaimError):
+        verify_citations({"who_you_know": points}, job(), profile)
+
+
+def test_who_you_know_wording_for_decided_single_and_absent_connections() -> None:
+    directory = CompanyDirectory.build(["Co"])
+    people = parse_export(
+        export(
+            row("Casey", company="Co", position="Partner"),
+            row("Devon", company="Co", position="Director"),
+        ),
+        NOW,
+    ).connections
+    decided = NetworkIndex.build(
+        people, directory, [TitleDecision("Co", "Partner", "VP", matured=True)]
+    ).signal("Co", "VP")
+    texts = [p["text"] for p in network_points(decided, "Co")]
+    assert texts[:2] == [
+        "Matured connection: Casey Example, Partner (your call)",
+        "1 other first-degree connection below VP level.",
+    ]
+    nobody = network_points(signal_for("VP"), "Co")
+    assert [p["text"] for p in nobody] == [
+        "No first-degree connections at Co. As of your LinkedIn import on an unknown date;"
+        " people may have moved since."
+    ]
+    assert network_points(None, "Co")[0]["text"] == "Network data has not been imported yet."
+
+
+def test_an_unclear_role_level_is_asked_about_plainly() -> None:
+    directory = CompanyDirectory.build(["Co"])
+    people = parse_export(export(row(company="Co", position="VP")), NOW).connections
+    signal = NetworkIndex.build(people, directory).signal("Co", "UNKNOWN", "Partner")
+    assert network_points(signal, "Co")[0]["text"] == (
+        "Your call: Avery Example, VP. This role's level is unclear. Is this person at its"
+        " level or more senior?"
+    )

@@ -13,6 +13,9 @@ from pejip.ai.client import AIClient
 from pejip.config import AlertCompany, InboxConfig, SearchConfig, SourceConfig
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
+from pejip.network.companies import CompanyDirectory
+from pejip.network.linkedin import parse_export
+from pejip.network.matching import NetworkIndex
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile
 from pejip.sources.email_alerts import INBOX_PREFIX, S3Inbox
@@ -20,6 +23,7 @@ from pejip.sources.http import HTTPStatusError, PoliteClient
 from pejip.store import Store
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages, response
+from tests.linkedin import export, row
 from tests.mail import FakeS3, email
 
 BODY = "<p>Lead technology operations for the company.</p><p>Own portfolio governance.</p>"
@@ -93,6 +97,7 @@ def build(
     """
     clock_days = options.pop("clock_days", 0)
     inbox = options.pop("inbox", None)
+    network = options.pop("network", None)
     guard = options.pop("guard", None) or CostGuard(SqliteLedger(":memory:"), clock=lambda: NOW)
     cfg = config.model_copy(
         update={
@@ -115,7 +120,9 @@ def build(
         sleep=lambda _s: None,
     )
     client = AIClient(cfg.ai, guard, messages=fake, clock=lambda: when)
-    return Pipeline(cfg, profile, store, client, http, clock=lambda: when, inbox=inbox)
+    return Pipeline(
+        cfg, profile, store, client, http, clock=lambda: when, inbox=inbox, network=network
+    )
 
 
 def test_run_finds_scores_and_explains(
@@ -331,3 +338,49 @@ def test_an_inbox_without_configured_companies_is_not_read(
 
     assert digest.sources == []
     assert s3.calls == []
+
+
+def test_connections_raise_priority_explain_who_you_know_and_stay_out_of_logs(
+    config: SearchConfig, profile: CareerProfile, store: Store, caplog: pytest.LogCaptureFixture
+) -> None:
+    people = parse_export(
+        export(
+            row("Avery", "Synthetic", "Alpha Inc.", "SVP Technology"),
+            row("Casey", "Synthetic", "Alpha", "Partner"),
+            row("Devon", "Synthetic", "Alpha Cloud", "VP Engineering"),
+        ),
+        NOW - timedelta(days=7),
+    ).connections
+    network = NetworkIndex.build(people, CompanyDirectory.build(["Alpha"]))
+    fake = FakeMessages()
+    fake.responder = model_responder()
+    with caplog.at_level("DEBUG"):
+        digest = build(config, profile, store, Boards(), fake, network=network).run()
+
+    top = next(i for i in digest.items if i.job["title"] == "VP, Technology Operations")
+    assert top.recommendation is not None
+    detail = top.recommendation["detail"]
+    assert top.recommendation["fit"] == 100.0
+    assert detail["network_boost"] == 10
+    assert {"MATURED_CONNECTION", "NETWORK_DECISION_NEEDED"} <= set(detail["reason_codes"])
+    who = [p["text"] for p in detail["explanation"]["who_you_know"]]
+    assert who[0] == "Matured connection: Avery Synthetic, SVP Technology"
+    assert who[1].startswith("Your call: Casey Synthetic, Partner.")
+    assert digest.notes == [
+        "LinkedIn connections last refreshed: September 28, 2026.",
+        "Employer names to review before their connections count (add them to your network"
+        " decisions file): Alpha Cloud (1, could be Alpha).",
+    ]
+    text = render(digest, config.scoring.strong_match_fit)
+    assert "Matured connection: Avery Synthetic" in text
+    logged = caplog.text + "".join(repr(r.__dict__) for r in caplog.records)
+    assert "Synthetic" not in logged
+    assert "linkedin.com" not in logged
+
+
+def test_an_import_with_no_valid_connections_says_so(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    network = NetworkIndex.build([], CompanyDirectory.build(["Alpha"]))
+    digest = build(config, profile, store, Boards(()), FakeMessages(), network=network).run()
+    assert digest.notes == ["LinkedIn connections last refreshed: never."]

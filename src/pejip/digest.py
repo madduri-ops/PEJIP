@@ -47,6 +47,8 @@ def _cite(cite: dict[str, str]) -> str:
         return f'"{quote}"'
     if cite["type"] == "profile":
         return cite["evidence_id"]
+    if cite["type"] == "network":
+        return "LinkedIn import"
     return f"job {cite['field']}"
 
 

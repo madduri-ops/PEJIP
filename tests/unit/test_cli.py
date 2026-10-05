@@ -12,8 +12,10 @@ import pytest
 
 from pejip import cli
 from pejip.digest import Digest
+from pejip.network.matching import NetworkIndex
 from pejip.store import Store
 from tests.conftest import NOW, ROOT
+from tests.linkedin import export, row
 
 
 @pytest.fixture
@@ -119,3 +121,68 @@ def test_old_digests_are_deleted_and_recent_ones_kept(
     assert cli.main([command]) == 0
     assert not old.exists()
     assert recent.exists()
+
+
+def test_connections_reports_counts_and_names_to_review_but_no_people(
+    env: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    upload = env / "Connections.csv"
+    upload.write_bytes(
+        export(
+            row("Avery", "Synthetic", "Anthropic, PBC", "SVP Technology"),
+            row("Casey", "Synthetic", "Anthropic", "Partner"),
+            row("Devon", "Synthetic", "Stripe Cloud", "VP"),
+            *[row("", "", "Anthropic", "VP")] * 7,
+        )
+    )
+    assert cli.main(["connections", str(upload)]) == 0
+    out = capsys.readouterr().out
+    assert "Valid connections: 3" in out
+    assert "no first or last name: lines 8, 9, 10, 11, 12 and 2 more" in out
+    assert "Anthropic: 2 connections, 1 unclear titles" in out
+    assert "Stripe Cloud: 1 held back, could be Stripe" in out
+    assert "Synthetic" not in out
+
+
+def test_connections_with_nothing_to_report(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    upload = env / "Connections.csv"
+    upload.write_bytes(export(row(company="Elsewhere")))
+    assert cli.main(["connections", str(upload)]) == 0
+    out = capsys.readouterr().out
+    assert "At tracked companies:\n  none" in out
+    assert "Employer names to review:\n  none" in out
+
+
+def test_connections_refuses_an_unreadable_file(
+    env: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    upload = env / "Profile.csv"
+    upload.write_text("Name,Headline\n")
+    assert cli.main(["connections", str(upload)]) == 2
+    assert "header row" in capsys.readouterr().err
+
+
+@pytest.mark.usefixtures("env")
+def test_run_uses_connections_only_when_an_export_is_named(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built: list[dict[str, Any]] = []
+
+    class StubPipeline:
+        def __init__(self, *_args: Any, **kwargs: Any) -> None:
+            built.append(kwargs)
+
+        def run(self) -> Digest:
+            return Digest("run-1", NOW, "SUCCESS", [])
+
+    monkeypatch.setattr(cli, "Pipeline", StubPipeline)
+    assert cli.main(["run"]) == 0
+    assert built[-1]["network"] is None
+    monkeypatch.setenv("PEJIP_CONNECTIONS", str(ROOT / "examples" / "Connections.example.csv"))
+    monkeypatch.setenv(
+        "PEJIP_NETWORK_DECISIONS", str(ROOT / "examples" / "network-decisions.example.yaml")
+    )
+    assert cli.main(["run"]) == 0
+    network = built[-1]["network"]
+    assert isinstance(network, NetworkIndex)
+    assert "Scale AI" in network.by_company

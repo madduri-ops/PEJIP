@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
@@ -69,6 +69,11 @@ class ScoringConfig(_Strict):
     priority_min_fit: dict[str, float]
     immediate_max_age_days: int = Field(ge=0)
     strong_match_fit: float
+    # Priority points a role gains from the network (design doc 0011). Never negative,
+    # so having no connections never lowers a role.
+    network_priority_boost: dict[
+        Literal["MATURED", "CONNECTED"], Annotated[float, Field(ge=0, le=25)]
+    ] = Field(default_factory=dict)
 
 
 class AlertCompany(_Strict):
@@ -86,6 +91,12 @@ class InboxConfig(_Strict):
     companies: list[AlertCompany]
 
 
+class NetworkConfig(_Strict):
+    """Other names a tracked company goes by in LinkedIn employer fields (spec 13.3)."""
+
+    company_aliases: dict[str, list[str]] = Field(default_factory=dict)
+
+
 class SearchConfig(_Strict):
     sources: list[SourceConfig]
     fetch: FetchConfig
@@ -95,6 +106,7 @@ class SearchConfig(_Strict):
     scoring: ScoringConfig
     retention_days: int = Field(ge=1, le=RETENTION_DAYS)
     inbox: InboxConfig | None = None
+    network: NetworkConfig | None = None
 
 
 def load_config(path: Path) -> SearchConfig:
@@ -114,6 +126,8 @@ class Settings:
     ai_ledger_path: Path
     inbox_bucket: str | None = None
     aws_region: str | None = None
+    connections_path: Path | None = None
+    network_decisions_path: Path | None = None
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -127,4 +141,12 @@ class Settings:
             # The job-alert inbox is read only where a bucket is named (in AWS).
             inbox_bucket=e.get("PEJIP_INBOX_BUCKET") or None,
             aws_region=e.get("AWS_REGION") or None,
+            # A LinkedIn Connections export and the candidate's network decisions, both
+            # kept outside the repository (design doc 0011).
+            connections_path=_optional_path(e.get("PEJIP_CONNECTIONS")),
+            network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
         )
+
+
+def _optional_path(value: str | None) -> Path | None:
+    return Path(value) if value else None

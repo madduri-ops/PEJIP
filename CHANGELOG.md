@@ -20,6 +20,14 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Connection matching: `pejip run` reads a LinkedIn Connections export
+  (`PEJIP_CONNECTIONS`) and shows, for each role, your matured connections
+  (first-degree, at the hiring company, at the role's level or above). They raise
+  Application Priority, never Fit. Unclear titles and ambiguous employer names are
+  asked about instead of guessed, and answered in a decisions file
+  (`PEJIP_NETWORK_DECISIONS`).
+- `pejip connections <file>` checks an export before use: counts, rejected rows,
+  connections per tracked company and employer names to review.
 - Job-alert inbox: `alerts@inbox.job-search.zephyr-mcg.com` receives career-site job
   alerts through Amazon SES into an encrypted bucket kept for 90 days.
 - `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts

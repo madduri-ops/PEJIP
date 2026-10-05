@@ -169,4 +169,4 @@ def test_cli_run_produces_an_explained_digest(server: str, tmp_path: Path) -> No
     spend = {(line.feature, line.model) for line in CostGuard(ledger).breakdown()}
     ledger.close()
     assert spend == {("job_analysis", "claude-opus-5-5"), ("evidence_matching", "claude-opus-5-5")}
-    assert data["recommendations"][0]["scoring_version"] == "fit-1"
+    assert data["recommendations"][0]["scoring_version"] == "fit-2"

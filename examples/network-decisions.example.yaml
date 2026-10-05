@@ -1,0 +1,9 @@
+# Your answers to the questions connection matching cannot settle (design doc 0011).
+# Copy this file outside the repository and point PEJIP_NETWORK_DECISIONS at it.
+companies:
+  # An employer name as imported, mapped to a tracked company, or null to leave it
+  # unmatched (a separate company).
+  Scale AI Labs: Scale AI
+titles:
+  # An unclear title at a company, judged against a role level.
+  - {company: Anthropic, position: "Principal, Technology Strategy", role_level: VP, matured: true}

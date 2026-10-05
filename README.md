@@ -96,8 +96,9 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 The Phase 1 (FIND) specification is complete, and the first end-to-end slice is a
 command line tool: it fetches roles from configured Greenhouse and Lever company
 boards and from career-site job-alert emails sent to PEJIP's own inbox, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
-digest that explains each ranking with cited evidence. Network data, feedback,
-notifications, feature API endpoints and the web UI come next. The build policy,
+digest that explains each ranking with cited evidence, including matured LinkedIn
+connections at the hiring company ([design 0011](docs/design/0011-connection-matching.md)).
+Feedback, notifications, feature API endpoints and the web UI come next. The build policy,
 repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
 set for rankings and foundation AWS infrastructure are in place. The hosting stack
 and continuous deploy for `job-search.zephyr-mcg.com` are defined
@@ -117,6 +118,9 @@ export ANTHROPIC_API_KEY=...                     # from your shell, never commit
 pejip run                                        # writes output/digest-*.md
 ```
 
+To add who you know, point `PEJIP_CONNECTIONS` at your LinkedIn Connections export
+(kept outside the repository) and check it first with `pejip connections <file>`.
+
 Which boards are searched, the title taxonomy, geography, model and scoring weights
 are in [config/search.yaml](config/search.yaml).
 
@@ -127,7 +131,7 @@ are in [config/search.yaml](config/search.yaml).
 | [`src/pejip/`](src/pejip/) | The application package (CLI, pipeline, sources, AI client, scoring) |
 | [`config/`](config/) | Search, source, AI and scoring configuration |
 | [`tests/`](tests/) | Unit, integration and system tests |
-| [`examples/`](examples/) | Synthetic example profile |
+| [`examples/`](examples/) | Synthetic example profile, LinkedIn export and network decisions |
 | [`docs/spec/`](docs/spec/) | Product and engineering build specification (primary product reference) |
 | [`docs/BUILD_POLICY.md`](docs/BUILD_POLICY.md) | Binding CI/CD and engineering policy |
 | [`docs/success-scorecard.md`](docs/success-scorecard.md) | North star, success metrics and targets |

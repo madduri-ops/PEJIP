@@ -1,4 +1,4 @@
-"""Command line entry point: ``pejip run|purge|export|delete-all``."""
+"""Command line entry point: ``pejip run|connections|purge|export|delete-all``."""
 
 from __future__ import annotations
 
@@ -14,6 +14,9 @@ from pejip.config import Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.digest import render
 from pejip.logs import configure_logging
+from pejip.network.linkedin import ExportError
+from pejip.network.loader import load_index
+from pejip.network.matching import YOUR_CALL, NetworkIndex
 from pejip.pipeline import Pipeline
 from pejip.profile import load_profile
 from pejip.retention import purge_files
@@ -30,12 +33,15 @@ def _cmd_run(settings: Settings) -> int:
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
+    network = None
+    if settings.connections_path is not None:
+        _, network = load_index(config, settings.connections_path, settings.network_decisions_path)
     inbox = None
     if settings.inbox_bucket:
         inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
     try:
         ai = AIClient(config.ai, CostGuard(ledger))
-        digest = Pipeline(config, profile, store, ai, http, inbox=inbox).run()
+        digest = Pipeline(config, profile, store, ai, http, inbox=inbox, network=network).run()
     finally:
         http.close()
         ledger.close()
@@ -45,6 +51,50 @@ def _cmd_run(settings: Settings) -> int:
     log.info("digest_written", extra={"path": str(path), "status": digest.status})
     _purge_output(settings, config.retention_days)
     return 1 if digest.status == "FAILED" else 0
+
+
+def _cmd_connections(settings: Settings, path: Path) -> int:
+    """Check a LinkedIn export before using it: counts and names to review, no people."""
+    config = load_config(settings.config_path)
+    try:
+        preview, index = load_index(config, path, settings.network_decisions_path)
+    except ExportError as exc:
+        sys.stderr.write(f"Cannot read {path}: {exc}\n")
+        return 2
+    out = [
+        f"Rows read: {preview.records_parsed}",
+        f"Valid connections: {preview.records_accepted}",
+        f"Duplicates merged: {preview.duplicates}",
+        f"Rejected: {len(preview.rejected)}",
+    ]
+    reasons: dict[str, list[int]] = {}
+    for row in preview.rejected:
+        reasons.setdefault(row.reason, []).append(row.line)
+    out += [f"  {reason}: lines {_lines(lines)}" for reason, lines in sorted(reasons.items())]
+    out.append("At tracked companies:")
+    out += _company_lines(index) or ["  none"]
+    out.append("Employer names to review:")
+    out += [
+        f"  {raw}: {index.held_back[raw]} held back, could be {' or '.join(res.candidates)}"
+        for raw, res in sorted(index.unresolved.items())
+    ] or ["  none"]
+    sys.stdout.write("\n".join(out) + "\n")
+    return 0
+
+
+def _lines(lines: list[int], limit: int = 5) -> str:
+    shown = ", ".join(str(n) for n in lines[:limit])
+    return shown + (f" and {len(lines) - limit} more" if len(lines) > limit else "")
+
+
+def _company_lines(index: NetworkIndex) -> list[str]:
+    """Per company: connections, and those with no clear level (judged against a VP role)."""
+    lines = []
+    for company in sorted(index.by_company):
+        signal = index.signal(company, "VP")
+        unclear = len(signal.by_status(YOUR_CALL))
+        lines.append(f"  {company}: {len(signal.matches)} connections, {unclear} unclear titles")
+    return lines
 
 
 def _cmd_purge(settings: Settings) -> int:
@@ -80,6 +130,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="pejip", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("run", help="run one search and write the digest")
+    conn = sub.add_parser("connections", help="check a LinkedIn Connections export")
+    conn.add_argument("file", type=Path)
     sub.add_parser("purge", help="delete data past the retention window")
     export = sub.add_parser("export", help="export all stored data as JSON")
     export.add_argument("out", type=Path)
@@ -94,6 +146,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     settings = Settings.from_env()
     if args.command == "run":
         return _cmd_run(settings)
+    if args.command == "connections":
+        return _cmd_connections(settings, args.file)
     if args.command == "purge":
         return _cmd_purge(settings)
     if args.command == "export":

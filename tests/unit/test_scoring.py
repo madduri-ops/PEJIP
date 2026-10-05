@@ -1,14 +1,22 @@
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from pejip.analysis import EvidenceMatching, JobAnalysis
 from pejip.config import ScoringConfig, SearchConfig
 from pejip.profile import CareerProfile
-from pejip.scoring import JobFacts, Recommendation, compensation_fit, score_job
+from pejip.scoring import (
+    JobFacts,
+    NetworkFacts,
+    Recommendation,
+    compensation_fit,
+    score_job,
+)
 from tests import factories as f
 from tests.conftest import NOW
 
@@ -72,7 +80,7 @@ def test_excellent_fresh_match_is_immediate(profile: CareerProfile, config: Sear
         "FRESH_POSTING",
         "PREFERRED_LOCATION",
     } <= set(rec.reason_codes)
-    assert rec.to_dict()["scoring_version"] == "fit-1"
+    assert rec.to_dict()["scoring_version"] == "fit-2"
 
 
 def test_unknown_matches_do_not_lower_fit_but_lower_confidence(
@@ -282,3 +290,78 @@ def test_location_reasons(
     if reason:
         assert reason in rec.reason_codes
     assert "PREFERRED_LOCATION" not in rec.reason_codes
+
+
+def networked(network: NetworkFacts | None, **kwargs: Any) -> JobFacts:
+    return dataclasses.replace(facts(**kwargs), network=network)
+
+
+def test_a_matured_connection_raises_priority_but_never_fit(
+    profile: CareerProfile, config: SearchConfig
+) -> None:
+    reqs, matches = all_categories("GOOD_MATCH")
+    args = (f.analysis(reqs), f.matching(matches))
+    alone = score(profile, config.scoring, *args, job=networked(None, age_days=10))
+    known = score(profile, config.scoring, *args, job=networked(NetworkFacts(4, 1, 0), age_days=10))
+    assert known.fit == alone.fit
+    assert alone.priority_score is not None
+    assert known.priority_score == round(alone.priority_score + 10, 1)
+    assert known.network_boost == 10
+    assert "MATURED_CONNECTION" in known.reason_codes
+    assert alone.network_boost == 0
+
+
+def test_connections_without_a_matured_one_add_a_little(
+    profile: CareerProfile, config: SearchConfig
+) -> None:
+    rec = score(profile, config.scoring, job=networked(NetworkFacts(3, 0, 1)))
+    assert rec.network_boost == 3
+    assert {"FIRST_DEGREE_CONNECTIONS", "NETWORK_DECISION_NEEDED"} <= set(rec.reason_codes)
+    assert "MATURED_CONNECTION" not in rec.reason_codes
+    none = score(profile, config.scoring, job=networked(NetworkFacts(0, 0, 0)))
+    assert none.network_boost == 0
+    assert not {"FIRST_DEGREE_CONNECTIONS", "MATURED_CONNECTION"} & set(none.reason_codes)
+
+
+def test_priority_score_is_capped_at_100(profile: CareerProfile, config: SearchConfig) -> None:
+    rec = score(profile, config.scoring, job=networked(NetworkFacts(1, 1, 0), comp=(None, 400000)))
+    assert rec.priority_score == 100.0
+
+
+def test_a_strong_network_cannot_lift_a_weak_fit_to_the_top(
+    profile: CareerProfile, config: SearchConfig
+) -> None:
+    reqs, weak = all_categories("WEAK_MATCH")
+    rec = score(
+        profile,
+        config.scoring,
+        f.analysis(reqs),
+        f.matching(weak, direction="AWAY"),
+        job=networked(NetworkFacts(12, 12, 0)),
+    )
+    assert rec.fit is not None
+    assert rec.fit < 60
+    assert rec.priority in ("MEDIUM", "LOW")
+
+
+def test_no_boost_is_recorded_for_an_unranked_role(
+    profile: CareerProfile, config: SearchConfig
+) -> None:
+    rec = score(
+        profile,
+        config.scoring,
+        f.analysis([], inferred_seniority="UNKNOWN"),
+        f.matching([], direction="UNKNOWN"),
+        job=networked(NetworkFacts(1, 1, 0)),
+    )
+    assert rec.priority == "UNRANKED"
+    assert rec.network_boost == 0.0
+
+
+def test_network_boost_config_is_optional_and_bounded(config: SearchConfig) -> None:
+    data = config.scoring.model_dump()
+    del data["network_priority_boost"]
+    assert ScoringConfig.model_validate(data).network_priority_boost == {}
+    for bad in ({"MATURED": -1}, {"MATURED": 50}, {"OTHER": 1}):
+        with pytest.raises(ValidationError):
+            ScoringConfig.model_validate({**data, "network_priority_boost": bad})
