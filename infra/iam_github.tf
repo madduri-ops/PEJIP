@@ -281,8 +281,17 @@ data "aws_iam_policy_document" "plan" {
 
   statement {
     sid       = "ReadWaf"
-    actions   = ["wafv2:GetLoggingConfiguration", "wafv2:GetWebACL", "wafv2:GetWebACLForResource", "wafv2:ListTagsForResource"]
-    resources = ["arn:aws:wafv2:${var.aws_region}:${local.account_id}:regional/*/pejip-*/*", "arn:aws:elasticloadbalancing:${var.aws_region}:${local.account_id}:loadbalancer/app/pejip-*/*"]
+    actions   = ["wafv2:GetLoggingConfiguration", "wafv2:GetWebACL", "wafv2:ListTagsForResource"]
+    resources = ["arn:aws:wafv2:${var.aws_region}:${local.account_id}:regional/*/pejip-*/*"]
+  }
+
+  # GetWebACLForResource looks up whichever web ACL protects the load balancer,
+  # so IAM checks it against every regional web ACL (regional/webacl/*/*), not
+  # a named one. Read-only, and still limited to this account and region.
+  statement {
+    sid       = "ReadWafAssociation"
+    actions   = ["wafv2:GetWebACLForResource"]
+    resources = ["arn:aws:wafv2:${var.aws_region}:${local.account_id}:regional/webacl/*/*", "arn:aws:elasticloadbalancing:${var.aws_region}:${local.account_id}:loadbalancer/app/pejip-*/*"]
   }
 
   statement {

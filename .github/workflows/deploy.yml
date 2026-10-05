@@ -228,13 +228,23 @@ jobs:
           desired=$(( PREVIOUS_DESIRED > 0 ? PREVIOUS_DESIRED : 1 ))
           aws ecs update-service --cluster "${CLUSTER}" --service "${SERVICE}" \
             --task-definition "${NEW_TASK_DEFINITION}" --desired-count "${desired}" >/dev/null
-          aws ecs wait services-stable --cluster "${CLUSTER}" --services "${SERVICE}"
-          # The circuit breaker can roll back on its own and still settle as
-          # "stable", so check the new revision is the one that completed.
-          read -r running state < <(aws ecs describe-services --cluster "${CLUSTER}" --services "${SERVICE}" \
-            --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition,rolloutState]" --output text)
-          echo "Primary deployment: ${running} (${state})"
-          [ "${running}" = "${NEW_TASK_DEFINITION}" ] && [ "${state}" = "COMPLETED" ]
+          # "services-stable" can return while the rollout is still IN_PROGRESS,
+          # and the circuit breaker can roll back on its own, so wait until the
+          # primary deployment is the new revision and has COMPLETED (or failed).
+          for attempt in $(seq 1 60); do
+            read -r running state < <(aws ecs describe-services --cluster "${CLUSTER}" --services "${SERVICE}" \
+              --query "services[0].deployments[?status=='PRIMARY'] | [0].[taskDefinition,rolloutState]" --output text)
+            echo "Primary deployment: ${running} (${state})"
+            if [ "${running}" != "${NEW_TASK_DEFINITION}" ] || [ "${state}" = "FAILED" ]; then
+              exit 1
+            fi
+            if [ "${state}" = "COMPLETED" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "The rollout did not complete within 10 minutes"
+          exit 1
 
       - name: Post-deploy health gate
         run: |
