@@ -20,6 +20,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- PEJIP searches on its own every morning at 6am Pacific on AWS, keeps its results
+  in an encrypted SQLite database on EFS, and emails Babu the digest. Data past 90
+  days is purged daily, and a failed run emails an alert.
+- On AWS the career profile is read from the encrypted SSM parameter
+  `/pejip/profile`. Until it exists, or until Claude access is set up for the app,
+  roles are still found and emailed, listed as unranked with the reason.
 - Job-alert inbox: `alerts@inbox.job-search.zephyr-mcg.com` receives career-site job
   alerts through Amazon SES into an encrypted bucket kept for 90 days.
 - `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts

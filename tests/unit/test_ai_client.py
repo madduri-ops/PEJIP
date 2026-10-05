@@ -3,12 +3,14 @@ from __future__ import annotations
 import logging
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import anthropic
 import httpx2
 import pytest
 from pydantic import BaseModel
 
+from pejip.ai import client as client_module
 from pejip.ai.client import AIClient, AIError, strict_schema
 from pejip.ai.prompts import Prompt
 from pejip.claude_auth import ClaudeAuthError
@@ -173,3 +175,27 @@ def test_default_messages_client_refuses_a_leftover_key(
     monkeypatch.setenv("PEJIP_CLAUDE_IDENTITY", "github-actions")
     with pytest.raises(ClaudeAuthError):
         AIClient(config.ai, guard)
+
+
+def test_default_messages_client_federates_from_aws_with_a_regional_sts_client(
+    config: SearchConfig, guard: CostGuard, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("PEJIP_CLAUDE_IDENTITY", "aws-sts")
+    monkeypatch.setenv("AWS_REGION", "us-west-2")
+    monkeypatch.setenv("ANTHROPIC_ORGANIZATION_ID", "00000000-0000-4000-8000-000000000000")
+    monkeypatch.setenv("ANTHROPIC_FEDERATION_RULE_ID", "fdrl_test")
+    monkeypatch.setenv("ANTHROPIC_SERVICE_ACCOUNT_ID", "svac_test")
+    built: list[Any] = []
+    real = client_module._sts_client
+
+    def spy() -> Any:
+        built.append(real())
+        return built[-1]
+
+    monkeypatch.setattr(client_module, "_sts_client", spy)
+    client = AIClient(config.ai, guard)
+    assert client._messages is not None
+    assert built[0].meta.region_name == "us-west-2"
+    assert callable(built[0].get_web_identity_token)

@@ -1,6 +1,8 @@
-# Only pyproject.toml, README.md and src/ are copied into the build stage.
+# Only pyproject.toml, README.md and src/ are copied into the build stage, and
+# the search configuration into the final image.
 *
 !pyproject.toml
 !README.md
 !src/
+!config/search.yaml
 **/__pycache__

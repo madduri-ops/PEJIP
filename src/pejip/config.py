@@ -114,6 +114,9 @@ class Settings:
     ai_ledger_path: Path
     inbox_bucket: str | None = None
     aws_region: str | None = None
+    profile_parameter: str | None = None
+    digest_topic_arn: str | None = None
+    ai_enabled: bool = True
 
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Settings:
@@ -127,4 +130,10 @@ class Settings:
             # The job-alert inbox is read only where a bucket is named (in AWS).
             inbox_bucket=e.get("PEJIP_INBOX_BUCKET") or None,
             aws_region=e.get("AWS_REGION") or None,
+            # In AWS the profile is an encrypted SSM parameter, not a file.
+            profile_parameter=e.get("PEJIP_PROFILE_PARAMETER") or None,
+            # Where `pejip run` emails the digest (an SNS topic), when set.
+            digest_topic_arn=e.get("PEJIP_DIGEST_TOPIC_ARN") or None,
+            # Off until the workload can sign in to Claude; roles are then unranked.
+            ai_enabled=e.get("PEJIP_AI_ENABLED", "true").lower() != "false",
         )

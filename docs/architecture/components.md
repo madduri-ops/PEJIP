@@ -43,15 +43,26 @@ flowchart TB
   store, HTTP and AI clients together.
 - **Interfaces:** `pejip run | purge | export <file> | delete-all --yes`;
   environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`, `PEJIP_DATABASE_URL`,
-  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file), and Claude
+  `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's SQLite file),
+  `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM instead of a
+  file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest), `PEJIP_AI_ENABLED`, and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
-- **Data:** writes `digest-*.md` to the output directory.
+- **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
+  emails it through `pejip.delivery`.
+
+## delivery
+
+- **Responsibility:** emails the digest through the `pejip-digest` SNS topic,
+  cutting it to fit SNS's message limit.
+- **Interfaces:** `send_digest(client, topic_arn, digest, text, kept_at)`.
+- **Data:** none stored.
 
 ## pipeline
 
 - **Responsibility:** one search run: purge expired data, fetch every source,
   filter, upsert, analyse new or changed roles, score, explain and assemble the
-  digest. Isolates source and analysis failures.
+  digest. Isolates source and analysis failures. Without a profile or Claude it
+  still stores roles and lists them unranked with the reason.
 - **Interfaces:** `Pipeline.run() -> Digest`.
 - **Data:** reads and writes all store tables.
 

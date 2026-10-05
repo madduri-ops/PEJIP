@@ -42,6 +42,18 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
     assert defaults.database_url == "sqlite:///pejip.db"
     assert defaults.ai_ledger_path == Path("pejip-ai-spend.db")
     assert (defaults.inbox_bucket, defaults.aws_region) == (None, None)
+    assert (defaults.profile_parameter, defaults.digest_topic_arn) == (None, None)
+    assert defaults.ai_enabled
+    aws = Settings.from_env(
+        {
+            "PEJIP_PROFILE_PARAMETER": "/pejip/profile",
+            "PEJIP_DIGEST_TOPIC_ARN": "arn:aws:sns:us-west-2:111111111111:pejip-digest",
+            "PEJIP_AI_ENABLED": "False",
+        }
+    )
+    assert aws.profile_parameter == "/pejip/profile"
+    assert aws.digest_topic_arn == "arn:aws:sns:us-west-2:111111111111:pejip-digest"
+    assert not aws.ai_enabled
     inbox = Settings.from_env({"PEJIP_INBOX_BUCKET": "b", "AWS_REGION": "us-west-2"})
     assert (inbox.inbox_bucket, inbox.aws_region) == ("b", "us-west-2")
     custom = Settings.from_env(

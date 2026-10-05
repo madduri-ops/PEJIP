@@ -6,7 +6,7 @@ import runpy
 import shutil
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 import pytest
 
@@ -14,6 +14,8 @@ from pejip import cli
 from pejip.digest import Digest
 from pejip.store import Store
 from tests.conftest import NOW, ROOT
+from tests.unit.test_delivery import FakeSns
+from tests.unit.test_profile_parameter import FakeSsm
 
 
 @pytest.fixture
@@ -119,3 +121,73 @@ def test_old_digests_are_deleted_and_recent_ones_kept(
     assert cli.main([command]) == 0
     assert not old.exists()
     assert recent.exists()
+
+
+class RecordingPipeline:
+    """Stands in for Pipeline and records what the CLI built it with."""
+
+    built: ClassVar[list[tuple[tuple[Any, ...], dict[str, Any]]]] = []
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        RecordingPipeline.built.append((args, kwargs))
+
+    def run(self) -> Digest:
+        return Digest("run-1", NOW, "SUCCESS", [])
+
+
+@pytest.mark.usefixtures("env")
+def test_on_aws_the_profile_comes_from_ssm_and_the_digest_is_emailed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    RecordingPipeline.built.clear()
+    sns = FakeSns()
+    regions: list[str | None] = []
+
+    def fake_ssm(region: str | None) -> FakeSsm:
+        regions.append(region)
+        return FakeSsm()
+
+    def fake_sns(region: str | None) -> FakeSns:
+        regions.append(region)
+        return sns
+
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_ssm_client", fake_ssm)
+    monkeypatch.setattr(cli, "make_sns_client", fake_sns)
+    monkeypatch.setenv("AWS_REGION", "us-west-2")
+    monkeypatch.setenv("PEJIP_PROFILE_PARAMETER", "/pejip/profile")
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    assert cli.main(["run"]) == 0
+
+    args, _kwargs = RecordingPipeline.built[-1]
+    assert args[1] is not None  # the profile
+    assert args[3] is not None  # the AI client
+    assert regions == ["us-west-2", "us-west-2"]
+    [call] = sns.calls
+    assert call["TopicArn"].endswith(":pejip-digest")
+    assert call["Subject"].startswith("PEJIP digest 2026-10-05")
+    assert "finished **SUCCESS**" in call["Message"]
+
+
+@pytest.mark.usefixtures("env")
+def test_without_a_stored_profile_or_claude_the_run_says_why(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    RecordingPipeline.built.clear()
+    monkeypatch.setattr(cli, "Pipeline", RecordingPipeline)
+    monkeypatch.setattr(cli, "make_ssm_client", lambda _r: FakeSsm(error="ParameterNotFound"))
+    monkeypatch.setenv("PEJIP_PROFILE_PARAMETER", "/pejip/profile")
+    assert cli.main(["run"]) == 0
+    args, kwargs = RecordingPipeline.built[-1]
+    assert args[1] is None
+    assert kwargs["unranked_reason"] == (
+        "no career profile is stored yet (SSM parameter /pejip/profile)"
+    )
+
+    monkeypatch.delenv("PEJIP_PROFILE_PARAMETER")
+    monkeypatch.setenv("PEJIP_AI_ENABLED", "false")
+    assert cli.main(["run"]) == 0
+    args, kwargs = RecordingPipeline.built[-1]
+    assert args[1] is not None
+    assert args[3] is None
+    assert kwargs["unranked_reason"] == "Claude access is not set up for this workload yet"

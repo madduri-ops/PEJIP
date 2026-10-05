@@ -1,19 +1,53 @@
-# Daily retention purge (policy section 10). EventBridge Scheduler runs the
-# PEJIP image once a day as a one-off Fargate task with the command
-# `pejip purge`, so data past its 90-day window is deleted even on days with no
-# search. It targets the task family without a revision, so it always runs the
-# image the Deploy workflow last shipped.
+# Daily tasks (design doc 0011, policy section 10). EventBridge Scheduler runs
+# the PEJIP image as one-off Fargate tasks with a command override:
 #
-# The schedule is created disabled. Turn it on (purge_schedule_enabled = true)
-# once the deployed image has the `pejip purge` command and the app has a
-# persistent database; until then the task would have nothing to purge.
+# - `pejip run` every morning: find roles, rank them, store them on the data
+#   file system (efs.tf) and email the digest (digest.tf).
+# - `pejip purge` once a day, so data past its 90-day window is deleted even on
+#   a day the run fails.
+#
+# Both target the task family without a revision, so they always run the image
+# the Deploy workflow last shipped. A task that exits with an error emails Babu
+# through pejip-alerts (alarms.tf).
 
-resource "aws_scheduler_schedule" "purge" {
-  name                         = "pejip-purge-daily"
-  description                  = "Deletes PEJIP data past the 90-day retention window"
-  schedule_expression          = "cron(30 9 * * ? *)"
-  schedule_expression_timezone = "UTC"
-  state                        = var.purge_schedule_enabled ? "ENABLED" : "DISABLED"
+locals {
+  scheduled_tasks = {
+    run = {
+      name        = "pejip-run-daily"
+      description = "Finds and ranks roles, then emails Babu the PEJIP digest"
+      expression  = var.run_schedule
+      timezone    = var.run_schedule_timezone
+      enabled     = var.run_schedule_enabled
+      command     = ["pejip", "run"]
+      cpu         = var.run_task_cpu
+      memory      = var.run_task_memory
+    }
+    purge = {
+      name        = "pejip-purge-daily"
+      description = "Deletes PEJIP data past the 90-day retention window"
+      expression  = "cron(30 9 * * ? *)"
+      timezone    = "UTC"
+      enabled     = var.purge_schedule_enabled
+      command     = ["pejip", "purge"]
+      cpu         = var.task_cpu
+      memory      = var.task_memory
+    }
+  }
+}
+
+moved {
+  from = aws_scheduler_schedule.purge
+  to   = aws_scheduler_schedule.task["purge"]
+}
+
+resource "aws_scheduler_schedule" "task" {
+  for_each = local.scheduled_tasks
+
+  name                         = each.value.name
+  description                  = each.value.description
+  schedule_expression          = each.value.expression
+  schedule_expression_timezone = each.value.timezone
+  state                        = each.value.enabled ? "ENABLED" : "DISABLED"
   kms_key_arn                  = aws_kms_key.pejip.arn
 
   flexible_time_window {
@@ -38,9 +72,11 @@ resource "aws_scheduler_schedule" "purge" {
     }
 
     input = jsonencode({
+      cpu    = tostring(each.value.cpu)
+      memory = tostring(each.value.memory)
       containerOverrides = [{
         name    = "pejip"
-        command = ["pejip", "purge"]
+        command = each.value.command
       }]
     })
 

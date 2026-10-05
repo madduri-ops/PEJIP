@@ -49,8 +49,12 @@ the `pejip-monthly` budget, and the hosting stack from
 [ADR-0005](../adr/0005-app-hosting-and-continuous-deploy.md): `pejip-vpc` with two
 public subnets, ALB and WAF `pejip-alb` with the certificate for
 `job-search.zephyr-mcg.com` (DNS records added by hand at the registrar), ECS
-cluster and service `pejip-prod`, the daily `pejip-purge-daily` schedule, the
-service alarms, and the job-alert inbox: SES receives
+cluster and service `pejip-prod`, the daily `pejip-run-daily` (06:00 Pacific) and
+`pejip-purge-daily` schedules, the EFS file system `pejip-prod-data` that holds the
+SQLite database, the `pejip-digest` email topic
+([ADR-0007](../adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md),
+[design 0011](../design/0011-daily-run-and-storage.md)), the service alarms and
+failed-task alert, and the job-alert inbox: SES receives
 `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket
 `pejip-inbox-275704950192` ([design 0010](../design/0010-job-alert-inbox.md)). Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The ALB signs every request in with Google
@@ -76,8 +80,12 @@ flowchart LR
     alb -- sign-in --> google([Google OAuth])
     subgraph vpc[VPC pejip-vpc 10.20.0.0/16, public subnets]
         alb --> svc[ECS Fargate: pejip-prod]
-        sched[Scheduler: pejip-purge-daily] --> purge[One-off task: pejip purge]
+        sched[Scheduler: pejip-run-daily, pejip-purge-daily] --> run[One-off tasks: pejip run, pejip purge]
+        run --> efs[(EFS: pejip-prod-data<br/>SQLite, spend ledger, digests)]
+        svc --> efs
     end
+    run --> ssm[SSM: /pejip/profile]
+    run --> digestsns[SNS: pejip-digest] --> digestmail([Digest email to Babu])
     ecr --> svc
     svc --> kms[KMS: alias/pejip]
     svc --> logs[CloudWatch /ecs/pejip-prod]

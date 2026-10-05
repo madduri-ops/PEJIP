@@ -39,12 +39,15 @@ FETCHERS: dict[str, Fetcher] = {"greenhouse": fetch_greenhouse, "lever": fetch_l
 @dataclass
 class Pipeline:
     config: SearchConfig
-    profile: CareerProfile
+    # Ranking needs both the career profile and Claude. When either is missing the
+    # run still finds and stores roles and lists them unranked, saying why.
+    profile: CareerProfile | None
     store: Store
-    ai: AIClient
+    ai: AIClient | None
     http: PoliteClient
     clock: Callable[[], datetime] = lambda: datetime.now(UTC)
     inbox: S3Inbox | None = None
+    unranked_reason: str = "ranking is not set up"
     _analysed: int = 0
     _budget_error: str | None = None
 
@@ -89,6 +92,8 @@ class Pipeline:
             )
 
         notes: list[str] = []
+        if not self._can_rank():
+            notes.append(f"Roles are unranked because {self.unranked_reason}.")
         if self.inbox is not None and self.config.inbox is not None:
             companies = self.config.inbox.companies
             sources.append(self._read_inbox(self.inbox, companies, now, seen, notes))
@@ -159,7 +164,13 @@ class Pipeline:
         )
         return result
 
+    def _can_rank(self) -> bool:
+        return self.profile is not None and self.ai is not None
+
     def _rank(self, job: dict[str, Any], discovery: str, now: datetime) -> DigestItem:
+        ai, profile = self.ai, self.profile
+        if ai is None or profile is None:
+            return DigestItem(job, discovery, None, self.unranked_reason)
         latest = self.store.latest_analysis(job["id"])
         if (
             latest is None
@@ -172,18 +183,20 @@ class Pipeline:
                 return DigestItem(job, discovery, None, "deferred to the next run")
             self._analysed += 1
             try:
-                latest = self._analyse(job, now)
+                latest = self._analyse(ai, profile, job, now)
             except BudgetExceededError as exc:
                 self._budget_error = str(exc)
                 return DigestItem(job, discovery, None, self._budget_error)
             if latest is None:
                 return DigestItem(job, discovery, None, "analysis failed")
-        return DigestItem(job, discovery, self._recommend(job, latest, now))
+        return DigestItem(job, discovery, self._recommend(profile, job, latest, now))
 
-    def _analyse(self, job: dict[str, Any], now: datetime) -> dict[str, Any] | None:
+    def _analyse(
+        self, ai: AIClient, profile: CareerProfile, job: dict[str, Any], now: datetime
+    ) -> dict[str, Any] | None:
         job_id, content_hash = job["id"], job["content_hash"]
         try:
-            outcome = analyze_job(self.ai, self.profile, PostingText.from_job(job))
+            outcome = analyze_job(ai, profile, PostingText.from_job(job))
         except AIError as exc:
             log.warning("analysis_failed", extra={"job_id": job_id, "error": str(exc)})
             self.store.add_analysis(
@@ -201,7 +214,11 @@ class Pipeline:
         return {"id": analysis_id, "status": "OK", "payload": payload}
 
     def _recommend(
-        self, job: dict[str, Any], analysis_row: dict[str, Any], now: datetime
+        self,
+        profile: CareerProfile,
+        job: dict[str, Any],
+        analysis_row: dict[str, Any],
+        now: datetime,
     ) -> dict[str, Any]:
         payload = analysis_row["payload"]
         analysis = JobAnalysis.model_validate(payload["analysis"])
@@ -215,9 +232,9 @@ class Pipeline:
             location_preference=geo.preference,
             as_of=now,
         )
-        rec = score_job(analysis, matching, self.profile, facts, self.config.scoring)
+        rec = score_job(analysis, matching, profile, facts, self.config.scoring)
         explanation = build_explanation(analysis, matching, rec, job)
-        verify_citations(explanation, job, self.profile)
+        verify_citations(explanation, job, profile)
         detail = {**rec.to_dict(), "explanation": explanation}
         self.store.add_recommendation(
             RecommendationRecord(

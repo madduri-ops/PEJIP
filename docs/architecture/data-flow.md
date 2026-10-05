@@ -11,7 +11,7 @@ flowchart LR
     filter -->|upsert by fingerprint| jobs[(jobs)]
     jobs -->|new or changed content| analyse[JOB_ANALYSIS]
     analyse -->|quotes grounded| match[EVIDENCE_MATCHING]
-    profile[/profile.yaml evidence/] --> match
+    profile[/profile: profile.yaml, or SSM /pejip/profile on AWS/] --> match
     match -->|evidence ids validated| analyses[(analyses)]
     analyses --> score[Fit, Confidence, Priority]
     jobs --> score
@@ -19,6 +19,7 @@ flowchart LR
     score --> explain[Cited explanation]
     explain --> recs[(recommendations)]
     recs --> digest[/digest-*.md/]
+    digest -->|on AWS| email[SNS pejip-digest email]
     analyse -. spend .-> guard[AI cost guard] -.-> spend[(ai_spend)]
     match -. spend .-> guard
 ```
@@ -35,9 +36,13 @@ leave the machine, sent to the Anthropic API for matching (see
 | `analyses` | AI analysis and matching output, provenance | analysis (via pipeline) | 90 days |
 | `recommendations` | Scores, components, reasons, explanation | scoring (via pipeline) | 90 days |
 | `runs` | Run status and per-source results | pipeline | 90 days |
-| `profile.yaml` | Career profile (personal data, local file) | Babu | Babu's own file |
-| `output/digest-*.md` | Digest per run | cli | Babu's own files |
+| `profile.yaml` or SSM `/pejip/profile` | Career profile (personal data; a local file, or on AWS a SecureString Babu stores) | Babu | Babu's own |
+| `output/digest-*.md` | Digest per run (on AWS also emailed through `pejip-digest`) | cli | 90 days |
 | `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |
+
+On AWS every table above, the spend ledger and the digests live on the encrypted
+EFS file system `pejip-prod-data` at `/data`
+([design 0011](../design/0011-daily-run-and-storage.md)).
 
 Personal data, job postings and rankings are each kept for 90 days, using the
 window in `pejip.retention` (see [0004: Data retention](../design/0004-data-retention.md)).

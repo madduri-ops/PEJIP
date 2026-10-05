@@ -16,7 +16,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Protocol, cast
 
 import anthropic
 from pydantic import BaseModel, ValidationError
@@ -101,10 +101,18 @@ def strict_schema(model: type[BaseModel]) -> dict[str, Any]:
     return schema
 
 
+def _sts_client() -> claude_auth.StsClient:
+    """A regional STS client (GetWebIdentityToken has no global endpoint)."""
+    import boto3  # noqa: PLC0415  (only runs on AWS, with PEJIP_CLAUDE_IDENTITY=aws-sts)
+
+    return cast(claude_auth.StsClient, boto3.client("sts", region_name=os.environ["AWS_REGION"]))
+
+
 def _credentials() -> anthropic.WorkloadIdentityCredentials | None:
     # Keyless in CI and on ECS (ADR-0004); a developer's own login when
     # PEJIP_CLAUDE_IDENTITY is unset.
-    kwargs = claude_auth.federation_credentials(os.environ)
+    on_aws = os.environ.get(claude_auth.IDENTITY_SOURCE_ENV) == claude_auth.AWS_STS
+    kwargs = claude_auth.federation_credentials(os.environ, sts=_sts_client() if on_aws else None)
     return anthropic.WorkloadIdentityCredentials(**kwargs) if kwargs else None
 
 

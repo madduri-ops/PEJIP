@@ -44,7 +44,8 @@ data "aws_iam_policy_document" "kms" {
     }
   }
 
-  # AWS Budgets and CloudWatch alarms publish to the encrypted alerts topic.
+  # AWS Budgets, CloudWatch alarms and the failed-task rule (alarms.tf) publish
+  # to the encrypted alerts topic.
   statement {
     sid       = "AlertPublishers"
     actions   = ["kms:GenerateDataKey*", "kms:Decrypt"]
@@ -52,7 +53,7 @@ data "aws_iam_policy_document" "kms" {
 
     principals {
       type        = "Service"
-      identifiers = ["budgets.amazonaws.com", "cloudwatch.amazonaws.com"]
+      identifiers = ["budgets.amazonaws.com", "cloudwatch.amazonaws.com", "events.amazonaws.com"]
     }
 
     condition {

@@ -339,6 +339,39 @@ data "aws_iam_policy_document" "plan" {
     actions   = ["scheduler:GetSchedule", "scheduler:ListTagsForResource"]
     resources = ["arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/default/pejip-*"]
   }
+
+  # The data file system (efs.tf). Configuration only; the plan role can't mount it.
+  statement {
+    sid = "ReadDataFileSystem"
+    actions = [
+      "elasticfilesystem:DescribeAccessPoints",
+      "elasticfilesystem:DescribeBackupPolicy",
+      "elasticfilesystem:DescribeFileSystemPolicy",
+      "elasticfilesystem:DescribeFileSystems",
+      "elasticfilesystem:DescribeLifecycleConfiguration",
+      "elasticfilesystem:DescribeMountTargetSecurityGroups",
+      "elasticfilesystem:DescribeMountTargets",
+      "elasticfilesystem:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:elasticfilesystem:${var.aws_region}:${local.account_id}:file-system/*",
+      "arn:aws:elasticfilesystem:${var.aws_region}:${local.account_id}:access-point/*",
+    ]
+  }
+
+  # Describing a mount target's network interface; no resource-level permissions.
+  statement {
+    sid       = "ReadMountTargetInterfaces"
+    actions   = ["ec2:DescribeNetworkInterfaces"]
+    resources = ["*"]
+  }
+
+  # The failed-task alert rule (alarms.tf).
+  statement {
+    sid       = "ReadTaskFailedRule"
+    actions   = ["events:DescribeRule", "events:ListTagsForResource", "events:ListTargetsByRule"]
+    resources = ["arn:aws:events:${var.aws_region}:${local.account_id}:rule/pejip-*"]
+  }
 }
 
 resource "aws_iam_role_policy" "github_plan" {
