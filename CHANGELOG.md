@@ -24,6 +24,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Opportunities has a Bay Area view and filters for location, posting age,
+  network and whether pay is published.
 - The portal has a read-only Settings page at `/settings` showing the real search
   setup: titles, locations, schedule, sources and the alert address, how ranking
   works, and data retention.

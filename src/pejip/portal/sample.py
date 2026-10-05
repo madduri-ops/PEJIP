@@ -57,6 +57,12 @@ DESCRIPTION = (
 )
 
 
+def _scope(location: str) -> str | None:
+    if location == "United States":
+        return "US_REMOTE"
+    return "BAY_AREA" if location.endswith(", CA") or "Bay Area" in location else None
+
+
 def _opportunity(  # noqa: PLR0913 - one row of sample data per call
     now: datetime,
     *,
@@ -103,6 +109,7 @@ def _opportunity(  # noqa: PLR0913 - one row of sample data per call
         connections=connections,
         watched=watched,
         change_note=change_note,
+        location_scope=_scope(location),
     )
 
 

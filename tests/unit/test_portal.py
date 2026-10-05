@@ -74,6 +74,7 @@ class FakeData:
 
 def _role(number: int = 1, **changes: object) -> Opportunity:
     base = Opportunity(
+        location_scope="BAY_AREA",
         id=number,
         title=f"VP Role {number}",
         company="Company A",
@@ -303,7 +304,7 @@ def test_card_without_explanation_has_no_why_block() -> None:
 
 def test_table_shows_unknown_fit_and_missing_pay() -> None:
     items = [_role(1, priority="MEDIUM"), _role(2, fit=None, compensation=None, work_model=None)]
-    listing = list_opportunities(items, Filters(view="immediate"))
+    listing = list_opportunities(items, Filters(view="immediate"), NOW)
     html = render.opportunities_body(listing, Filters(view="immediate"), NOW)
 
     assert '<span class="tfit">Unknown</span>' in html
@@ -344,6 +345,10 @@ def test_filters_from_query() -> None:
             "confidence": "LOW",
             "company": "  " + "x" * 200,
             "work_model": "Onsite",
+            "scope": "US_REMOTE",
+            "age": "7",
+            "network": "none",
+            "pay": "unpublished",
         }
     )
 
@@ -354,6 +359,9 @@ def test_filters_from_query() -> None:
         "LOW",
         "Onsite",
     )
+    assert (f.scope, f.max_age_days, f.network, f.pay) == ("US_REMOTE", 7, "none", "unpublished")
+    assert Filters.from_query({"age": "5", "scope": "MARS"}) == Filters()
+    assert Filters(network="none").any_set
     assert len(f.company) == 100
     assert f.any_set
     assert Filters.from_query({}) == Filters()
@@ -373,15 +381,22 @@ def test_filters_from_query() -> None:
         (Filters(company="Company B"), False),
         (Filters(work_model="Hybrid"), True),
         (Filters(work_model="Remote"), False),
+        (Filters(scope="BAY_AREA"), True),
+        (Filters(scope="US_REMOTE"), False),
+        (Filters(max_age_days=1), True),
+        (Filters(network="unknown"), True),
+        (Filters(network="connected"), False),
+        (Filters(pay="published"), True),
+        (Filters(pay="unpublished"), False),
     ],
 )
 def test_filters_keep(filters: Filters, kept: bool) -> None:
-    assert filters.keep(_role()) is kept
+    assert filters.keep(_role(), NOW) is kept
 
 
 def test_views_match_their_roles() -> None:
     items = sample_opportunities(NOW)
-    counts = list_opportunities(items, Filters(view="all")).counts
+    counts = list_opportunities(items, Filters(view="all"), NOW).counts
 
     assert counts == {
         "attention": 3,
@@ -391,6 +406,7 @@ def test_views_match_their_roles() -> None:
         "watched": 2,
         "network": 2,
         "remote": 3,
+        "bay-area": 5,
         "changed": 2,
         "all": 9,
     }
@@ -760,3 +776,29 @@ def test_settings_variants() -> None:
 
 def test_settings_without_configuration() -> None:
     assert "The search configuration is not available" in _get_settings(None)
+
+
+def test_new_filters_on_roles() -> None:
+    old = _role(1, posted_at=NOW - timedelta(days=10), first_seen_at=NOW - timedelta(days=9))
+    connected = _role(2, connections=(Connection("Person A", "VP", "STRONG"),))
+    alone = _role(3, connections=(), compensation=None)
+
+    assert not Filters(max_age_days=7).keep(old, NOW)
+    assert Filters(max_age_days=30).keep(old, NOW)
+    assert Filters(network="connected").keep(connected, NOW)
+    assert Filters(network="none").keep(alone, NOW)
+    assert not Filters(network="none").keep(connected, NOW)
+    assert Filters(pay="unpublished").keep(alone, NOW)
+
+
+def test_opportunities_page_bay_area_view_and_new_filters_in_the_form() -> None:
+    html = _get(
+        _sample(),
+        "/opportunities?view=bay-area&scope=BAY_AREA&age=3&network=connected&pay=published",
+    ).text
+
+    assert 'class="btn sel" aria-current="page" href="/opportunities?view=bay-area"' in html
+    assert '<option value="BAY_AREA" selected>San Francisco Bay Area</option>' in html
+    assert '<option value="3" selected>Last 3 days</option>' in html
+    assert '<option value="connected" selected>Has connections</option>' in html
+    assert '<option value="published" selected>Pay published</option>' in html
