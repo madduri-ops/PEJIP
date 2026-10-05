@@ -26,6 +26,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - On AWS the career profile is read from the encrypted SSM parameter
   `/pejip/profile`. Until it exists, or until Claude access is set up for the app,
   roles are still found and emailed, listed as unranked with the reason.
+- Web portal at `job-search.zephyr-mcg.com`: Home, Opportunities (saved views and
+  filters) and Opportunity detail pages with cited explanations, built from the
+  portal mocks. They show illustrative sample data until the database is connected.
 - Job-alert inbox: `alerts@inbox.job-search.zephyr-mcg.com` receives career-site job
   alerts through Amazon SES into an encrypted bucket kept for 90 days.
 - `pejip run` reads that inbox when `PEJIP_INBOX_BUCKET` is set: roles in alerts

@@ -47,13 +47,17 @@ analyses and recommendations as personal data.
 | Google (Gmail), through Amazon SNS email | The daily digest: roles, rankings and explanations that cite profile evidence IDs and posting quotes, sent from the encrypted `pejip-digest` topic to Babu's own address | Babu reads the digest in their own mailbox ([ADR-0007](adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md)) | The profile itself, contact details, compensation preferences |
 | Google (sign-in) | Nothing from PEJIP: Babu signs in to their own Google account, and the load balancer receives their e-mail address and Google ID back ([ADR-0006](adr/0006-google-sign-in-at-the-load-balancer.md)) | Only Babu can use `job-search.zephyr-mcg.com` | Any career data |
 
+| Google Fonts | Nothing from PEJIP: the browser fetches the IBM Plex font files for the portal pages, with no referrer | The portal's typefaces | Any page content or career data |
+
 Job sources (docs/sources.md) receive only anonymous GET requests with our user
 agent; no personal data is sent to them.
 
 ## Access to the hosted app
 
 Every route except `/healthz` needs Google sign-in at the load balancer, and the
-app admits only the configured address (`pejip.auth`, ADR-0006). The OAuth client
+app admits only the configured address (`pejip.auth`, ADR-0006). Portal pages run
+no script and send a strict content security policy; every value they show is
+HTML-escaped ([design 0013](design/0013-web-portal.md)). The OAuth client
 ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted with
 `alias/pejip`), never in the repository.
 
