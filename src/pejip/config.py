@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from pejip.retention import RETENTION_DAYS
 
@@ -71,15 +72,37 @@ class ScoringConfig(_Strict):
     strong_match_fit: float
 
 
+class InvalidPatternError(ValueError):
+    def __init__(self, cause: re.error) -> None:
+        super().__init__(f"job_id_pattern is not a valid regular expression: {cause}")
+
+
 class AlertCompany(_Strict):
     """A company whose job-alert emails PEJIP reads (design doc 0010).
 
     ``link_patterns`` are ``host/path-prefix`` strings; a link in an alert becomes a
     role only when it points at one of them (subdomains of the host match too).
+
+    A ``job_board`` (such as LinkedIn) lists many employers' roles: the employer
+    and location are read from the text after each link, and ``company`` names
+    the board. ``job_id_pattern`` is a regular expression for the part of a link
+    that identifies the role, so the same role keeps one id across alerts.
     """
 
     company: str
     link_patterns: list[str] = Field(min_length=1)
+    job_board: bool = False
+    job_id_pattern: str | None = None
+
+    @field_validator("job_id_pattern")
+    @classmethod
+    def _compiles(cls, value: str | None) -> str | None:
+        if value is not None:
+            try:
+                re.compile(value)
+            except re.error as exc:
+                raise InvalidPatternError(exc) from exc
+        return value
 
 
 class InboxConfig(_Strict):
