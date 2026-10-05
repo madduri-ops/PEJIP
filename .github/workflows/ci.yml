@@ -67,7 +67,10 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+      # The tflint hook downloads its AWS ruleset; authenticate to avoid rate limits.
       - run: pre-commit run --all-files --show-diff-on-failure
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
   secrets:
     name: Secrets scan
