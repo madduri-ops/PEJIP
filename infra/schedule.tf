@@ -1,4 +1,4 @@
-# Daily tasks (design doc 0011, policy section 10). EventBridge Scheduler runs
+# Daily tasks (design doc 0012, policy section 10). EventBridge Scheduler runs
 # the PEJIP image as one-off Fargate tasks with a command override:
 #
 # - `pejip run` every morning: find roles, rank them, store them on the data
@@ -8,7 +8,7 @@
 #
 # Both target the task family without a revision, so they always run the image
 # the Deploy workflow last shipped. Run outcomes are alarmed from the app's
-# `run_finished` log events (infra/monitoring.tf, design 0012).
+# `run_finished` log events (infra/monitoring.tf, design 0011).
 
 locals {
   scheduled_tasks = {

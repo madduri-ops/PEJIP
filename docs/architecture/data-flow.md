@@ -42,7 +42,7 @@ leave the machine, sent to the Anthropic API for matching (see
 
 On AWS every table above, the spend ledger and the digests live on the encrypted
 EFS file system `pejip-prod-data` at `/data`
-([design 0011](../design/0011-daily-run-and-storage.md)).
+([design 0012](../design/0012-daily-run-and-storage.md)).
 
 Personal data, job postings and rankings are each kept for 90 days, using the
 window in `pejip.retention` (see [0004: Data retention](../design/0004-data-retention.md)).
