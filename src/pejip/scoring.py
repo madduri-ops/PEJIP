@@ -367,3 +367,24 @@ def score_job(
         scoring_version=cfg.version,
         network_boost=boost if priority_score is not None else 0.0,
     )
+
+
+def fit_if_level_met(
+    analysis: JobAnalysis,
+    matching: EvidenceMatching,
+    profile: CareerProfile,
+    facts: JobFacts,
+    cfg: ScoringConfig,
+) -> float | None:
+    """The Fit a role would have if its inferred level met the target, when it is below.
+
+    Levels differ by company, so a role whose shortfall is its level is the
+    candidate's call (ADR-0011); this says how strong it is apart from that.
+    None when the level is unknown or already at or above the target.
+    """
+    rank = SENIORITY_RANK.get(analysis.inferred_seniority)
+    targets = [SENIORITY_RANK[t] for t in profile.target_seniority if t in SENIORITY_RANK]
+    if rank is None or not targets or rank >= min(targets):
+        return None
+    level_met = profile.model_copy(update={"target_seniority": [analysis.inferred_seniority]})
+    return score_job(analysis, matching, level_met, facts, cfg).fit

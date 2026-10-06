@@ -59,7 +59,12 @@ sequenceDiagram
   SUPPORTING 1, MINOR 0.5) and classification (REQUIRED 1, PREFERRED 0.6, other
   0.4). UNKNOWN matches are left out, not scored as zero. Seniority is the lower of
   the scope requirements and how the inferred level compares with the target
-  levels, so meeting a junior role's scope does not make it a fit. Each distinct
+  levels, so meeting a junior role's scope does not make it a fit. When the
+  inferred level is below the target but the role would reach `strong_match_fit`
+  with its level met, the role is flagged as Babu's call (ADR-0011): a "Your call"
+  concern leads its explanation, the recommendation carries `your_call: true`, and
+  the digest lists it under "Your call: strong match, level unclear" unless it
+  already requires attention. Fit itself is unchanged. Each distinct
   negative-fit signal (quota, hands-on coding, and so on) and each CORE, REQUIRED
   requirement with NO_MATCH subtracts a configured penalty. Network, freshness, pay
   and location never affect Fit.

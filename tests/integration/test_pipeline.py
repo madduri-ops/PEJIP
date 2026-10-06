@@ -487,3 +487,42 @@ def test_screen_notes_count_several_roles() -> None:
         "Unclear title and no posted pay, so not ranked: 2 roles in your areas.",
     ]
     assert _screen_notes({}) == []
+
+
+def test_a_strong_match_below_the_target_level_is_left_to_babu(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    # Levels differ by company (ADR-0011): a Meta Director can match a Yahoo VP.
+    def respond(request: dict[str, Any]) -> Any:
+        content = request["messages"][0]["content"]
+        if "<posting>" in content:
+            reqs = [
+                f.requirement("R1", quote="Lead technology operations"),
+                f.requirement("R2", category="CAPABILITY", quote="Own portfolio governance"),
+            ]
+            director = "Director" in content and "Head of" not in content
+            level = "DIRECTOR" if director else "VP"
+            return response(f.analysis(reqs, inferred_seniority=level))
+        return response(f.matching([f.match("R1"), f.match("R2", evidence=["E4"])]))
+
+    boards = Boards()
+    boards.jobs["alpha"] = [
+        gh_job(8, "Director, Technical Program Management"),
+        gh_job(9, "Head of Engineering Operations"),
+    ]
+    fake = FakeMessages()
+    fake.responder = respond
+    digest = build(config, profile, store, boards, fake).run()
+
+    by_title = {i.job["title"]: i.recommendation for i in digest.items}
+    director = by_title["Director, Technical Program Management"]
+    assert director is not None
+    assert director["detail"]["your_call"] is True
+    first = director["detail"]["explanation"]["concerns"][0]
+    assert first["text"].startswith("Your call: a strong match apart from level")
+    assert "reads as Director against your target of Senior Director or above" in first["text"]
+    head = by_title["Head of Engineering Operations"]
+    assert head is not None
+    assert head["detail"]["your_call"] is False
+    text = render(digest, config.scoring.strong_match_fit)
+    assert "  - Your call: a strong match apart from level" in text
