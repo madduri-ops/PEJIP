@@ -241,6 +241,15 @@ def test_who_you_know_wording_for_decided_single_and_absent_connections() -> Non
         " people may have moved since."
     ]
     assert network_points(None, "Co")[0]["text"] == "Network data has not been imported yet."
+    warm = network_points(signal_for("VP"), "Co & Sons", warm_path=True)
+    assert warm[1]["text"] == (
+        "Strong fit: check LinkedIn for someone who can introduce you (second-degree"
+        " connections at Co & Sons): https://www.linkedin.com/search/results/people/"
+        "?keywords=Co+%26+Sons&network=%5B%22S%22%5D"
+    )
+    assert warm[1]["citations"] == []
+    # Someone known directly is the better path, so no second-degree prompt.
+    assert network_points(decided, "Co", warm_path=True) == network_points(decided, "Co")
 
 
 def test_an_unclear_role_level_is_asked_about_plainly() -> None:

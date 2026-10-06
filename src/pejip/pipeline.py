@@ -19,7 +19,7 @@ from pejip.config import AlertCompany, SearchConfig, SourceConfig
 from pejip.cost import BudgetExceededError
 from pejip.digest import Digest, DigestItem, SourceResult
 from pejip.discovery import classify_location, is_candidate
-from pejip.explain import build_explanation, verify_citations
+from pejip.explain import build_explanation, network_points, verify_citations
 from pejip.logs import run_id_var
 from pejip.models import Posting
 from pejip.network.matching import NetworkIndex, NetworkSignal
@@ -305,6 +305,9 @@ class Pipeline:
         )
         rec = score_job(analysis, matching, profile, facts, self.config.scoring)
         explanation = build_explanation(analysis, matching, rec, job, signal)
+        # A strong role where Babu knows nobody directly gets a warm-path prompt.
+        strong = rec.fit is not None and rec.fit >= self.config.scoring.strong_match_fit
+        explanation["who_you_know"] = network_points(signal, job["company"], warm_path=strong)
         verify_citations(explanation, job, profile, signal)
         detail = {**rec.to_dict(), "explanation": explanation}
         if not self._recorded(job["id"], analysis_row["id"], rec.scoring_version):

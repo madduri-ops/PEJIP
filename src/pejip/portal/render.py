@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
 from pejip.config import SearchConfig
+from pejip.explain import warm_path_url
 from pejip.portal.data import (
     DECISIONS,
     Citation,
@@ -609,7 +610,11 @@ def _network(o: Opportunity) -> str:
     if o.connections is None:
         return '<p class="note">Your LinkedIn connections have not been imported yet.</p>'
     if not o.connections:
-        return '<p class="note">No first-degree connections at this company.</p>'
+        return (
+            '<p class="note">No first-degree connections at this company. '
+            f'<a href="{e(warm_path_url(o.company))}" target="_blank" rel="noopener">'
+            "Check LinkedIn for a second-degree path</a>.</p>"
+        )
     rows = "".join(
         f'<div class="li netli"><strong>{e(c.name)}</strong><span class="meta">{e(c.role)}</span>'
         f'<span class="chip">{e(words(c.strength))}</span></div>'

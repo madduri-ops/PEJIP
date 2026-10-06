@@ -268,6 +268,8 @@ def test_opportunity_detail_variants() -> None:
     assert "custom" in html
     assert 'class="v lo"' in html
     assert "No first-degree connections at this company." in html
+    assert "Check LinkedIn for a second-degree path</a>" in html
+    assert "linkedin.com/search/results/people/?keywords=" in html
     assert "Concerns and gaps · 2" in html
 
 
