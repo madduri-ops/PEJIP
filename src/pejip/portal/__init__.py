@@ -258,6 +258,9 @@ def router(
 def _add_session_routes(routes: APIRouter) -> None:
     """Routes that read no account data: Sign out, where it lands, and the styles."""
 
+    # GET too, out of the API schema: after an expired session, Google sends the
+    # browser back to /signout as a GET once it has signed in again.
+    @routes.get("/signout", response_class=Response, include_in_schema=False)
     @routes.post("/signout", response_class=Response)
     def sign_out(request: Request) -> Response:
         """Expire the load balancer's sign-in session, then show the signed-out page.

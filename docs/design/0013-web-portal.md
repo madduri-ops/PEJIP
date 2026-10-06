@@ -152,7 +152,8 @@ illustrative.
 
 - **Security:** pages carry their own content security policy (`PAGE_CSP` in
   `pejip.api`): no script at all, styles only from the app and Google Fonts, forms
-  only back to the app, no framing. Every value is HTML-escaped (a test feeds
+  only back to the app (and to Google's sign-in page, which the load balancer
+  redirects a form to when the session has expired), no framing. Every value is HTML-escaped (a test feeds
   `<script>` through every field), and links to original postings are shown only for
   `http(s)` URLs, with `rel="noopener noreferrer"`. The smoke test and DAST cover the
   pages through the OpenAPI document; the detail route's example id lets both reach

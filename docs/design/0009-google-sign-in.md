@@ -43,7 +43,11 @@ sequenceDiagram
 which also skips the check for it.
 
 **Sign out.** The sidebar's Sign out button posts to `/signout` (signed in like any
-route). The app answers 303 to `/signed-out` and expires every
+route). If the session has already expired, the load balancer redirects that post
+to Google's sign-in page, so the page policy's `form-action` allows
+`https://accounts.google.com` (browsers apply it to redirects, and would otherwise
+drop the click silently), and `/signout` also answers the GET that Google sends
+the browser back with. The app answers 303 to `/signed-out` and expires every
 `AWSELBAuthSessionCookie-N` shard the browser sent, always including `-0`
 (`Max-Age=0`, `Path=/`, `Secure`, `HttpOnly`), which is how AWS says to end an ALB
 session. Google has no sign-out endpoint for one site, so Babu stays signed in to
