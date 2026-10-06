@@ -19,7 +19,7 @@ from pejip.retention import RETENTION_DAYS
 # design doc 0016 each account reads its own folder under it.
 INBOX_PREFIX = "inbound/"
 
-Adapter = Literal["greenhouse", "lever"]
+Adapter = Literal["greenhouse", "lever", "ashby"]
 Preference = Literal["PREFERRED", "ACCEPTABLE", "UNDESIRABLE"]
 
 

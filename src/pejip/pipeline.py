@@ -25,6 +25,7 @@ from pejip.models import Posting
 from pejip.network.matching import NetworkIndex, NetworkSignal
 from pejip.profile import CareerProfile
 from pejip.scoring import JobFacts, score_job
+from pejip.sources.ashby import fetch_ashby
 from pejip.sources.email_alerts import S3Inbox, parse_alert
 from pejip.sources.greenhouse import fetch_greenhouse
 from pejip.sources.http import FetchError, PoliteClient
@@ -34,7 +35,11 @@ from pejip.store import AnalysisRecord, RecommendationRecord, Store, is_current
 log = logging.getLogger(__name__)
 
 Fetcher = Callable[[PoliteClient, SourceConfig], list[Posting]]
-FETCHERS: dict[str, Fetcher] = {"greenhouse": fetch_greenhouse, "lever": fetch_lever}
+FETCHERS: dict[str, Fetcher] = {
+    "greenhouse": fetch_greenhouse,
+    "lever": fetch_lever,
+    "ashby": fetch_ashby,
+}
 
 
 @dataclass

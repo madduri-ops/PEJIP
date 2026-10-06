@@ -1049,7 +1049,11 @@ def watchlist_body(w: Watchlist, now: datetime) -> str:
 # PEJIP's own alert address (design doc 0010); each account signs up for job
 # alerts with its own (design doc 0016), Babu's being this one.
 ALERT_ADDRESS = alert_address(DEFAULT_ACCOUNT_ID)
-ADAPTER_LABEL = {"greenhouse": "Public Greenhouse job board", "lever": "Public Lever job board"}
+ADAPTER_LABEL = {
+    "greenhouse": "Public Greenhouse job board",
+    "lever": "Public Lever job board",
+    "ashby": "Public Ashby job board",
+}
 MONTHLY_AI_CAP = "$100"
 ANY_PLACE = "Any remote role in the US"
 
