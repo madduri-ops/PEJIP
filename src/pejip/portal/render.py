@@ -1110,7 +1110,6 @@ ADAPTER_LABEL = {
     "lever": "Public Lever job board",
     "ashby": "Public Ashby job board",
 }
-MONTHLY_AI_CAP = "$100"
 ANY_PLACE = "Any remote role in the US"
 
 
@@ -1340,7 +1339,6 @@ def settings_body(
         '<div class="summary">'
         + _kv("Search", "Weekdays; digests at 7 AM, 12 PM and 5 PM Pacific")
         + _kv("Roles analysed per search", str(config.ai.max_jobs_per_run))
-        + _kv("AI spending cap", f"{MONTHLY_AI_CAP} a month")
         + "</div>"
     )
     privacy = (

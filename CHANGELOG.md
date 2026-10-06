@@ -16,7 +16,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   left out, and each location's places and preference, then Save. The next
   search, ranking and digest use the saved values; "Go back to the defaults"
   undoes it. Companies, ranking weights and the schedule stay read-only there
-  (design doc 0017).
+  (design doc 0017). The Search schedule section no longer lists the AI spending
+  cap; the $100 cap and its alerts are unchanged.
 
 - The digest email arrives as soon as the ranking routine finishes (about 20 to
   90 minutes after each search, depending on the season) instead of two hours
