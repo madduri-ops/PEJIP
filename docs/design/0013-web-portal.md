@@ -167,7 +167,12 @@ When `PEJIP_DATABASE_URL` is set, `create_app` gives each signed-in account its 
 
 The portal stores nothing; it reads the `jobs`, `recommendations` and `runs`
 tables ([0012: Daily run and storage](0012-daily-run-and-storage.md)) through
-`Store.find_job`, `Store.latest_recommendation` and `Store.recent_runs`. Without a
+`Store.find_jobs`, `Store.latest_recommendations` and `Store.recent_runs`. The role
+lists read all their jobs and scores in one query each (in chunks of 500 ids), not
+two queries per role, and `analyses`, `recommendations` and `decisions` are indexed
+on `job_id`; `Store` adds those indexes to an existing database when it opens it.
+Before this, each role read the whole scores table, which made pages slow once the
+ranking routine had stored a few thousand scores. Without a
 configured database, `pejip.portal.sample` holds invented roles ("Company A",
 "Person A") with times relative to the clock, and every page says the data is
 illustrative.

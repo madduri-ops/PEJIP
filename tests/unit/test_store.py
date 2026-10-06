@@ -2,7 +2,12 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from pathlib import Path
 
+import pytest
+from sqlalchemy import create_engine, inspect
+
+from pejip import store as store_module
 from pejip.models import Compensation, Posting
 from pejip.store import AnalysisRecord, RecommendationRecord, Store, _aware
 from tests.conftest import NOW
@@ -55,6 +60,46 @@ def test_analyses_and_recommendations(store: Store) -> None:
     rec = store.latest_recommendation(job_id)
     assert rec is not None
     assert rec["fit"] == 90.0
+
+
+def _job(store: Store, number: int) -> int:
+    return store.upsert_job(
+        Posting("greenhouse", f"b:{number}", "Co", "VP", "Oakland", "Body", "https://e", NOW),
+        NOW,
+    ).job_id
+
+
+def test_jobs_and_latest_scores_are_read_in_batches(
+    store: Store, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(store_module, "_CHUNK", 2)
+    scored, unscored, rescored = (_job(store, n) for n in range(3))
+    for job_id, fit in ((scored, 70.0), (rescored, 60.0), (rescored, 85.0)):
+        analysis = store.add_analysis(AnalysisRecord(job_id, "h", "OK", {}, None, {}, NOW))
+        store.add_recommendation(
+            RecommendationRecord(job_id, analysis, fit, "HIGH", "HIGH", {}, "v", NOW)
+        )
+    asked = [scored, unscored, rescored, 999]
+    assert set(store.find_jobs(asked)) == {scored, unscored, rescored}
+    latest = store.latest_recommendations(asked)
+    assert {job_id: rec["fit"] for job_id, rec in latest.items()} == {
+        scored: 70.0,
+        rescored: 85.0,
+    }
+    assert store.find_jobs([]) == {}
+    assert store.latest_recommendations([]) == {}
+
+
+def test_an_existing_database_gets_the_job_indexes(tmp_path: Path) -> None:
+    url = f"sqlite:///{tmp_path / 'old.db'}"
+    Store(url).engine.dispose()
+    engine = create_engine(url)
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DROP INDEX ix_recommendations_job_id")
+    Store(url).engine.dispose()
+    names = {i["name"] for i in inspect(engine).get_indexes("recommendations")}
+    engine.dispose()
+    assert "ix_recommendations_job_id" in names
 
 
 def test_runs_are_recorded(store: Store) -> None:
