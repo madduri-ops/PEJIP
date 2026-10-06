@@ -3,8 +3,20 @@ from __future__ import annotations
 import pytest
 
 from pejip.config import GeographyConfig, GeoScope, SearchConfig
-from pejip.discovery import classify_location, is_candidate, normalize_title, title_matches
-from pejip.models import Posting
+from pejip.discovery import (
+    BELOW_PAY,
+    JOB_ALERT,
+    OUT_OF_SCOPE,
+    PAY,
+    SENIOR_TITLE,
+    UNCLEAR_NO_PAY,
+    classify_location,
+    is_candidate,
+    normalize_title,
+    screen,
+    title_matches,
+)
+from pejip.models import Compensation, Posting
 from pejip.sources.text import extract_salary_range, html_to_text
 
 
@@ -111,6 +123,59 @@ def test_is_candidate(config: SearchConfig) -> None:
         posting("VP Engineering Operations", "London"), config.taxonomy, config.geography
     )
     assert not is_candidate(posting("Recruiter", "Oakland"), config.taxonomy, config.geography)
+
+
+FLOOR = 260_000.0
+
+
+def _pay(low: float | None, high: float | None) -> Compensation:
+    return Compensation(low, high, "USD")
+
+
+@pytest.mark.parametrize(
+    ("title", "pay", "origin", "basis"),
+    [
+        # A senior title is enough, with or without pay.
+        ("Director, Technical Program Management", None, None, SENIOR_TITLE),
+        # The title is one signal, not a gate (Babu, 2026-10-06): an unclear title
+        # is kept when posted pay reaches the profile minimum.
+        ("Lead Portfolio Program Manager", _pay(200_000, 300_000), None, PAY),
+        ("Principal Program Manager", _pay(270_000, None), None, PAY),
+        ("Assistant Vice President, Operations", _pay(250_000, 280_000), None, PAY),
+        # Posted pay below the minimum rules a role out, whatever its title.
+        ("Lead Portfolio Program Manager", _pay(150_000, 220_000), None, BELOW_PAY),
+        ("Vice President, Technology", _pay(180_000, 240_000), None, BELOW_PAY),
+        ("Director, Program Management", _pay(None, 200_000), "job_alert_email", BELOW_PAY),
+        ("Lead Portfolio Program Manager", _pay(None, None), None, UNCLEAR_NO_PAY),
+        ("Lead Portfolio Program Manager", None, None, UNCLEAR_NO_PAY),
+        # Babu chose his job-alert searches, so an alert's role is kept on its title's area.
+        ("Lead Portfolio Program Manager", None, "job_alert_email", JOB_ALERT),
+        ("Associate Director, Program Management", None, "job_alert_email", UNCLEAR_NO_PAY),
+        # A role outside the role families is out whatever it pays.
+        ("Recruiter", _pay(300_000, 400_000), "job_alert_email", OUT_OF_SCOPE),
+    ],
+)
+def test_screen_reads_title_then_pay(
+    config: SearchConfig,
+    title: str,
+    pay: Compensation | None,
+    origin: str | None,
+    basis: str,
+) -> None:
+    extra = {"origin": origin} if origin else {}
+    posting = Posting(
+        "lever", "a:1", "Co", title, "Oakland", "d", "u", compensation=pay, extra=extra
+    )
+    assert screen(posting, config.taxonomy, config.geography, FLOOR) == basis
+
+
+def test_screen_without_a_pay_floor_or_outside_the_area(config: SearchConfig) -> None:
+    paid = Posting(
+        "lever", "a:1", "Co", "Lead Program Manager", "Oakland", "d", "u", compensation=_pay(1, 9e9)
+    )
+    assert screen(paid, config.taxonomy, config.geography) == UNCLEAR_NO_PAY
+    london = Posting("lever", "a:1", "Co", "VP Engineering", "London", "d", "u")
+    assert screen(london, config.taxonomy, config.geography, FLOOR) == OUT_OF_SCOPE
 
 
 def test_inline_tags_do_not_break_lines() -> None:
