@@ -53,8 +53,8 @@ flowchart TB
 
 - **Responsibility:** command line entry point; wires configuration, profile,
   store, HTTP and AI clients together.
-- **Interfaces:** `pejip run | digest | connections <file> | purge | export <file> |
-  delete-all --yes`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
+- **Interfaces:** `pejip run | digest | connections <file> | purge | export <file> [--account <id>] |
+  delete-all --yes [--account <id>]`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
   `PEJIP_DATABASE_URL`, `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's
   SQLite file), `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM
   instead of a file), `PEJIP_DIGEST_TOPICS` (each account's digest topic; `PEJIP_DIGEST_TOPIC_ARN`
