@@ -12,6 +12,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Per-account ranking keys and portal settings (design doc 0016, step 4): each
+  account's ranking routine has its own key, which reaches only that account's
+  roles and profile; the Settings page shows the signed-in account's own
+  companies and job-alert address. Babu's existing key keeps working.
 - Per-account job-alert inbox, digest email and scheduled runs (design doc 0016,
   step 3): each account receives job alerts at its own address and its digest
   at its own email; the daily run, digest and purge go through every account in

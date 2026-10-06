@@ -40,6 +40,10 @@ DEFAULT_ACCOUNT_ID = "babu"
 
 PLACEHOLDER = "{account}"
 
+# The job-alert inbox domain (design doc 0010). Babu signs up for alerts with
+# alerts@ (from before accounts); any other account with <id>@.
+INBOX_DOMAIN = "inbox.job-search.zephyr-mcg.com"
+
 _SQLITE_PREFIX = "sqlite:///"
 
 
@@ -69,6 +73,12 @@ def parse_pairs(value: str, name: str) -> dict[str, str]:
             raise ValueError(msg)
         pairs[account] = item
     return pairs
+
+
+def alert_address(account: str) -> str:
+    """The address an account signs up for job alerts with."""
+    local = "alerts" if account == DEFAULT_ACCOUNT_ID else account
+    return f"{local}@{INBOX_DOMAIN}"
 
 
 def fill(template: str, account: str) -> str:

@@ -20,7 +20,7 @@ from pejip import api, ranking_api, routine, workbench
 from pejip.config import SearchConfig
 from pejip.pipeline import Pipeline
 from pejip.profile import CareerProfile
-from pejip.ranking_api import RankingService
+from pejip.ranking_api import RankingService, RankingServices
 from pejip.store import Store, jobs, recommendations, runs
 from tests import factories as f
 from tests.conftest import NOW, FakeMessages
@@ -141,6 +141,32 @@ def test_queue_is_empty_before_the_first_run(
 ) -> None:
     app = api.create_app(env={}, ranking=service(store, profile, config))
     assert TestClient(app).get("/api/ranking/queue", headers=AUTH).json()["roles"] == []
+
+
+def test_each_key_sees_only_its_own_accounts_roles(
+    ran: Pipeline, tmp_path: Path, profile: CareerProfile, config: SearchConfig
+) -> None:
+    # Babu's key queues Babu's roles; the friend's key, on the same site, sees only
+    # the friend's empty database and can't post answers for Babu's roles.
+    friend_key = "friend-key-" + "z" * 30
+    friend_store = Store(f"sqlite:///{tmp_path / 'friend.db'}")
+    friend = service(
+        friend_store,
+        profile,
+        config,
+        key_hash=lambda: hashlib.sha256(friend_key.encode()).hexdigest(),
+    )
+    ranking = RankingServices({"babu": service(ran.store, profile, config), "friend": friend})
+    client = TestClient(api.create_app(env={}, ranking=ranking))
+    friend_auth = {"Authorization": f"Bearer {friend_key}"}
+
+    assert client.get("/api/ranking/queue", headers=AUTH).json()["roles"]
+    assert client.get("/api/ranking/queue", headers=friend_auth).json()["roles"] == []
+    babu_job = min(ran.store.latest_run()["summary"]["seen"])[0]  # type: ignore[index]
+    answer = {"job_id": babu_job, "content_hash": "x", "analysis": {}, "matching": {}}
+    body = {"model": "m", "prompts": ranking_api.prompt_versions(), "results": [answer]}
+    result = client.post("/api/ranking/analyses", headers=friend_auth, json=body).json()
+    assert result == {"accepted": 0, "rejected": [{"job_id": babu_job, "reason": "no such role"}]}
 
 
 @pytest.mark.parametrize(
