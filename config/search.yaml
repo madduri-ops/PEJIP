@@ -6,11 +6,10 @@
 sources:
   # Company boards on public ATS APIs. Only sources listed in docs/sources.md may
   # appear here. `board` is the company's public board token.
-  # Babu's targets are Google, NVIDIA, Meta, Micron, Anthropic, OpenAI and
-  # Microsoft. Only Anthropic publishes its roles through an allowed public API;
-  # the others run their own or Workday career sites with no public API, and
-  # OpenAI's Ashby feed lists only a few of its roles (checked 2026-10-05).
-  - {adapter: greenhouse, company: Anthropic, board: anthropic}
+  # Babu's own target companies are not in this public file (ADR-0009): they are
+  # added at run time from PEJIP_COMPANIES (a local file) or, on AWS, the
+  # encrypted SSM parameter PEJIP_COMPANIES_PARAMETER names. The format is
+  # examples/companies.example.yaml.
   # Bay Area companies on public Greenhouse boards, added for testing at Babu's
   # request (2026-10-05); boards checked the same day.
   - {adapter: greenhouse, company: Stripe, board: stripe}
@@ -24,35 +23,18 @@ sources:
   - {adapter: greenhouse, company: Scale AI, board: scaleai}
 
 inbox:
-  # Job-alert emails Babu signed up for with alerts@inbox.job-search.zephyr-mcg.com
-  # (design doc 0010). A link in an alert becomes a role only when it points at one
-  # of these careers pages (host/path prefix; subdomains match). The linked pages
-  # are not fetched. Patterns are the sites' public job URLs as of 2026-10-05;
-  # adjust them if an alert's links point elsewhere.
+  # Job-alert emails sent to alerts@inbox.job-search.zephyr-mcg.com (design doc
+  # 0010). A link in an alert becomes a role only when it points at one of these
+  # careers pages (host/path prefix; subdomains match). The linked pages are not
+  # fetched. The companies whose alerts Babu signed up for are in the private
+  # company list (ADR-0009), not here.
   companies:
-    - {company: Google, link_patterns: [careers.google.com/, www.google.com/about/careers]}
-    - {company: NVIDIA, link_patterns: [nvidia.wd5.myworkdayjobs.com/]}
-    - {company: Meta, link_patterns: [metacareers.com/]}
-    - {company: Micron, link_patterns: [careers.micron.com/, jobs.micron.com/, micron.eightfold.ai/]}
-    - {company: OpenAI, link_patterns: [openai.com/careers, jobs.ashbyhq.com/openai]}
-    - {company: Microsoft, link_patterns: [careers.microsoft.com/]}
     # LinkedIn job alerts, auto-forwarded from Babu's Yahoo mailbox. LinkedIn is a
     # job board: the employer and location come from the text under each role.
     - company: LinkedIn
       job_board: true
       link_patterns: [linkedin.com/jobs/view, linkedin.com/comm/jobs/view]
       job_id_pattern: 'jobs/view/\d+'
-
-network:
-  # Other employer names LinkedIn profiles use for a tracked company (spec 13.3).
-  # Matching is exact after removing case, punctuation and suffixes such as Inc.;
-  # anything less certain waits for Babu's review instead of guessing.
-  company_aliases:
-    Google: [Alphabet, Google LLC]
-    Meta: [Facebook, Meta Platforms]
-    Micron: [Micron Technology]
-    Microsoft: [Microsoft Corporation]
-    NVIDIA: [Nvidia Corporation]
 
 fetch:
   user_agent: "PEJIP/0.1 (personal job research; +https://github.com/madduri-ops/PEJIP)"

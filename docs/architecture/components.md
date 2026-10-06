@@ -61,7 +61,9 @@ flowchart TB
   `PEJIP_AI_ENABLED`, `PEJIP_RANKER` (`routine`: `run` makes no Claude calls and
   sends nothing, and `digest` emails the latest run ranked by the routine's stored
   analyses), `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the LinkedIn
-  export and the candidate's network decisions), and Claude
+  export and the candidate's network decisions), `PEJIP_NETWORK_BUCKET` (where
+  they are uploaded on AWS), `PEJIP_COMPANIES` and `PEJIP_COMPANIES_PARAMETER`
+  (Babu's private company list, from a file or SSM; ADR-0009), and Claude
   credentials through `pejip.claude_auth` (`ANTHROPIC_API_KEY` locally).
 - **Data:** writes `digest-*.md` to the output directory and, when a topic is set,
   emails it through `pejip.delivery`.
@@ -126,7 +128,8 @@ flowchart TB
   for a role. Unclear titles and ambiguous employers wait for the candidate.
 - **Interfaces:** `linkedin.parse_export`, `linkedin.compare_imports`,
   `companies.CompanyDirectory`, `seniority.title_level`,
-  `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`.
+  `matching.NetworkIndex.signal -> NetworkSignal`, `loader.load_index`,
+  `loader.load_index_s3`.
 - **Data:** imports are not stored yet; reads the export and decisions files named in the
   environment. The "Who you know" lines are saved inside each recommendation.
 
@@ -193,7 +196,8 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}`, `/companies`, `/watchlist`, `/search-health`, `/settings` and `/portal.css`; the OpenAPI document at `/openapi.json`. Run with
+  `/opportunities/{id}`, `/companies`, `/watchlist`, `/search-health`, `/settings` and `/portal.css`; the OpenAPI document at `/openapi.json`. Settings
+  shows the search setup with Babu's private companies (ADR-0009). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
   `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and

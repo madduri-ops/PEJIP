@@ -142,10 +142,10 @@ def test_a_subdomain_of_a_careers_host_matches() -> None:
     assert [p.company for p in alert.postings] == ["Example"]
 
 
-def test_the_shipped_configuration_names_the_target_companies(config: SearchConfig) -> None:
+def test_the_shipped_configuration_names_no_private_target_company(config: SearchConfig) -> None:
+    # Babu's target companies live outside the public repository (ADR-0009).
     assert config.inbox is not None
-    names = {c.company for c in config.inbox.companies}
-    assert names == {"Google", "NVIDIA", "Meta", "Micron", "OpenAI", "Microsoft", "LinkedIn"}
+    assert [c.company for c in config.inbox.companies] == ["LinkedIn"]
 
 
 def test_inbox_lists_every_page_reads_and_deletes() -> None:
@@ -269,6 +269,11 @@ def test_an_alert_forwarded_as_an_attachment_is_read() -> None:
 def test_an_invalid_job_id_pattern_is_rejected() -> None:
     with pytest.raises(ValueError, match="not a valid regular expression"):
         AlertCompany(company="Bad", link_patterns=["x.test/"], job_id_pattern="(")
+
+
+def test_an_explicitly_empty_job_id_pattern_is_allowed() -> None:
+    company = AlertCompany(company="Ok", link_patterns=["x.test/"], job_id_pattern=None)
+    assert company.job_id_pattern is None
 
 
 def test_a_confirm_link_to_an_unconfigured_site_is_not_surfaced() -> None:

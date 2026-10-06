@@ -39,6 +39,13 @@ recommendations as personal data.
   git-ignored names). PEJIP never needs a LinkedIn login, drops e-mail addresses as
   it reads the file, sends no connection data to Claude or any other service, and
   logs no names or profile URLs ([design 0014](design/0014-connection-matching.md)).
+  On AWS the export and decisions file are uploaded by Babu to `network/` in the
+  inbox bucket (encrypted with `alias/pejip`, TLS-only, deleted 90 days after
+  upload); the app's role can list and read that prefix only.
+- **Target companies:** the repository is public, so Babu's target companies are
+  not in it. They are a local file (`PEJIP_COMPANIES`) or, on AWS, the SecureString
+  `/pejip/companies` encrypted with `alias/pejip`, which only the app's role can
+  read ([ADR-0009](adr/0009-private-inputs-outside-the-public-repository.md)).
   The names and titles of the connections shown for a role are stored with that
   role's recommendation, so they follow its 90-day retention, export and deletion.
 - **Retention:** each run deletes jobs, analyses, recommendations, AI usage and run

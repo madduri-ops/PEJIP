@@ -1,0 +1,14 @@
+# Babu's own target companies, kept out of the public repository (ADR-0009).
+# Every company here is invented. They are added to the boards, alert companies and
+# aliases in config/search.yaml. Locally, point PEJIP_COMPANIES at a copy outside
+# the repository; on AWS, store it as the SecureString /pejip/companies
+# (infra/README.md).
+sources:
+  # Public ATS boards; only sources listed in docs/sources.md are allowed.
+  - {adapter: greenhouse, company: Northwind Robotics, board: northwindrobotics}
+inbox_companies:
+  # Companies whose job-alert emails you signed up for, and where their links go.
+  - {company: Contoso Silicon, link_patterns: [careers.contoso.example/]}
+company_aliases:
+  # Other employer names LinkedIn profiles use for a tracked company (spec 13.3).
+  Contoso Silicon: [Contoso Semiconductor, Contoso Inc]

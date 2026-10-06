@@ -13,6 +13,7 @@ from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
 from pejip.portal.data import Company, Opportunity, SearchRun
 from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
+from tests.unit.test_profile_parameter import FakeSsm
 
 
 class Client:
@@ -185,3 +186,44 @@ def test_settings_page_reads_the_search_configuration(signer: AlbSigner, tmp_pat
 
     assert "Seniority a title needs" in default
     assert "The search configuration is not available on this server." in absent
+
+
+EXAMPLE_COMPANIES = Path("examples/companies.example.yaml").read_text()
+
+
+def test_settings_page_adds_the_private_companies(
+    signer: AlbSigner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    companies = tmp_path / "companies.yaml"
+    companies.write_text(EXAMPLE_COMPANIES)
+    ssm = FakeSsm(value=EXAMPLE_COMPANIES)
+    monkeypatch.setattr(api, "make_ssm_client", lambda _region: ssm)
+    with key_server(signer) as key_url:
+        token = signer.token(ALLOWED_EMAIL)
+        from_file = {**auth_env(key_url), "PEJIP_COMPANIES": str(companies)}
+        local = _get(api.create_app(env=from_file), "/settings", token).text
+        from_ssm = {**auth_env(key_url), "PEJIP_COMPANIES_PARAMETER": "/pejip/companies"}
+        aws = _get(api.create_app(env=from_ssm), "/settings", token).text
+
+    assert "<h3>Northwind Robotics</h3>" in local
+    assert "<h3>Contoso Silicon</h3>" in aws
+    assert ssm.calls == [{"Name": "/pejip/companies", "WithDecryption": True}]
+
+
+def test_settings_page_opens_without_a_readable_company_list(
+    signer: AlbSigner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    broken = tmp_path / "companies.yaml"
+    broken.write_text("sources: [")
+    monkeypatch.setattr(api, "make_ssm_client", lambda _region: FakeSsm(error="AccessDenied"))
+    with key_server(signer) as key_url:
+        token = signer.token(ALLOWED_EMAIL)
+        bad_file = {**auth_env(key_url), "PEJIP_COMPANIES": str(broken)}
+        denied = {**auth_env(key_url), "PEJIP_COMPANIES_PARAMETER": "/pejip/companies"}
+        pages = [
+            _get(api.create_app(env=env), "/settings", token).text for env in (bad_file, denied)
+        ]
+
+    for page in pages:
+        assert "Seniority a title needs" in page
+        assert "Northwind Robotics" not in page

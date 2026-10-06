@@ -6,4 +6,4 @@ companies:
   Scale AI Labs: Scale AI
 titles:
   # An unclear title at a company, judged against a role level.
-  - {company: Anthropic, position: "Principal, Technology Strategy", role_level: VP, matured: true}
+  - {company: Databricks, position: "Principal, Technology Strategy", role_level: VP, matured: true}

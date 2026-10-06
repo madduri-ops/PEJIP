@@ -83,7 +83,7 @@ resource "aws_iam_role_policy" "ecs_execution" {
 }
 
 # Used by the running app: PEJIP metrics (the AI cost guard), the job-alert
-# inbox, the data file system (efs.tf), the career profile parameter and the
+# inbox and the network uploads beside it, the data file system (efs.tf), the career profile parameter and the
 # digest topic (digest.tf).
 resource "aws_iam_role" "ecs_task" {
   name               = "pejip-ecs-task"
@@ -125,6 +125,27 @@ data "aws_iam_policy_document" "ecs_task" {
     resources = ["${aws_s3_bucket.inbox.arn}/${local.inbox_prefix}*"]
   }
 
+  # Babu's LinkedIn export and network decisions, uploaded to network/ in the
+  # same encrypted, 90-day bucket (design doc 0014). Read only: the run never
+  # writes or deletes them.
+  statement {
+    sid       = "NetworkList"
+    actions   = ["s3:ListBucket"]
+    resources = [aws_s3_bucket.inbox.arn]
+
+    condition {
+      test     = "StringLike"
+      variable = "s3:prefix"
+      values   = ["${local.network_prefix}*"]
+    }
+  }
+
+  statement {
+    sid       = "NetworkRead"
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.inbox.arn}/${local.network_prefix}*"]
+  }
+
   statement {
     sid       = "InboxDecrypt"
     actions   = ["kms:Decrypt"]
@@ -150,12 +171,15 @@ data "aws_iam_policy_document" "ecs_task" {
     }
   }
 
-  # Babu's career profile, a SecureString Babu stores by hand (never in
-  # Terraform, so it never reaches the state file).
+  # Babu's career profile and target companies (ADR-0009), SecureStrings Babu
+  # stores by hand (never in Terraform, so they never reach the state file).
   statement {
-    sid       = "CareerProfile"
-    actions   = ["ssm:GetParameter"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}"]
+    sid     = "CareerProfile"
+    actions = ["ssm:GetParameter"]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}",
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.companies_parameter}",
+    ]
   }
 
   # The hash of the ranking routine's key, which the API checks it against.
@@ -246,20 +270,24 @@ data "aws_ecs_container_definition" "live" {
 }
 
 locals {
-  data_dir          = "/data"
-  profile_parameter = "/pejip/profile"
+  data_dir            = "/data"
+  profile_parameter   = "/pejip/profile"
+  companies_parameter = "/pejip/companies"
   # SHA-256 of the ranking routine's key (design doc 0015). Babu stores it by hand;
   # the key itself lives only in the routine's cloud environment.
   ranking_key_parameter = "/pejip/ranking-key-sha256"
 
-  # What `pejip run`, `digest` and `purge` read (design doc 0012), and the ranking
-  # routine's endpoints in the API (design doc 0015).
+  # What `pejip run`, `digest` and `purge` read (design doc 0012), the ranking
+  # routine's endpoints in the API (design doc 0015), and the company list the
+  # API's Settings page shows (ADR-0009).
   run_environment = [
     { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
     { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },
     { name = "PEJIP_OUTPUT_DIR", value = "${local.data_dir}/output" },
     { name = "PEJIP_INBOX_BUCKET", value = aws_s3_bucket.inbox.id },
+    { name = "PEJIP_NETWORK_BUCKET", value = aws_s3_bucket.inbox.id },
     { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
+    { name = "PEJIP_COMPANIES_PARAMETER", value = local.companies_parameter },
     { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
     { name = "PEJIP_RANKER", value = var.ranker },
     { name = "PEJIP_RANKING_KEY_PARAMETER", value = local.ranking_key_parameter },

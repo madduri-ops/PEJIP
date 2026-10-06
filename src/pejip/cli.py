@@ -9,19 +9,27 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import yaml
+from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import ValidationError
 
 from pejip.ai.client import AIClient
+from pejip.companies import load_search_config
 from pejip.config import SearchConfig, Settings, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import Digest, render
 from pejip.logs import configure_logging
 from pejip.network.linkedin import ExportError
-from pejip.network.loader import load_index
+from pejip.network.loader import load_index, load_index_s3
 from pejip.network.matching import YOUR_CALL, NetworkIndex
 from pejip.pipeline import Pipeline
-from pejip.profile import CareerProfile, load_profile, load_profile_parameter, make_ssm_client
+from pejip.profile import (
+    CareerProfile,
+    load_profile,
+    load_profile_parameter,
+    make_ssm_client,
+)
 from pejip.retention import purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
@@ -29,12 +37,19 @@ from pejip.store import Store
 
 log = logging.getLogger("pejip")
 
+# What a bad or missing network file raises.
+_FILE_ERRORS = (ExportError, OSError, ValidationError, yaml.YAMLError)
+
 
 def _load_profile(settings: Settings) -> CareerProfile | None:
     if settings.profile_parameter:
         client = make_ssm_client(settings.aws_region)
         return load_profile_parameter(client, settings.profile_parameter)
     return load_profile(settings.profile_path)
+
+
+def _load_config(settings: Settings) -> tuple[SearchConfig, str | None]:
+    return load_search_config(settings, make_ssm_client)
 
 
 ROUTINE_PENDING = "the ranking routine has not analysed it yet"
@@ -66,7 +81,7 @@ def _ai_client(settings: Settings, config: SearchConfig, ledger: SqliteLedger) -
 
 
 def _cmd_run(settings: Settings) -> int:
-    config = load_config(settings.config_path)
+    config, companies_note = _load_config(settings)
     profile = _load_profile(settings)
     store = Store(settings.database_url)
     ledger = SqliteLedger(settings.ai_ledger_path)
@@ -90,6 +105,8 @@ def _cmd_run(settings: Settings) -> int:
     finally:
         http.close()
         ledger.close()
+    if companies_note:
+        digest.notes.append(companies_note)
     if network_problem:
         digest.notes.append(f"Connections were not used this run: {network_problem}.")
     if settings.ranker == "routine":
@@ -103,7 +120,7 @@ def _cmd_run(settings: Settings) -> int:
 
 def _cmd_digest(settings: Settings) -> int:
     """Score the latest run's roles with the analyses stored since, and email the digest."""
-    config = load_config(settings.config_path)
+    config, companies_note = _load_config(settings)
     store = Store(settings.database_url)
     run = store.latest_run()
     if run is None:
@@ -125,6 +142,8 @@ def _cmd_digest(settings: Settings) -> int:
         digest = pipeline.digest_from(run)
     finally:
         pipeline.http.close()
+    if companies_note:
+        digest.notes.append(companies_note)
     if network_problem:
         digest.notes.append(f"Connections were not used this run: {network_problem}.")
     waiting = any(item.recommendation is None for item in digest.items)
@@ -166,11 +185,16 @@ def _deliver(settings: Settings, config: SearchConfig, digest: Digest) -> None:
 
 def _network(config: SearchConfig, settings: Settings) -> tuple[NetworkIndex | None, str | None]:
     """The connections index, or the reason it is unusable; a bad file never stops a run."""
-    if settings.connections_path is None:
-        return None, None
     try:
-        _, index = load_index(config, settings.connections_path, settings.network_decisions_path)
-    except (ExportError, OSError, ValidationError) as exc:
+        if settings.connections_path is not None:
+            paths = settings.connections_path, settings.network_decisions_path
+            index: NetworkIndex | None = load_index(config, *paths)[1]
+        elif settings.network_bucket:
+            client = make_s3_client(settings.aws_region)
+            index = load_index_s3(client, settings.network_bucket, config)
+        else:
+            index = None
+    except (*_FILE_ERRORS, ClientError, BotoCoreError) as exc:
         # Only the error type is logged: the message can quote the files' contents.
         log.warning("network_unavailable", extra={"error_type": type(exc).__name__})
         return None, _problem(exc)
@@ -183,15 +207,17 @@ def _problem(exc: Exception) -> str:
         return f"the LinkedIn export could not be read ({exc})"
     if isinstance(exc, ValidationError):
         return "the network decisions file has an invalid entry"
+    if isinstance(exc, yaml.YAMLError):
+        return "the network decisions file is not valid YAML"
     return f"a network file could not be opened ({type(exc).__name__})"
 
 
 def _cmd_connections(settings: Settings, path: Path) -> int:
     """Check a LinkedIn export before using it: counts and names to review, no people."""
-    config = load_config(settings.config_path)
+    config, _ = _load_config(settings)
     try:
         preview, index = load_index(config, path, settings.network_decisions_path)
-    except (ExportError, OSError, ValidationError) as exc:
+    except _FILE_ERRORS as exc:
         sys.stderr.write(f"Cannot use {path}: {_problem(exc)}\n")
         return 2
     out = [

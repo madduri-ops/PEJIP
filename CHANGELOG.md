@@ -64,6 +64,15 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   (`PEJIP_NETWORK_DECISIONS`).
 - `pejip connections <file>` checks an export before use: counts, rejected rows,
   connections per tracked company and employer names to review.
+- On AWS the daily run reads the LinkedIn export and network decisions Babu uploads
+  to `network/` in the encrypted inbox bucket (deleted after 90 days).
+- A network decisions file that is not valid YAML no longer stops a run; the digest
+  says so instead.
+- Babu's target companies are no longer in the public repository: `pejip run` adds
+  them from `PEJIP_COMPANIES` or, on AWS, the encrypted SSM parameter
+  `/pejip/companies` (ADR-0009). `config/search.yaml` keeps only the test boards.
+- A job board such as LinkedIn is no longer treated as a company your connections
+  can work at.
 - The portal has a Search Health page at `/search-health`: the latest search, any
   failed sources with their impact and last success, every source searched, and
   recent runs.

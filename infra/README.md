@@ -122,6 +122,36 @@ aws ecs run-task --cluster pejip-prod --task-definition pejip-prod --launch-type
   --overrides '{"cpu":"512","memory":"1024","containerOverrides":[{"name":"pejip","command":["pejip","run"]}]}'
 ```
 
+## Target companies (once, then on each change)
+
+[ADR-0009](../docs/adr/0009-private-inputs-outside-the-public-repository.md). Babu's
+target companies are not in the public repository. From CloudShell, upload the list
+(same format as `examples/companies.example.yaml`), store it, then delete the copy:
+
+```sh
+aws ssm put-parameter --name /pejip/companies --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://companies.yaml
+rm companies.yaml
+```
+
+Add `--overwrite` to change it later. Until it exists, each digest says so and only
+the test boards in `config/search.yaml` are searched.
+
+## LinkedIn connections (each refresh)
+
+[Design 0014](../docs/design/0014-connection-matching.md). Upload only
+`Connections.csv` from the LinkedIn data export, never the whole archive, from
+CloudShell (Actions, Upload file), then delete the uploaded copy:
+
+```sh
+aws s3 cp Connections.csv s3://pejip-inbox-275704950192/network/Connections.csv
+rm Connections.csv
+```
+
+The bucket encrypts it with `alias/pejip` and deletes it 90 days later; the next
+morning's run uses it and the digest says when it was last refreshed. Answers to
+"Your call" questions go in `network/network-decisions.yaml` the same way (see
+`examples/network-decisions.example.yaml`). A new upload replaces the old one.
+
 ## Ranking routine (once, then every 90 days)
 
 [Design 0015](../docs/design/0015-ranking-routine.md). With `ranker = "routine"`

@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from pejip.config import SearchConfig, Settings
+from pejip.config import SearchConfig, Settings, parse_private_companies, with_private_companies
 from pejip.models import Posting
 from pejip.profile import CareerProfile, load_profile
 
@@ -16,7 +16,7 @@ def test_config_loads_and_validates(config: SearchConfig) -> None:
     assert config.retention_days == 90
     assert sum(config.scoring.fit_weights.values()) == 100
     assert {s.adapter for s in config.sources} == {"greenhouse"}
-    assert config.sources[0].company == "Anthropic"
+    assert config.sources[0].company == "Stripe"
     boards = [s.board for s in config.sources]
     assert len(boards) == len(set(boards))
 
@@ -46,6 +46,14 @@ def test_settings_defaults_and_overrides(monkeypatch: pytest.MonkeyPatch) -> Non
     network = Settings.from_env({"PEJIP_CONNECTIONS": "c.csv", "PEJIP_NETWORK_DECISIONS": "d.yaml"})
     assert network.connections_path == Path("c.csv")
     assert network.network_decisions_path == Path("d.yaml")
+    assert defaults.network_bucket is None
+    assert (defaults.companies_path, defaults.companies_parameter) == (None, None)
+    private = Settings.from_env(
+        {"PEJIP_COMPANIES": "c.yaml", "PEJIP_COMPANIES_PARAMETER": "/pejip/companies"}
+    )
+    assert private.companies_path == Path("c.yaml")
+    assert private.companies_parameter == "/pejip/companies"
+    assert Settings.from_env({"PEJIP_NETWORK_BUCKET": "b"}).network_bucket == "b"
     assert (defaults.profile_parameter, defaults.digest_topic_arn) == (None, None)
     assert defaults.ai_enabled
     aws = Settings.from_env(
@@ -106,3 +114,24 @@ def test_posting_identity_and_content_hash() -> None:
     b = Posting("lever", "x:1", "Co", "VP Ops", "SF", "Changed body", "https://e/1")
     assert a.fingerprint == b.fingerprint
     assert a.content_hash != b.content_hash
+
+
+def test_private_companies_are_added_to_the_shipped_ones(config: SearchConfig) -> None:
+    private = parse_private_companies(
+        "sources: [{adapter: greenhouse, company: Private Co, board: privateco}]\n"
+        "inbox_companies: [{company: Alert Co, link_patterns: [jobs.alert.example/]}]\n"
+        "company_aliases: {Private Co: [Private Company Inc]}\n"
+    )
+    merged = with_private_companies(config, private)
+    assert merged.sources[-1].company == "Private Co"
+    assert merged.inbox is not None
+    assert [c.company for c in merged.inbox.companies] == ["LinkedIn", "Alert Co"]
+    assert merged.network is not None
+    assert merged.network.company_aliases == {"Private Co": ["Private Company Inc"]}
+    assert merged.scoring == config.scoring
+    bare = config.model_copy(update={"inbox": None, "network": None})
+    empty = with_private_companies(bare, parse_private_companies(""))
+    assert empty.inbox is None
+    assert empty.sources == config.sources
+    with pytest.raises(ValidationError):
+        parse_private_companies("sources: [{company: No Board}]\n")
