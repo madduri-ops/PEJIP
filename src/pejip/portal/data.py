@@ -9,10 +9,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 # Priority bands in the order the portal ranks them (spec 9.25).
 PRIORITY_ORDER = ("IMMEDIATE", "HIGH", "MEDIUM", "LOW", "UNRANKED", "EXCLUDED")
+
+# What Babu can decide about a role (spec 10.2), in the order the buttons show.
+DECISIONS = ("INTERESTED", "WATCH", "NOT_INTERESTED", "ALREADY_APPLIED")
+# Decisions that take a role out of every view except "All active" and its own.
+SET_ASIDE = frozenset({"NOT_INTERESTED", "ALREADY_APPLIED"})
 
 
 @dataclass(frozen=True)
@@ -102,6 +107,8 @@ class Opportunity:
     requisition: str | None = None
     last_verified_at: datetime | None = None
     history: tuple[HistoryEvent, ...] = ()
+    # Babu's latest decision about the role (one of DECISIONS), None before any.
+    decision: str | None = None
 
 
 @dataclass(frozen=True)
@@ -223,3 +230,11 @@ class PortalData(Protocol):
 
     def network(self) -> Network | None:
         """The last LinkedIn connections import, or None before the first one."""
+
+
+@runtime_checkable
+class Decisions(Protocol):
+    """A data source that also records Babu's decisions; the sample data does not."""
+
+    def decide(self, opportunity_id: int, decision: str | None) -> bool:
+        """Record a decision (None clears it); False when the role is unknown."""

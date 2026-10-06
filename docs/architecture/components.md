@@ -200,7 +200,7 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}`, `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` and `/portal.css`; `POST /signout` (and `GET`, for the return from an expired session) and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
+  `/opportunities/{id}` (and `POST /opportunities/{id}/decision`), `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` and `/portal.css`; `POST /signout` (and `GET`, for the return from an expired session) and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
   shows the search setup with Babu's private companies (ADR-0009). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz`, `/signed-out` and `/portal.css` (and the ranking routes, below) requires Google sign-in: `pejip.auth` checks the ALB's signed
@@ -220,10 +220,11 @@ flowchart TB
   display.
 - **Interfaces:** `portal.router(data, clock, config, config_for, data_for)` mounted by `create_app`, which passes each account's data and the
   search configuration from `PEJIP_CONFIG` for Settings; reads a
-  `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`, `network()`). Pages get their own
+  `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`, `network()`), and records
+  decisions through `Decisions.decide()` when the source supports it. Pages get their own
   content security policy (`PAGE_CSP`), with no script.
-- **Data:** none stored. `StoreData` reads each signed-in account's database (jobs seen in the last week, latest
-  recommendations and explanations, recent runs); `SampleData` (synthetic) only when no database is configured.
+- **Data:** writes only the `decisions` table. `StoreData` reads each signed-in account's database (jobs seen in the last week, latest
+  recommendations and explanations, recent runs, decisions); `SampleData` (synthetic) only when no database is configured.
 - **Design doc:** [0013: Web portal](../design/0013-web-portal.md).
 
 

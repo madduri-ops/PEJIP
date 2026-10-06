@@ -47,6 +47,7 @@ machine, sent to the Anthropic API or the ranking routine for matching (see
 | `analyses` | AI analysis and matching output, provenance | analysis (via pipeline) | 90 days |
 | `recommendations` | Scores, components, reasons, explanation | scoring (via pipeline) | 90 days |
 | `runs` | Run status and per-source results | pipeline | 90 days |
+| `decisions` | Babu's decisions about roles from the portal (Interested, Watch, Not interested, Already applied) with the score he saw; personal data | portal (`pejip.portal.stored`) | 90 days, and with their job |
 | `profile.yaml` or SSM `/pejip/accounts/<account>/profile` | Career profile (personal data; a local file, or on AWS a SecureString Babu stores) | Babu | Babu's own |
 | Private company list (`PEJIP_COMPANIES` or SSM `/pejip/accounts/<account>/companies`) | Babu's target companies, kept out of the public repository (ADR-0009) | Babu | Babu's own |
 | LinkedIn export and decisions file | First-degree connections and Babu's network decisions (personal data; local files at `PEJIP_CONNECTIONS`, `PEJIP_NETWORK_DECISIONS`, or on AWS `network/<account>/` in the inbox bucket) | Babu | Local files: Babu's own. On AWS: 90 days after upload |

@@ -492,6 +492,8 @@ def test_views_match_their_roles() -> None:
         "remote": 3,
         "bay-area": 5,
         "changed": 2,
+        "interested": 0,
+        "applied": 0,
         "all": 9,
     }
 
@@ -972,3 +974,125 @@ def test_the_portal_needs_somewhere_to_read_from() -> None:
 
     with pytest.raises(ValueError, match="needs data or data_for"):
         asyncio.run(call())
+
+
+# ── Decisions (spec 10.2) ────────────────────────────────────────────────────
+class DecidingData(FakeData):
+    """FakeData that also records decisions, like the database reader."""
+
+    def __init__(self, items: list[Opportunity], sample: bool = False) -> None:
+        super().__init__(items, None, sample=sample)
+        self.decided: list[tuple[int, str | None]] = []
+
+    def decide(self, opportunity_id: int, decision: str | None) -> bool:
+        if not any(o.id == opportunity_id for o in self.items):
+            return False
+        self.decided.append((opportunity_id, decision))
+        return True
+
+
+def _post(
+    data: FakeData, path: str, body: str, origin: str | None = "http://test"
+) -> httpx.Response:
+    app = FastAPI()
+    app.include_router(portal.router(data, clock=lambda: NOW))
+
+    async def call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        headers = {"content-type": "application/x-www-form-urlencoded"}
+        if origin is not None:
+            headers["origin"] = origin
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.post(path, content=body, headers=headers)
+
+    return asyncio.run(call())
+
+
+def test_decision_buttons_post_the_choice_and_return_to_the_role() -> None:
+    data = DecidingData([_role()])
+
+    watch = _post(data, "/opportunities/1/decision", "decision=WATCH")
+    clear = _post(data, "/opportunities/1/decision", "decision=")
+
+    assert watch.status_code == clear.status_code == 303
+    assert watch.headers["location"] == "/opportunities/1#decision"
+    assert data.decided == [(1, "WATCH"), (1, None)]
+
+
+@pytest.mark.parametrize(
+    ("body", "origin", "status"),
+    [
+        ("decision=WATCH", None, 403),  # no Origin: not sent by a page
+        ("decision=WATCH", "https://evil.example", 403),  # another site
+        ("decision=HIRE_ME", "http://test", 422),
+        ("other=1", "http://test", 422),
+        ("decision=WATCH&pad=" + "x" * 300, "http://test", 422),
+    ],
+)
+def test_decision_posts_that_are_refused(body: str, origin: str | None, status: int) -> None:
+    data = DecidingData([_role()])
+
+    assert _post(data, "/opportunities/1/decision", body, origin).status_code == status
+    assert data.decided == []
+
+
+def test_decisions_need_a_known_role_and_a_store() -> None:
+    assert (
+        _post(DecidingData([_role()]), "/opportunities/7/decision", "decision=WATCH").status_code
+        == 404
+    )
+    assert (
+        _post(FakeData([_role()], None), "/opportunities/1/decision", "decision=WATCH").status_code
+        == 404
+    )
+
+
+def test_role_page_shows_the_decision_buttons() -> None:
+    html = _get(DecidingData([_role(decision="ALREADY_APPLIED")]), "/opportunities/1").text
+
+    assert '<section class="card" id="decision">' in html
+    assert 'action="/opportunities/1/decision"' in html
+    assert 'aria-pressed="true">Already applied</button>' in html
+    assert 'aria-pressed="false">Watch</button>' in html
+    assert "Current: <strong>Already applied</strong>" in html
+    assert '<input type="hidden" name="decision" value="">' in html  # Clear
+
+
+def test_role_page_without_a_decision_has_no_clear_button() -> None:
+    html = _get(DecidingData([_role()]), "/opportunities/1").text
+
+    assert "Current: <strong>None yet</strong>" in html
+    assert 'value=""' not in html
+
+
+def test_no_decision_buttons_on_sample_or_read_only_data() -> None:
+    for data in (DecidingData([_role()], sample=True), FakeData([_role()], None)):
+        assert 'id="decision"' not in _get(data, "/opportunities/1").text
+
+
+def test_set_aside_roles_leave_the_lists_but_stay_under_all_and_their_view() -> None:
+    roles = [
+        _role(1, priority="IMMEDIATE"),
+        _role(2, priority="IMMEDIATE", decision="NOT_INTERESTED"),
+        _role(3, priority="IMMEDIATE", decision="ALREADY_APPLIED"),
+        _role(4, priority="IMMEDIATE", decision="INTERESTED"),
+        _role(5, priority="IMMEDIATE", decision="WATCH", watched=True),
+    ]
+
+    def ids(view: str) -> list[int]:
+        return [o.id for o in list_opportunities(roles, Filters(view=view), NOW).in_view]
+
+    listing = list_opportunities(roles, Filters(view="attention"), NOW)
+    assert ids("attention") == [1, 4, 5]
+    assert ids("interested") == [4]
+    assert ids("applied") == [3]
+    assert ids("watched") == [5]
+    assert sorted(ids("all")) == [1, 2, 3, 4, 5]
+    assert (listing.counts["attention"], listing.counts["applied"]) == (3, 1)
+    assert listing.counts["all"] == 5
+
+    home = _get(FakeData(roles, None), "/").text
+    assert home.count('class="title"') == 3
+    page = _get(FakeData(roles, None), "/opportunities?view=all").text
+    assert '<span class="chip">Not interested</span>' in page
+    assert '<span class="chip">Watching</span>' in page
