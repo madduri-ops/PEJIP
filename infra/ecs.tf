@@ -356,9 +356,9 @@ resource "aws_ecs_task_definition" "app" {
       { name = "PEJIP_HOST", value = "0.0.0.0" },
       { name = "PEJIP_PORT", value = tostring(var.container_port) },
       { name = "PEJIP_ENVIRONMENT", value = var.environment },
-      # Google sign-in check (ADR-0006): who may sign in, and which load
-      # balancer's tokens to trust.
-      { name = "PEJIP_AUTH_ALLOWED_EMAIL", value = local.sign_in_email },
+      # Google sign-in check (ADR-0006): who may sign in, as which account
+      # (design doc 0016), and which load balancer's tokens to trust.
+      { name = "PEJIP_AUTH_ACCOUNTS", value = local.sign_in_registry },
       { name = "PEJIP_AUTH_ALB_ARN", value = aws_lb.app.arn },
     ], local.run_environment, local.claude_environment)
     # The data file system (efs.tf) and a scratch /tmp, since the root

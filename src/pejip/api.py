@@ -5,8 +5,9 @@ and the web portal's pages (``pejip.portal``, design doc 0011). The system smoke
 test and DAST exercise every route in the OpenAPI document automatically.
 
 Every route except ``/healthz`` and the ranking routine's ``/api/ranking/*``
-requires Babu's Google sign-in, checked by ``pejip.auth`` against the token the
-load balancer adds (ADR-0006). The ranking routes need the routine's key instead
+requires Google sign-in, checked by ``pejip.auth`` against the token the load
+balancer adds (ADR-0006); the signed-in account is kept on ``request.state.account``
+for the routes to key data by (design doc 0016). The ranking routes need the routine's key instead
 (``pejip.ranking_api``, design doc 0015).
 """
 
@@ -118,7 +119,9 @@ def create_app(
         if authenticator is None:
             return JSONResponse({"detail": "sign-in is not configured"}, status_code=503)
         try:
-            await authenticator.verify(request.headers.get(OIDC_DATA_HEADER))
+            request.state.account = await authenticator.verify(
+                request.headers.get(OIDC_DATA_HEADER)
+            )
         except SignInRequiredError:
             return JSONResponse({"detail": "sign-in required"}, status_code=401)
         except AccountNotAllowedError:

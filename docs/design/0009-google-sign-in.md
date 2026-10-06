@@ -47,8 +47,10 @@ memory (at most 16 keys).
 
 ## Interfaces
 
-- **App settings (environment):** `PEJIP_AUTH_ALLOWED_EMAIL`,
-  `PEJIP_AUTH_ALB_ARN` (both set by the ECS task definition), and
+- **App settings (environment):** `PEJIP_AUTH_ACCOUNTS` (the account registry,
+  `id=email` pairs, [0016](0016-accounts.md); `PEJIP_AUTH_ALLOWED_EMAIL` alone
+  still works as account `babu`), `PEJIP_AUTH_ALB_ARN` (both set by the ECS task
+  definition), and
   `PEJIP_AUTH_KEY_URL` (key URL template with `{kid}`; tests only).
 - **Responses:** 401 `{"detail": "sign-in required"}` without a valid ALB token,
   403 `{"detail": "this account is not allowed"}` for another or unverified
@@ -56,7 +58,8 @@ memory (at most 16 keys).
   missing. All carry the usual security headers.
 - **Terraform:** SSM parameters `/pejip/google-oauth/client-id` and
   `/pejip/google-oauth/client-secret` (created by hand); variables
-  `sign_in_email` (sensitive, defaults to `alert_email`) and
+  `sign_in_email` (sensitive, defaults to `alert_email`), `sign_in_accounts`
+  (sensitive, [0016](0016-accounts.md)) and
   `sign_in_session_seconds` (default 43200); output `google_redirect_uri`.
 - **CI helper:** `python -m ci.alb_token KEY_DIR EMAIL ALB_ARN` writes a
   throwaway public key and prints a token signed with it.

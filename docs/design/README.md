@@ -25,3 +25,4 @@ consequences also get an ADR in [docs/adr/](../adr/).
 | [0013: Web portal](0013-web-portal.md) | Implemented (sample data) |
 | [0014: Connection matching](0014-connection-matching.md) | Implemented |
 | [0015: Ranking through a Claude Code routine](0015-ranking-routine.md) | Implemented |
+| [0016: Separate, private accounts](0016-accounts.md) | Accepted (step 1 implemented) |

@@ -199,9 +199,11 @@ flowchart TB
   `/opportunities/{id}`, `/companies`, `/watchlist`, `/search-health`, `/settings` and `/portal.css`; the OpenAPI document at `/openapi.json`. Settings
   shows the search setup with Babu's private companies (ADR-0009). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
-  `/healthz` requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
-  `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and
-  `PEJIP_AUTH_ALB_ARN` ([0009: Google sign-in](../design/0009-google-sign-in.md)).
+  `/healthz` requires Google sign-in: `pejip.auth` checks the ALB's signed
+  `x-amzn-oidc-data` token against `PEJIP_AUTH_ALB_ARN`, maps the email to an
+  account in `PEJIP_AUTH_ACCOUNTS` and puts it on `request.state.account`
+  ([0009: Google sign-in](../design/0009-google-sign-in.md),
+  [0016: Separate, private accounts](../design/0016-accounts.md)).
 - **Data:** none.
 - **Deployment:** the image's default command; runs as ECS service `pejip-prod`
   behind `pejip-alb` ([0005: App hosting and deploy](../design/0005-app-hosting-and-deploy.md)).

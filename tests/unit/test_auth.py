@@ -10,14 +10,17 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec, rsa
 
 from ci.alb_token import AlbSigner
+from pejip import auth
 from pejip.auth import (
+    Account,
     AccountNotAllowedError,
     Authenticator,
     AuthSettings,
     KeyStore,
     SignInRequiredError,
+    parse_accounts,
 )
-from tests.alb import ALB_ARN, ALLOWED_EMAIL
+from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL
 
 KEY_URL = "https://keys.test/{kid}"
 
@@ -35,12 +38,15 @@ def _store(responses: dict[str, httpx.Response]) -> tuple[KeyStore, list[str]]:
 
 def _authenticator(signer: AlbSigner) -> Authenticator:
     store, _ = _store({f"/{signer.kid}": httpx.Response(200, content=signer.public_pem())})
-    settings = AuthSettings(allowed_email=ALLOWED_EMAIL, alb_arn=ALB_ARN, key_url=KEY_URL)
+    settings = AuthSettings(
+        accounts=(Account(ACCOUNT_ID, ALLOWED_EMAIL),), alb_arn=ALB_ARN, key_url=KEY_URL
+    )
     return Authenticator(settings, store)
 
 
 def _verify(authenticator: Authenticator, token: str | None) -> str:
-    return asyncio.run(authenticator.verify(token))
+    """The signed-in account's email (the account id is checked separately)."""
+    return asyncio.run(authenticator.verify(token)).email
 
 
 @pytest.fixture
@@ -49,22 +55,90 @@ def signer() -> AlbSigner:
 
 
 # ── Settings ─────────────────────────────────────────────────────────────────
-def test_settings_off_without_email_or_arn() -> None:
+def test_settings_off_without_accounts_or_arn() -> None:
     assert AuthSettings.from_env({}) is None
     assert AuthSettings.from_env({"PEJIP_AUTH_ALLOWED_EMAIL": ALLOWED_EMAIL}) is None
+    assert AuthSettings.from_env({"PEJIP_AUTH_ACCOUNTS": f"a={ALLOWED_EMAIL}"}) is None
     assert AuthSettings.from_env({"PEJIP_AUTH_ALB_ARN": ALB_ARN}) is None
+    assert (
+        AuthSettings.from_env({"PEJIP_AUTH_ACCOUNTS": " , ", "PEJIP_AUTH_ALB_ARN": ALB_ARN}) is None
+    )
 
 
-def test_settings_derive_the_regional_key_url() -> None:
+def test_settings_read_the_account_registry() -> None:
+    settings = AuthSettings.from_env(
+        {
+            "PEJIP_AUTH_ACCOUNTS": f" {ACCOUNT_ID} = Owner@Example.com ,",
+            "PEJIP_AUTH_ALB_ARN": ALB_ARN,
+        }
+    )
+
+    assert settings == AuthSettings(
+        accounts=(Account(ACCOUNT_ID, ALLOWED_EMAIL),),
+        alb_arn=ALB_ARN,
+        key_url="https://public-keys.auth.elb.us-west-2.amazonaws.com/{kid}",
+    )
+
+
+def test_settings_fall_back_to_the_allowed_email_as_babu() -> None:
+    # An older task definition sets only PEJIP_AUTH_ALLOWED_EMAIL; a rollback to it
+    # must keep signing Babu in.
     settings = AuthSettings.from_env(
         {"PEJIP_AUTH_ALLOWED_EMAIL": " Owner@Example.com ", "PEJIP_AUTH_ALB_ARN": ALB_ARN}
     )
 
-    assert settings == AuthSettings(
-        allowed_email=ALLOWED_EMAIL,
-        alb_arn=ALB_ARN,
-        key_url="https://public-keys.auth.elb.us-west-2.amazonaws.com/{kid}",
+    assert settings is not None
+    assert settings.accounts == (Account("babu", ALLOWED_EMAIL),)
+
+
+def test_settings_prefer_the_registry_over_the_allowed_email() -> None:
+    settings = AuthSettings.from_env(
+        {
+            "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL}",
+            "PEJIP_AUTH_ALLOWED_EMAIL": "other@example.com",
+            "PEJIP_AUTH_ALB_ARN": ALB_ARN,
+        }
     )
+
+    assert settings is not None
+    assert settings.accounts == (Account(ACCOUNT_ID, ALLOWED_EMAIL),)
+
+
+def test_settings_refuse_a_second_account_until_storage_is_per_account() -> None:
+    # A second account would see the first one's data (design doc 0016).
+    with pytest.raises(ValueError, match="only one account"):
+        AuthSettings.from_env(
+            {
+                "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL},friend=friend@example.com",
+                "PEJIP_AUTH_ALB_ARN": ALB_ARN,
+            }
+        )
+
+
+def test_parse_accounts_reads_several() -> None:
+    assert parse_accounts("babu=A@x.test, friend-2=b@y.test") == (
+        Account("babu", "a@x.test"),
+        Account("friend-2", "b@y.test"),
+    )
+
+
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ("owner@example.com", "id=email"),
+        ("=owner@example.com", "id=email"),
+        ("Babu=owner@example.com", "id=email"),
+        ("1babu=owner@example.com", "id=email"),
+        ("../x=owner@example.com", "id=email"),
+        ("babu=not-an-email", "id=email"),
+        ("babu=a@x.test,babu=b@x.test", "repeats an account id"),
+        ("babu=a@x.test,friend=A@X.test", "repeats an email"),
+    ],
+)
+def test_parse_accounts_rejects_bad_entries(value: str, message: str) -> None:
+    with pytest.raises(ValueError, match=message) as raised:
+        parse_accounts(value)
+    assert "@" not in str(raised.value)
 
 
 def test_settings_take_a_key_url_override() -> None:
@@ -151,7 +225,7 @@ def test_allows_small_clock_skew(signer: AlbSigner) -> None:
     authenticator = _authenticator(signer)
     token = signer.token(ALLOWED_EMAIL, expires=1000)
 
-    assert asyncio.run(authenticator.verify(token, now=1030)) == ALLOWED_EMAIL
+    assert asyncio.run(authenticator.verify(token, now=1030)).email == ALLOWED_EMAIL
     with pytest.raises(SignInRequiredError):
         asyncio.run(authenticator.verify(token, now=1100))
 
@@ -186,6 +260,32 @@ def test_rejects_a_header_that_is_not_a_json_object(signer: AlbSigner, segment: 
 
     with pytest.raises(SignInRequiredError):
         _verify(_authenticator(signer), f"{segment}.{payload}.{signature}")
+
+
+def test_returns_the_signed_in_account(signer: AlbSigner) -> None:
+    account = asyncio.run(_authenticator(signer).verify(signer.token(ALLOWED_EMAIL)))
+
+    assert account == Account(ACCOUNT_ID, ALLOWED_EMAIL)
+
+
+def test_each_email_signs_in_as_its_own_account(
+    signer: AlbSigner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(auth, "MAX_ACCOUNTS", 2)
+    store, _ = _store({f"/{signer.kid}": httpx.Response(200, content=signer.public_pem())})
+    settings = AuthSettings.from_env(
+        {
+            "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL},friend=friend@example.com",
+            "PEJIP_AUTH_ALB_ARN": ALB_ARN,
+        }
+    )
+    assert settings is not None
+    authenticator = Authenticator(settings, store)
+
+    owner = asyncio.run(authenticator.verify(signer.token(ALLOWED_EMAIL)))
+    friend = asyncio.run(authenticator.verify(signer.token("Friend@Example.com")))
+
+    assert (owner.id, friend.id) == (ACCOUNT_ID, "friend")
 
 
 def test_refuses_another_account(signer: AlbSigner) -> None:

@@ -7,8 +7,8 @@ import httpx
 import pytest
 
 from ci import alb_token
-from pejip.auth import Authenticator, AuthSettings, KeyStore
-from tests.alb import ALB_ARN, ALLOWED_EMAIL
+from pejip.auth import Account, Authenticator, AuthSettings, KeyStore
+from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL
 
 
 def test_main_writes_the_key_and_prints_a_valid_token(
@@ -24,8 +24,9 @@ def test_main_writes_the_key_and_prints_a_valid_token(
         "https://keys.test/{kid}",
         transport=httpx.MockTransport(lambda _: httpx.Response(200, content=pem)),
     )
-    settings = AuthSettings(ALLOWED_EMAIL, ALB_ARN, "https://keys.test/{kid}")
-    assert asyncio.run(Authenticator(settings, store).verify(token)) == ALLOWED_EMAIL
+    account = Account(ACCOUNT_ID, ALLOWED_EMAIL)
+    settings = AuthSettings((account,), ALB_ARN, "https://keys.test/{kid}")
+    assert asyncio.run(Authenticator(settings, store).verify(token)) == account
 
 
 def test_main_explains_its_usage(capsys: pytest.CaptureFixture[str]) -> None:

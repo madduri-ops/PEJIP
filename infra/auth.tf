@@ -2,9 +2,10 @@
 #
 # The HTTPS listener signs every request in with Google before forwarding it
 # (alb.tf), except /healthz, which the post-deploy health gate polls from
-# GitHub. Google lets any account sign in to an OAuth client, so the app checks
-# the signed-in address against sign_in_email (src/pejip/auth.py) and refuses
-# everyone else.
+# GitHub. Google lets any account sign in to an OAuth client, so the app looks
+# the signed-in address up in the account registry (sign_in_accounts, or Babu's
+# sign_in_email alone; src/pejip/auth.py, design doc 0016) and refuses everyone
+# else.
 #
 # Babu creates the OAuth client in Google Cloud and stores its ID and secret in
 # SSM Parameter Store, encrypted with alias/pejip (infra/README.md, "Google
@@ -22,6 +23,10 @@ data "aws_ssm_parameter" "google_client_secret" {
 locals {
   # Babu's sign-in address; the alert address unless set separately.
   sign_in_email = coalesce(var.sign_in_email, var.alert_email)
+
+  # The account registry the app reads as PEJIP_AUTH_ACCOUNTS (id=email,...).
+  sign_in_accounts = length(var.sign_in_accounts) > 0 ? var.sign_in_accounts : { babu = local.sign_in_email }
+  sign_in_registry = join(",", [for id, email in local.sign_in_accounts : "${id}=${email}"])
 
   google_oidc = {
     issuer                 = "https://accounts.google.com"

@@ -9,12 +9,13 @@ from ci.alb_token import AlbSigner
 
 ALB_ARN = "arn:aws:elasticloadbalancing:us-west-2:000000000000:loadbalancer/app/test/0"
 ALLOWED_EMAIL = "owner@example.com"
+ACCOUNT_ID = "owner"
 
 
 def auth_env(key_url: str) -> dict[str, str]:
     """Environment that turns sign-in on against a test key server."""
     return {
-        "PEJIP_AUTH_ALLOWED_EMAIL": ALLOWED_EMAIL,
+        "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL}",
         "PEJIP_AUTH_ALB_ARN": ALB_ARN,
         "PEJIP_AUTH_KEY_URL": key_url,
     }

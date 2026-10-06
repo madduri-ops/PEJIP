@@ -12,6 +12,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Sign-in by account (design doc 0016, step 1): the app maps the signed-in Google
+  email to an account through `PEJIP_AUTH_ACCOUNTS` (`id=email` pairs, Terraform
+  variable `sign_in_accounts`), so later steps can keep each person's data
+  separate. Only one account may sign in until per-account storage lands.
+  `PEJIP_AUTH_ALLOWED_EMAIL` alone still signs Babu in as account `babu`.
+
 - Ranking through a Claude Code routine on Babu's plan (design doc 0015): on AWS
   the 06:00 run stores new roles without calling Claude, the routine analyses
   them at 07:00 through two key-protected endpoints (`/api/ranking/queue` and
