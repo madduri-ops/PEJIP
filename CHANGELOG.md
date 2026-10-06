@@ -222,7 +222,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - Saving Settings and the decision buttons on a role no longer answer "Forms are
   only accepted from this site." Browsers send `Origin: null` from these pages
   (they ask for no referrer), so the same-site check now reads `Sec-Fetch-Site`.
-
+- Portal pages are fast again once many roles are scored: the role lists read jobs
+  and their latest scores in batches, and the score, analysis and decision tables
+  are indexed by job, instead of reading the whole scores table for every role.
 - Director roles (for example a LinkedIn alert's "Director, Technical Program
   Management" at Meta) are no longer dropped before ranking: plain Director now
   counts as a senior title. Assistant and Associate Director are still left out.
