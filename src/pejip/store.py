@@ -348,6 +348,13 @@ class Store:
                 .values(status=status, summary=summary, finished_at=now)
             )
 
+    def mark_digest_sent(self, run_id: str, now: datetime) -> None:
+        """Record in the run's summary that its digest went out (design doc 0015)."""
+        with self.engine.begin() as conn:
+            summary = conn.execute(select(runs.c.summary).where(runs.c.id == run_id)).scalar_one()
+            summary = {**summary, "digest_sent_at": now.isoformat()}
+            conn.execute(update(runs).where(runs.c.id == run_id).values(summary=summary))
+
     # Retention, export and deletion (policy section 10) -------------------
 
     def purge_expired(self, now: datetime, retention_days: int) -> int:

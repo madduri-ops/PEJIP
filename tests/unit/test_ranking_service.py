@@ -181,3 +181,13 @@ def test_key_hash_from_ssm_reads_names_in_order(monkeypatch: pytest.MonkeyPatch)
 
     assert key_hash_from_ssm(None, "/first", "/second")() == "two"
     assert key_hash_from_ssm(None, "/first")() is None
+
+
+def test_the_digest_is_emailed_with_the_accounts_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Settings] = []
+    monkeypatch.setattr(ranking_api, "digest_now", calls.append)
+    RankingService.from_env({"PEJIP_ACCOUNT": "babu"}, "babu").digest()
+    [settings] = calls
+    assert settings.account == "babu"

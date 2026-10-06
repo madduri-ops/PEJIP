@@ -27,8 +27,9 @@ reviewed like any other change and the routine always runs the current version.
    ```
 
    Below, `R` means `/tmp/pejip-venv/bin/python -m pejip.routine --work /tmp/pejip-work`.
-2. Run `R fetch`. If it reports 0 roles, say "No roles to rank" and stop. If it
-   fails, report what it printed (never the key) and stop.
+2. Run `R fetch`. If it reports 0 roles, run step 4 anyway (it also tells PEJIP
+   to email the digest), say "No roles to rank" and stop. If it fails, report what
+   it printed (never the key) and stop.
 3. Run `R next`. It prints `STEP role <id> <feature>` with a `step.md` path,
    `REDO ...` with why the last answer was refused, or `DONE`. For STEP or REDO,
    read that `step.md` and follow it exactly (system prompt, input and JSON
@@ -37,5 +38,6 @@ reviewed like any other change and the routine always runs the current version.
    `R next --role <id>` until that role is DONE. If a role is refused 3 times in
    a row, run `R skip <id> "<short reason>"`.
 4. When `R next` prints DONE, run `R submit --model "<the exact model id you are running on>"`.
+   It posts the answers and asks PEJIP to email the digest now.
 5. End with one short summary: roles fetched, accepted, refused (ids and
    reasons), skipped, and errors.
