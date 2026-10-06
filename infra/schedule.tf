@@ -145,7 +145,7 @@ data "aws_iam_policy_document" "scheduler" {
 
     condition {
       test     = "ArnLike"
-      variable = "kms:EncryptionContext:aws:scheduler:schedule-arn"
+      variable = "kms:EncryptionContext:aws:scheduler:schedule:arn"
       values   = ["arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/default/pejip-*"]
     }
   }
