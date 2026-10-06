@@ -212,7 +212,8 @@ account registry: `sign_in_accounts`, or `sign_in_email` alone as account `babu`
 
 1. In Google Cloud Console, create (or pick) a project and set up the OAuth
    consent screen: External, app name `PEJIP`, publishing status **Testing**, and
-   add your Google address as the only test user.
+   add the Google address of each account in the registry as a test user
+   (Testing allows up to 100).
 2. Create an OAuth client ID of type **Web application** with the authorized
    redirect URI `https://job-search.zephyr-mcg.com/oauth2/idpresponse`
    (`terraform output google_redirect_uri`).
@@ -231,6 +232,30 @@ account registry: `sign_in_accounts`, or `sign_in_email` alone as account `babu`
    commit running now.
 
 To rotate the secret, update the parameter (`--overwrite`) and run `terraform apply`.
+
+## Removing an account
+
+[Design 0016](../docs/design/0016-accounts.md). To delete everything PEJIP holds
+for an account (`<id>` is its registry id; never `babu` unless that is the intent):
+
+1. Delete its runs, roles, rankings and digests from CloudShell, using the
+   `run-task` command under "Daily run and storage" with the command
+   `["pejip","delete-all","--account","<id>","--yes"]`. Its database file is left
+   empty.
+2. Remove its entry from `TF_VAR_sign_in_accounts` and apply. That ends its
+   sign-in and deletes its job-alert inbox rule and digest topic.
+3. Delete what it stored on AWS:
+
+   ```sh
+   aws ssm delete-parameters --names /pejip/accounts/<id>/profile \
+     /pejip/accounts/<id>/companies /pejip/accounts/<id>/ranking-key-sha256
+   aws s3 rm --recursive s3://pejip-inbox-275704950192/network/<id>/
+   aws s3 rm --recursive s3://pejip-inbox-275704950192/inbound/<id>/
+   ```
+
+4. Remove its Gmail address from the Google consent screen's test users.
+5. Tell the person their emailed digests stay in their own mailbox, and that they
+   can delete their ranking routine and its cloud environment on claude.ai.
 
 ## GitHub settings
 

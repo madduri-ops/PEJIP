@@ -1,6 +1,6 @@
 # 0016: Separate, private accounts
 
-_Status: accepted (steps 1 to 4 of 6 implemented). Last updated: 2026-10-06._
+_Status: accepted (steps 1 to 5 of 6 implemented). Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -89,7 +89,12 @@ Build order, each a small high-risk PR:
    database and profile are the only ones the request can read or write. The
    portal's Settings page shows the signed-in account's own companies and
    job-alert address.
-5. Delete-an-account, and `docs/SECURITY.md` updates.
+5. **Deleting an account, and the security notes** (this step).
+   `pejip export` and `pejip delete-all` take `--account <id>`; delete-all also
+   removes that account's digests. `infra/README.md` ("Removing an account") lists
+   the rest: the registry entry, its stored inputs, inbox mail and test user.
+   `docs/SECURITY.md` records administrator visibility, each account's full
+   digest and its own ranking plan.
 6. Onboard the friend: Google test user, registry entry, inbox address, ranking key.
 
 ## Interfaces
