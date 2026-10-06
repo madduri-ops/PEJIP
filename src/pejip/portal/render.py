@@ -1237,7 +1237,9 @@ def _ranking(config: SearchConfig) -> str:
         f'<h3>Priority bands</h3><div class="summary">{bands}</div>'
         f'<p class="note">Immediate also needs a role posted in the last '
         f"{s.immediate_max_age_days} days. A low-confidence analysis is held to Medium. "
-        "A role paying below a minimum your profile marks as firm is excluded.</p>"
+        "A role paying below a minimum your profile marks as firm is excluded. A role "
+        "whose only shortfall is a level below your target, and which would otherwise have "
+        f"Fit {s.strong_match_fit:.0f} or more, is flagged in the digest as your call.</p>"
         + network
         + '<p class="note">Fit measures qualification only. Freshness, pay, location and '
         "your network affect priority, never fit.</p>"

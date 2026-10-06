@@ -190,6 +190,7 @@ def test_the_page_describes_the_current_schedule_ranking_and_privacy() -> None:
     assert "A matured connection at the company adds 10 Priority points." in html
     assert "Otherwise, any first-degree connection there adds 3 Priority points." in html
     assert "Only for roles with Fit 60 or more" in html
+    assert "Fit 75 or more, is flagged in the digest as your call." in html
     assert "saved search settings until you change them" in html
     assert "your own email address and have your mailbox forward them" in html
 
