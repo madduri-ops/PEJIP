@@ -48,6 +48,8 @@ Terraform 1.13.3 to `~/bin`.
 cd ~/PEJIP && git pull && cd infra
 export TF_VAR_alert_email='you@example.com'
 export TF_VAR_sign_in_email='you@gmail.com'   # optional; defaults to the alert email
+# optional account registry (design 0016); one account until per-account storage lands
+# export TF_VAR_sign_in_accounts='{ babu = "you@gmail.com" }'
 terraform init
 terraform plan
 terraform apply
@@ -177,8 +179,10 @@ so the old key stops working then.
 
 ## Google sign-in
 
-Every route except `/healthz` requires signing in with the Google account in
-`sign_in_email` ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md),
+Every route except `/healthz` requires signing in with a Google account in the
+account registry: `sign_in_accounts`, or `sign_in_email` alone as account `babu`
+([design 0016](../docs/design/0016-accounts.md),
+[ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md),
 [design 0009](../docs/design/0009-google-sign-in.md)). One-time setup:
 
 1. In Google Cloud Console, create (or pick) a project and set up the OAuth

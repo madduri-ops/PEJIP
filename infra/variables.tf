@@ -209,6 +209,25 @@ variable "sign_in_email" {
   default     = null
 }
 
+variable "sign_in_accounts" {
+  description = "Who may sign in, as account id => Google email (design doc 0016). Not committed; pass with TF_VAR_sign_in_accounts. Empty means Babu alone, as account babu with sign_in_email."
+  type        = map(string)
+  sensitive   = true
+  default     = {}
+
+  validation {
+    # A second account would see the first one's data until each account has its
+    # own storage (design doc 0016); the app refuses it too.
+    condition     = length(var.sign_in_accounts) <= 1
+    error_message = "Only one account may sign in until each account has its own storage (design doc 0016)."
+  }
+
+  validation {
+    condition     = alltrue([for id in keys(var.sign_in_accounts) : can(regex("^[a-z][a-z0-9-]{0,31}$", id))])
+    error_message = "Account ids are lowercase letters, digits and dashes, starting with a letter."
+  }
+}
+
 variable "sign_in_session_seconds" {
   description = "How long a Google sign-in lasts before the load balancer asks again."
   type        = number

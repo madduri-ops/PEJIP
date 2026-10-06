@@ -6,13 +6,13 @@ from pathlib import Path
 
 import httpx
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 from ci.alb_token import AlbSigner
 from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
 from pejip.portal.data import Company, Opportunity, SearchRun
-from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
+from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 from tests.unit.test_profile_parameter import FakeSsm
 
 
@@ -168,6 +168,17 @@ def test_protected_route_serves_the_allowed_account(
 
     assert response.status_code == 200
     assert "/healthz" in response.json()["paths"]
+
+
+def test_routes_see_the_signed_in_account(signed_in_app: FastAPI, signer: AlbSigner) -> None:
+    # Later routes key every read and write by this account (design doc 0016).
+    @signed_in_app.get("/whoami-test")
+    def whoami(request: Request) -> dict[str, str]:
+        return {"account": request.state.account.id}
+
+    response = _get(signed_in_app, "/whoami-test", signer.token(ALLOWED_EMAIL))
+
+    assert response.json() == {"account": ACCOUNT_ID}
 
 
 def test_interactive_docs_are_disabled(signed_in_app: FastAPI, signer: AlbSigner) -> None:

@@ -19,3 +19,4 @@ architecture, update [docs/architecture/](../architecture/) in the same PR.
 | [0007](0007-sqlite-on-efs-and-a-scheduled-daily-run.md) | Keep PEJIP's data in SQLite on encrypted EFS, written by a scheduled daily run | Accepted |
 | [0008](0008-ranking-through-a-claude-code-routine.md) | Rank roles through a Claude Code routine on Babu's plan | Accepted |
 | [0009](0009-private-inputs-outside-the-public-repository.md) | Keep Babu's private inputs outside the public repository | Accepted |
+| [0010](0010-one-deployment-separate-accounts.md) | One deployment, with each account's data kept separate | Accepted |
