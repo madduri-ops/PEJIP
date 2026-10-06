@@ -53,9 +53,10 @@ def _load_config(settings: Settings) -> tuple[SearchConfig, str | None]:
 
 
 ROUTINE_PENDING = "the ranking routine has not analysed it yet"
-# The digest goes out two hours after the run; a run older than this means this
-# morning's search never finished.
-STALE_RUN_HOURS = 20
+# Each digest goes out two hours after its search; a latest run older than this
+# means that search never finished. Monday's first digest follows Monday's
+# first search, so weekends don't trip it.
+STALE_RUN_HOURS = 4
 
 
 def _unranked_reason(settings: Settings, profile: CareerProfile | None) -> str:
@@ -153,7 +154,7 @@ def _cmd_digest(settings: Settings) -> int:
         log.error("digest_run_stale", extra={"run_id": run["id"]})
         digest.notes.append(
             f"No search has finished since {run['started_at']:%Y-%m-%d %H:%M} UTC, so this "
-            "digest repeats that search's roles. Check why this morning's search failed."
+            "digest repeats that search's roles. Check why the latest search failed."
         )
     elif profile is not None and waiting and not store.analyses_since(run["started_at"], "routine"):
         # The pejip-app-errors alarm emails Babu about this ERROR line.

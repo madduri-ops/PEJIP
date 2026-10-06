@@ -33,23 +33,24 @@ sequenceDiagram
     participant API as PEJIP API (Fargate, behind the ALB)
     participant C as Claude Code routine (claude.ai, Babu's plan)
     participant D as pejip digest (Fargate)
-    S->>R: 06:00 PT
+    S->>R: 05:00, 10:00, 15:00 PT (weekdays)
     R->>DB: fetch, filter, store roles (no Claude, no email)
-    C->>API: 07:00 PT GET /api/ranking/queue (key)
+    C->>API: an hour later, GET /api/ranking/queue (key)
     API->>DB: new and changed roles without an analysis
     API-->>C: roles, career profile, prompt versions
     C->>C: analyse each role with the versioned prompts
     C->>API: POST /api/ranking/analyses (key)
     API->>DB: validate, ground, store analyses
-    S->>D: 08:00 PT
+    S->>D: two hours after the search
     D->>DB: score roles from stored analyses
     D-->>D: email the digest (SNS)
 ```
 
-1. **06:00, `pejip run`.** Unchanged, except that with `PEJIP_RANKER=routine` it
+1. **Weekdays 05:00, 10:00 and 15:00 Pacific, `pejip run`** (Babu chose digests at
+   7 AM, 12 PM and 5 PM on weekdays, 2026-10-06). Unchanged, except that with `PEJIP_RANKER=routine` it
    never calls Claude and does not email. Roles already analysed and unchanged
    are still scored (the existing path); new and changed roles wait.
-2. **07:00, the routine.** A Claude Code routine on Babu's account runs in a
+2. **06:04, 11:04 and 16:04, the routine.** A Claude Code routine on Babu's account runs in a
    cloud environment holding the access key. It runs
    `python -m pejip.routine fetch`, which writes the queue to a scratch file
    outside the repository. For each role, Claude follows
@@ -64,7 +65,7 @@ sequenceDiagram
    `content_hash` is refused. Accepted results are stored as `analyses` rows
    whose provenance records `ranker: routine`, the prompt versions and the
    model the session reports.
-4. **08:00, `pejip digest`.** A second scheduled task re-ranks the latest run's
+4. **07:00, 12:00 and 17:00, `pejip digest`.** A second scheduled task re-ranks the latest run's
    roles with no AI client. Every role with a valid stored analysis is scored,
    explained and citation-checked by the existing code, and the digest is
    emailed. If the routine did not report, the digest goes out anyway, with
@@ -106,7 +107,7 @@ CLI, `python -m pejip.routine --work DIR`:
 
 `pejip digest` scores the latest finished run's roles from stored analyses and
 emails the digest, listing each role once and adding no recommendation row the
-run already stored. A crash logs `digest_crashed`; a latest run more than 20
+run already stored. A crash logs `digest_crashed`; a latest run more than 4
 hours old logs `digest_run_stale` and says so in the digest (both ERROR). It logs `routine_results_missing` (ERROR, so the
 `pejip-app-errors` alarm fires) when roles were waiting and the routine stored
 nothing since the run began.
@@ -114,8 +115,8 @@ nothing since the run began.
 Infrastructure (`infra/`): `ranker` (default `routine`) sets `PEJIP_RANKER`;
 a listener rule at priority 2 forwards `/api/ranking/*` without Google sign-in;
 the task role may read `/pejip/ranking-key-sha256`; scheduled tasks are
-`pejip-run-daily` (06:00 PT, unchanged) and a new `pejip-digest-daily`
-(`digest_schedule`, 08:00 PT). The WAF common rule set's 8 KB body limit is
+`pejip-run-daily` (weekdays 05:00, 10:00 and 15:00 PT) and a new `pejip-digest-daily`
+(`digest_schedule`, weekdays 07:00, 12:00 and 17:00 PT). The WAF common rule set's 8 KB body limit is
 counted rather than blocked for `POST /api/ranking/analyses` only, by a
 `body-size` rule that blocks it everywhere else.
 

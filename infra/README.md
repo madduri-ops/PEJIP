@@ -21,7 +21,7 @@ section 5.1.
 | `ecs.tf` | ECS cluster and service `pejip-prod`, task definition (data volume, run settings, Claude switch), roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
 | `efs.tf` | EFS file system `pejip-prod-data` (KMS-encrypted, TLS-only, no backups) holding the SQLite database, spend ledger and digests, with its access point and mount targets ([design](../docs/design/0012-daily-run-and-storage.md)) |
 | `digest.tf` | SNS topic `pejip-digest` that emails Babu the daily digest |
-| `schedule.tf` | `pejip-run-daily` (06:00 Pacific, `pejip run`) and `pejip-purge-daily` (`pejip purge`) schedules and their `pejip-scheduler` role |
+| `schedule.tf` | `pejip-run-daily` (weekdays 05:00, 10:00, 15:00 Pacific, `pejip run`), `pejip-digest-daily` (weekdays 07:00, 12:00, 17:00, `pejip digest`) and `pejip-purge-daily` (`pejip purge`) schedules and their `pejip-scheduler` role |
 | `inbox.tf` | Job-alert inbox: SES receiving for `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket `pejip-inbox-275704950192` (90-day expiry) ([design](../docs/design/0010-job-alert-inbox.md)) |
 | `alarms.tf` | 5xx, unhealthy target, tasks-below-desired, CPU and memory alarms to `pejip-alerts` |
 | `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-search-run-failed`, `pejip-source-failures`, `pejip-app-errors` and `pejip-search-stalled` (only while `run_schedule_enabled` is on); dashboard `pejip` ([design](../docs/design/0011-monitoring.md)) |
@@ -155,9 +155,10 @@ morning's run uses it and the digest says when it was last refreshed. Answers to
 ## Ranking routine (once, then every 90 days)
 
 [Design 0015](../docs/design/0015-ranking-routine.md). With `ranker = "routine"`
-(the default), `pejip run` at 06:00 PT stores roles without ranking them, a
-Claude Code routine on Babu's claude.ai plan analyses them at 07:00, and
-`pejip digest` emails the ranked digest at 08:00.
+(the default), on weekdays `pejip run` at 05:00, 10:00 and 15:00 PT stores roles
+without ranking them, a Claude Code routine on Babu's claude.ai plan analyses
+them at 06:04, 11:04 and 16:04, and `pejip digest` emails the ranked digest at
+07:00, 12:00 and 17:00.
 
 1. In CloudShell, make the key and store only its SHA-256 on AWS:
    `key=$(openssl rand -base64 48 | tr -d '/+=\n' | cut -c1-48)`, then
@@ -168,7 +169,8 @@ Claude Code routine on Babu's claude.ai plan analyses them at 07:00, and
 3. In claude.ai, add a cloud environment for the routine with the secret
    `PEJIP_RANKING_KEY` (the key from step 1), `PEJIP_RANKING_URL=https://job-search.zephyr-mcg.com`,
    and network access to `job-search.zephyr-mcg.com`. The key is pasted only there.
-4. Claude creates the 07:00 PT routine in that environment.
+4. Create the routine at claude.ai/code/routines in that environment, with
+   three weekday schedule triggers at 6:04 AM, 11:04 AM and 4:04 PM Pacific.
 
 To rotate, repeat steps 1 and 3. The app reads the new hash within five minutes,
 so the old key stops working then.
