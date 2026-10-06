@@ -1,6 +1,6 @@
 # 0016: Separate, private accounts
 
-_Status: accepted (steps 1 to 3 of 6 implemented). Last updated: 2026-10-06._
+_Status: accepted (steps 1 to 4 of 6 implemented). Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -80,7 +80,15 @@ Build order, each a small high-risk PR:
    with its id and the others still run, then the task fails. A place setting
    without `{account}` is Babu's alone: any other account refuses it and defaults
    to places under `accounts/<id>/`, and gets no digest rather than Babu's topic.
-4. Per-account ranking keys and the account-scoped ranking API.
+4. **Per-account ranking keys and portal settings** (this step). Each account's
+   key hash is at `/pejip/accounts/<id>/ranking-key-sha256`
+   (`PEJIP_RANKING_KEY_PARAMETER` with `{account}`); Babu's account also reads
+   the original `/pejip/ranking-key-sha256` until he moves it. The ranking API
+   holds one service per account (`RankingServices`) and compares the request's
+   key with every account's hash in constant time: the matching account's
+   database and profile are the only ones the request can read or write. The
+   portal's Settings page shows the signed-in account's own companies and
+   job-alert address.
 5. Delete-an-account, and `docs/SECURITY.md` updates.
 6. Onboard the friend: Google test user, registry entry, inbox address, ranking key.
 
@@ -95,6 +103,9 @@ Build order, each a small high-risk PR:
   `PEJIP_PROFILE_PARAMETER`, `PEJIP_COMPANIES_PARAMETER` and
   `PEJIP_NETWORK_PREFIX` may hold `{account}`. `PEJIP_LEGACY_DATABASE_URL` and
   `PEJIP_LEGACY_OUTPUT_DIR` name the pre-account places, read only for `babu`.
+- **Ranking keys:** `PEJIP_RANKING_KEY_PARAMETER` (may hold `{account}`),
+  `PEJIP_LEGACY_RANKING_KEY_PARAMETER` and `PEJIP_RANKING_KEY_SHA256` (both
+  Babu's alone).
 - **`PEJIP_AUTH_ALLOWED_EMAIL`:** still read when `PEJIP_AUTH_ACCOUNTS` is absent,
   as account `babu`, so a rollback to an older task definition keeps working.
 - **Terraform:** variable `sign_in_accounts` (`map(string)`, sensitive, empty by

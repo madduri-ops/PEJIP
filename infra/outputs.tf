@@ -105,5 +105,5 @@ output "dashboard_url" {
 
 output "ranking_key_parameter_name" {
   description = "SSM parameter for the SHA-256 of the ranking routine's key (design doc 0015); Babu stores it."
-  value       = local.ranking_key_parameter
+  value       = replace(local.ranking_key_parameter, "{account}", local.owner_account)
 }

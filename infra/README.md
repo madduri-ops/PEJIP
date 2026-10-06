@@ -186,7 +186,11 @@ them at 06:04, 11:04 and 16:04, and `pejip digest` emails the ranked digest at
 1. In CloudShell, make the key and store only its SHA-256 on AWS:
    `key=$(openssl rand -base64 48 | tr -d '/+=\n' | cut -c1-48)`, then
    `printf %s "$key" | sha256sum | cut -d' ' -f1 > key.sha256` and
-   `aws ssm put-parameter --name /pejip/ranking-key-sha256 --type SecureString --key-id alias/pejip --value "$(cat key.sha256)" --overwrite`.
+   `aws ssm put-parameter --name /pejip/accounts/babu/ranking-key-sha256 --type SecureString --key-id alias/pejip --value "$(cat key.sha256)" --overwrite`
+   (another account: its own id in place of `babu`, with a key of its own; its
+   routine runs on that person's Claude plan, design doc 0016). Babu's hash
+   stored before accounts at `/pejip/ranking-key-sha256` keeps working until
+   then.
    Copy `$key` once (`echo "$key"`), then `rm key.sha256; unset key`.
 2. Apply and deploy.
 3. In claude.ai, add a cloud environment for the routine with the secret

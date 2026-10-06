@@ -186,9 +186,12 @@ data "aws_iam_policy_document" "ecs_task" {
 
   # The hash of the ranking routine's key, which the API checks it against.
   statement {
-    sid       = "RankingKeyHash"
-    actions   = ["ssm:GetParameter"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.ranking_key_parameter}"]
+    sid     = "RankingKeyHash"
+    actions = ["ssm:GetParameter"]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${replace(local.ranking_key_parameter, "{account}", "*")}",
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.legacy_ranking_key_parameter}",
+    ]
   }
 
   statement {
@@ -278,7 +281,10 @@ locals {
   companies_parameter = "/pejip/accounts/{account}/companies"
   # SHA-256 of the ranking routine's key (design doc 0015). Babu stores it by hand;
   # the key itself lives only in the routine's cloud environment.
-  ranking_key_parameter = "/pejip/ranking-key-sha256"
+  ranking_key_parameter = "/pejip/accounts/{account}/ranking-key-sha256"
+  # Babu's key hash from before accounts, still read for his account until he
+  # stores it at the per-account path (design doc 0016).
+  legacy_ranking_key_parameter = "/pejip/ranking-key-sha256"
 
   # What `pejip run`, `digest` and `purge` read (design doc 0012), the ranking
   # routine's endpoints in the API (design doc 0015), and the company list the
@@ -303,6 +309,7 @@ locals {
     { name = "PEJIP_ACCOUNTS", value = join(",", local.account_ids) },
     { name = "PEJIP_RANKER", value = var.ranker },
     { name = "PEJIP_RANKING_KEY_PARAMETER", value = local.ranking_key_parameter },
+    { name = "PEJIP_LEGACY_RANKING_KEY_PARAMETER", value = local.legacy_ranking_key_parameter },
   ]
 
   # Keyless Claude access (ADR-0004). Until the app's federation rule exists in

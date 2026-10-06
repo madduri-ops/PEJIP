@@ -302,7 +302,7 @@ class Settings:
             # Who does the model step: the API, or the Claude Code routine (design 0015).
             ranker=_choice(e, "PEJIP_RANKER", RANKERS),
             # The SSM parameter holding the SHA-256 of the routine's key.
-            ranking_key_parameter=e.get("PEJIP_RANKING_KEY_PARAMETER") or None,
+            ranking_key_parameter=place("PEJIP_RANKING_KEY_PARAMETER"),
         )
 
 

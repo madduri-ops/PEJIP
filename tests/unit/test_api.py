@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI, Request
 
 from ci.alb_token import AlbSigner
-from pejip import __version__, api
+from pejip import __version__, api, auth
 from pejip.auth import OIDC_DATA_HEADER
 from pejip.portal.data import Company, Opportunity, SearchRun
 from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
@@ -238,3 +238,31 @@ def test_settings_page_opens_without_a_readable_company_list(
     for page in pages:
         assert "Seniority a title needs" in page
         assert "Northwind Robotics" not in page
+
+
+def test_settings_page_shows_each_account_its_own_setup(
+    signer: AlbSigner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Each account sees its own companies and its own job-alert address (design doc 0016).
+    monkeypatch.setattr(auth, "MAX_ACCOUNTS", 2)
+    ssm = FakeSsm(value=EXAMPLE_COMPANIES)
+    monkeypatch.setattr(api, "make_ssm_client", lambda _region: ssm)
+    with key_server(signer) as key_url:
+        env = {
+            **auth_env(key_url),
+            "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL},friend=friend@example.com",
+            "PEJIP_COMPANIES_PARAMETER": "/pejip/accounts/{account}/companies",
+            "PEJIP_PROFILE": "/profiles/{account}.yaml",
+        }
+        app = api.create_app(env=env)
+        babu = _get(app, "/settings", signer.token(ALLOWED_EMAIL)).text
+        friend = _get(app, "/settings", signer.token("friend@example.com")).text
+        _get(app, "/settings", signer.token("friend@example.com"))  # read once per account
+
+    assert "alerts@inbox.job-search.zephyr-mcg.com" in babu
+    assert "friend@inbox.job-search.zephyr-mcg.com" in friend
+    assert "alerts@inbox" not in friend
+    assert [c["Name"] for c in ssm.calls] == [
+        "/pejip/accounts/babu/companies",
+        "/pejip/accounts/friend/companies",
+    ]

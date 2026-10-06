@@ -76,7 +76,8 @@ flowchart TB
   ([design 0015](../design/0015-ranking-routine.md)): serve the latest run's roles
   that need analysis with the profile's matching fields, and validate, ground and
   store the routine's answers. They skip Google sign-in and check a bearer key
-  against its SHA-256 in SSM.
+  against each account's SHA-256 in SSM; the matching key picks the account whose
+  roles and profile the request sees ([design 0016](../design/0016-accounts.md)).
 - **Interfaces:** `GET /api/ranking/queue`, `POST /api/ranking/analyses`;
   `PEJIP_RANKING_KEY_PARAMETER` (or `PEJIP_RANKING_KEY_SHA256` in tests and DAST).
 - **Data:** reads jobs and runs, writes `analyses` rows with provenance
