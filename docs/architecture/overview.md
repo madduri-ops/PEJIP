@@ -12,7 +12,7 @@ ranks which deserve attention, and explains why. It is not a generic job board.
 ```mermaid
 flowchart LR
     user([Babu]) -- profile.yaml, config --> pejip[pejip CLI]
-    boards[(Greenhouse and Lever job boards)] -- public APIs --> pejip
+    boards[(Greenhouse, Lever and Ashby job boards)] -- public APIs --> pejip
     sites[(Career sites)] -- job-alert emails via SES and S3 --> pejip
     pejip -- posting text, profile evidence --> claude[Anthropic API]
     pejip -- posting text, profile evidence --> routine[Claude Code routine on claude.ai]

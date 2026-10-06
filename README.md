@@ -94,7 +94,7 @@ and 18 of the [specification](docs/spec/FIND-build-specification.md).
 ## Status
 
 The Phase 1 (FIND) specification is complete, and the first end-to-end slice is a
-command line tool: it fetches roles from configured Greenhouse and Lever company
+command line tool: it fetches roles from configured Greenhouse, Lever and Ashby company
 boards and from career-site job-alert emails sent to PEJIP's own inbox, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence, including matured LinkedIn
 connections at the hiring company ([design 0014](docs/design/0014-connection-matching.md)).

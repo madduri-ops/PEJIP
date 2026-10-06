@@ -8,6 +8,7 @@ import httpx
 import pytest
 
 from pejip.config import FetchConfig, SourceConfig
+from pejip.sources.ashby import fetch_ashby
 from pejip.sources.greenhouse import fetch_greenhouse
 from pejip.sources.http import FetchError, PoliteClient, RateLimiter, RobotsDisallowedError
 from pejip.sources.lever import fetch_lever
@@ -284,9 +285,116 @@ def test_adapters_default_to_public_hosts() -> None:
         hosts.append(request.url.host)
         if request.url.path == "/robots.txt":
             return httpx.Response(404)
-        return httpx.Response(200, json={"jobs": []} if "boards" in request.url.host else [])
+        return httpx.Response(200, json=[] if "lever" in request.url.host else {"jobs": []})
 
     polite = client(handler)
     fetch_greenhouse(polite, SourceConfig(adapter="greenhouse", company="A", board="a"))
     fetch_lever(polite, SourceConfig(adapter="lever", company="B", board="b"))
-    assert set(hosts) == {"boards-api.greenhouse.io", "api.lever.co"}
+    fetch_ashby(polite, SourceConfig(adapter="ashby", company="C", board="c"))
+    assert set(hosts) == {"boards-api.greenhouse.io", "api.lever.co", "api.ashbyhq.com"}
+
+
+ASHBY_JOBS = {
+    "apiVersion": "1",
+    "jobs": [
+        {
+            "id": "a1",
+            "title": " VP, Technology Operations ",
+            "location": "San Francisco",
+            "secondaryLocations": [{"location": "Remote - US"}, {}],
+            "isListed": True,
+            "workplaceType": "Hybrid",
+            "descriptionPlain": "Run technology operations.",
+            "publishedAt": "2026-10-01T12:00:00.000Z",
+            "jobUrl": "https://jobs.ashby.test/co/a1",
+            "compensation": {
+                "summaryComponents": [
+                    {"compensationType": "EquityPercentage", "interval": "NONE"},
+                    {"compensationType": "Salary", "interval": "1 HOUR", "minValue": 90},
+                    {"compensationType": "Salary", "interval": "1 YEAR"},
+                    {
+                        "compensationType": "Salary",
+                        "interval": "1 YEAR",
+                        "minValue": 300000,
+                        "maxValue": 380000,
+                        "currencyCode": "USD",
+                    },
+                ]
+            },
+        },
+        {
+            "id": "a2",
+            "title": "Head of Platform",
+            "isRemote": True,
+            "descriptionHtml": "<p>Own the platform.</p>",
+            "publishedAt": "not a date",
+            "compensation": {
+                "summaryComponents": [
+                    {"compensationType": "Salary", "interval": "1 YEAR", "maxValue": 400000}
+                ]
+            },
+        },
+        {
+            "id": "a3",
+            "title": "VP Ops",
+            "workplaceType": "On-Site",
+            "publishedAt": 5,
+            "compensation": "n/a",
+        },
+        {"id": "a4", "title": "Hidden VP", "isListed": False},
+        {"id": "a5", "title": "VP Ops", "compensation": {"summaryComponents": [{}]}},
+    ],
+}
+
+
+def test_ashby_adapter_maps_listed_postings() -> None:
+    ab = SourceConfig(
+        adapter="ashby", company="Openish", board="openish", api_base="https://ab.test"
+    )
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        if request.url.path == "/robots.txt":
+            return httpx.Response(404)
+        assert request.url.path == "/posting-api/job-board/openish"
+        return httpx.Response(200, json=ASHBY_JOBS)
+
+    first, remote, onsite, equity_only = fetch_ashby(client(handler), ab)
+    assert seen[-1].url.params["includeCompensation"] == "true"
+    assert first.source == "ashby"
+    assert first.source_job_id == "openish:a1"
+    assert first.title == "VP, Technology Operations"
+    assert first.location == "San Francisco; Remote - US"
+    assert first.description == "Run technology operations."
+    assert first.url == "https://jobs.ashby.test/co/a1"
+    assert first.posted_at == datetime(2026, 10, 1, 12, tzinfo=UTC)
+    assert first.work_model_hint == "HYBRID"
+    assert first.compensation is not None
+    assert (first.compensation.minimum, first.compensation.maximum) == (300000, 380000)
+    assert first.compensation.currency == "USD"
+    assert remote.description == "Own the platform."
+    assert remote.work_model_hint == "REMOTE"
+    assert remote.posted_at is None
+    assert remote.compensation is not None
+    assert (remote.compensation.minimum, remote.compensation.currency) == (None, None)
+    assert onsite.work_model_hint == "ONSITE"
+    assert onsite.posted_at is None
+    assert onsite.compensation is None
+    assert onsite.location == ""
+    assert equity_only.compensation is None
+
+
+@pytest.mark.parametrize("payload", [[], {"jobs": "x"}])
+def test_ashby_adapter_rejects_unexpected_payload(payload: object) -> None:
+    ab = SourceConfig(adapter="ashby", company="P", board="p", api_base="https://ab.test")
+    polite = client(
+        routes(
+            {
+                "/robots.txt": httpx.Response(404),
+                "/posting-api/job-board/p": httpx.Response(200, json=payload),
+            }
+        )
+    )
+    with pytest.raises(FetchError, match="unexpected payload from Ashby board p"):
+        fetch_ashby(polite, ab)

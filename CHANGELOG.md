@@ -17,6 +17,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   roles show in Watched and the Watchlist; Not interested and Already applied roles
   leave Home and the lists but stay under All active, with new Interested and
   Already applied views.
+- Ashby job boards: a company list can name `adapter: ashby` boards (for
+  example OpenAI), read from Ashby's public job posting API with the same rate
+  limit and `robots.txt` rules as Greenhouse and Lever.
 - The portal has a Sign out button. It ends the PEJIP session and lands on a
   signed-out page; Google itself stays signed in. Needs one `terraform apply` for
   the load balancer rule that keeps the signed-out page open.
