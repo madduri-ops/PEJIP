@@ -12,6 +12,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Deleting an account (design doc 0016, step 5): `pejip export` and
+  `pejip delete-all` take `--account`, and delete-all also removes that account's
+  digests; `infra/README.md` has the steps for removing an account entirely, and
+  `docs/SECURITY.md` records what the AWS administrator can see.
 - Per-account ranking keys and portal settings (design doc 0016, step 4): each
   account's ranking routine has its own key, which reaches only that account's
   roles and profile; the Settings page shows the signed-in account's own

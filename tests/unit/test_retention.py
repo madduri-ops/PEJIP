@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from pejip.retention import RETENTION_DAYS, cutoff, purge_files
+from pejip.retention import RETENTION_DAYS, cutoff, delete_files, purge_files
 
 NOW = datetime(2026, 10, 5, 12, 0, tzinfo=UTC)
 
@@ -84,3 +84,19 @@ def test_purge_of_missing_directory_deletes_nothing(tmp_path: Path) -> None:
 def test_purge_rejects_a_window_longer_than_policy(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="between 1 and 90 days"):
         purge_files(tmp_path, NOW, days=120)
+
+
+def test_delete_files_deletes_every_file_but_no_link(tmp_path: Path) -> None:
+    outside = _write(tmp_path / "outside" / "keep.md", timedelta(days=400))
+    out = tmp_path / "out"
+    fresh = _write(out / "digest.md", timedelta(0))
+    nested = _write(out / "runs" / "export.json", timedelta(days=3))
+    (out / "link.md").symlink_to(outside)
+
+    assert delete_files(out) == 2
+
+    assert not fresh.exists()
+    assert not nested.exists()
+    assert (out / "link.md").is_symlink()
+    assert outside.exists()
+    assert delete_files(tmp_path / "missing") == 0

@@ -80,6 +80,35 @@ def test_commands_work_on_the_accounts_own_database(
     assert (env / "accounts" / "babu" / "pejip.db").is_file()
 
 
+def test_delete_all_for_one_account_spares_the_others(
+    env: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("PEJIP_DATABASE_URL", f"sqlite:///{env}/accounts/{{account}}/pejip.db")
+    monkeypatch.setenv("PEJIP_PROFILE", f"{env}/accounts/{{account}}/profile.yaml")
+    monkeypatch.setenv("PEJIP_OUTPUT_DIR", f"{env}/accounts/{{account}}/out")
+    stores: dict[str, Store] = {}
+    for account in ("babu", "friend"):
+        (env / "accounts" / account).mkdir(parents=True)
+        store = Store(f"sqlite:///{env}/accounts/{account}/pejip.db")
+        store.start_run(f"{account}-run", NOW)
+        stores[account] = store
+        digest = env / "accounts" / account / "out" / "digest.md"
+        digest.parent.mkdir()
+        digest.write_text("roles")
+
+    assert cli.main(["delete-all", "--account", "friend"]) == 2
+    assert "Refusing" in capsys.readouterr().err
+    assert cli.main(["delete-all", "--account", "friend", "--yes"]) == 0
+
+    assert json.loads(stores["friend"].export_all())["runs"] == []
+    assert not (env / "accounts" / "friend" / "out" / "digest.md").exists()
+    assert [r["id"] for r in json.loads(stores["babu"].export_all())["runs"]] == ["babu-run"]
+    assert (env / "accounts" / "babu" / "out" / "digest.md").exists()
+    out = env / "babu.json"
+    assert cli.main(["export", str(out), "--account", "babu"]) == 0
+    assert [r["id"] for r in json.loads(out.read_text())["runs"]] == ["babu-run"]
+
+
 def test_purge_export_and_delete(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     store = Store(f"sqlite:///{env / 'cli.db'}")
     store.start_run("r1", NOW)

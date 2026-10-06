@@ -32,7 +32,7 @@ from pejip.profile import (
     load_profile_parameter,
     make_ssm_client,
 )
-from pejip.retention import purge_files
+from pejip.retention import delete_files, purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
 
@@ -285,7 +285,8 @@ def _cmd_delete_all(settings: Settings, confirmed: bool) -> int:
         sys.stderr.write("Refusing to delete without --yes.\n")
         return 2
     open_store(settings).delete_all()
-    log.info("all_data_deleted")
+    deleted = delete_files(settings.output_dir)
+    log.info("all_data_deleted", extra={"account": settings.account, "deleted_files": deleted})
     return 0
 
 
@@ -299,8 +300,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("purge", help="delete data past the retention window")
     export = sub.add_parser("export", help="export all stored data as JSON")
     export.add_argument("out", type=Path)
-    delete = sub.add_parser("delete-all", help="delete all stored data")
+    delete = sub.add_parser("delete-all", help="delete all stored data and digests")
     delete.add_argument("--yes", action="store_true", help="confirm deletion")
+    for command in (export, delete):
+        command.add_argument(
+            "--account", help="the account to act on (default: PEJIP_ACCOUNT, else Babu's)"
+        )
     return parser
 
 
@@ -347,7 +352,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_logging()
     if args.command in _SCHEDULED:
         return _for_each_account(args.command)
-    settings = Settings.from_env()
+    settings = Settings.from_env(account=getattr(args, "account", None))
     if args.command == "connections":
         return _cmd_connections(settings, args.file)
     if args.command == "export":
