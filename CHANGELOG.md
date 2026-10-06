@@ -65,6 +65,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- The ranking routine's steps live in `docs/routine/INSTRUCTIONS.md`, so its
+  stored prompt is one line and the steps are versioned with the code.
 - The portal shows each account's real search results instead of sample data
   (design doc 0013): roles seen in the last week with their Fit, Priority and cited
   explanation, recent runs on Search Health, and tracked companies from the search

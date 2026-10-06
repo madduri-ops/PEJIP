@@ -180,7 +180,7 @@ morning's run uses it and the digest says when it was last refreshed. Answers to
 [Design 0015](../docs/design/0015-ranking-routine.md). With `ranker = "routine"`
 (the default), on weekdays `pejip run` at 05:00, 10:00 and 15:00 PT stores roles
 without ranking them, a Claude Code routine on Babu's claude.ai plan analyses
-them at 06:04, 11:04 and 16:04, and `pejip digest` emails the ranked digest at
+them at 06:20, 11:20 and 16:20 (05:20, 10:20 and 15:20 in winter), and `pejip digest` emails the ranked digest at
 07:00, 12:00 and 17:00.
 
 1. In CloudShell, make the key and store only its SHA-256 on AWS:
@@ -196,8 +196,11 @@ them at 06:04, 11:04 and 16:04, and `pejip digest` emails the ranked digest at
 3. In claude.ai, add a cloud environment for the routine with the secret
    `PEJIP_RANKING_KEY` (the key from step 1), `PEJIP_RANKING_URL=https://job-search.zephyr-mcg.com`,
    and network access to `job-search.zephyr-mcg.com`. The key is pasted only there.
-4. Create the routine at claude.ai/code/routines in that environment, with
-   three weekday schedule triggers at 6:04 AM, 11:04 AM and 4:04 PM Pacific.
+4. Create the routine at claude.ai/code/routines in that environment, with the
+   one-line prompt `Follow docs/routine/INSTRUCTIONS.md in this repository exactly.`
+   and one Custom schedule, `20 13,18,23 * * 1-5`. The form reads custom cron in
+   UTC: that is 6:20, 11:20 and 4:20 Pacific in summer and an hour earlier in
+   winter, always between a search and its digest.
 
 To rotate, repeat steps 1 and 3. The app reads the new hash within five minutes,
 so the old key stops working then.
