@@ -16,7 +16,7 @@ from pejip.digest import render
 from pejip.network.companies import CompanyDirectory
 from pejip.network.linkedin import parse_export
 from pejip.network.matching import NetworkIndex
-from pejip.pipeline import Pipeline
+from pejip.pipeline import Pipeline, _screen_notes
 from pejip.profile import CareerProfile
 from pejip.sources.email_alerts import INBOX_PREFIX, S3Inbox
 from pejip.sources.http import HTTPStatusError, PoliteClient
@@ -172,6 +172,30 @@ def test_second_run_reuses_analysis_until_the_posting_changes(
     changed = build(config, profile, store, boards, fake, clock_days=2).run()
     assert len(fake.calls) == 6
     assert sorted(i.discovery for i in changed.items) == ["MATERIALLY_CHANGED", "PREVIOUSLY_SEEN"]
+
+
+def test_an_unclear_title_is_kept_on_pay_and_held_back_without_it(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    # The title is one signal of level, not a gate (Babu, 2026-10-06).
+    boards = Boards()
+    paid = BODY + "<p>Pay: $250,000 - $320,000 per year</p>"
+    low = BODY + "<p>Pay: $150,000 - $200,000 per year</p>"
+    boards.jobs["alpha"] = [
+        gh_job(5, "Lead Portfolio Program Manager", body=paid),
+        gh_job(6, "Lead Program Manager, Platform"),
+        gh_job(7, "Principal Program Manager", body=low),
+    ]
+    fake = FakeMessages()
+    fake.responder = model_responder()
+    digest = build(config, profile, store, boards, fake).run()
+
+    assert [i.job["title"] for i in digest.items] == ["Lead Portfolio Program Manager"]
+    assert digest.items[0].recommendation is not None
+    assert digest.notes == [
+        "Unclear title, kept on posted pay: 1 role.",
+        "Unclear title and no posted pay, so not ranked: 1 role in your areas.",
+    ]
 
 
 def test_failures_are_isolated_and_visible(
@@ -455,3 +479,11 @@ def test_without_claude_roles_analysed_before_are_still_scored(
         "Head of Engineering Operations": True,
         "VP, Engineering Operations": False,
     }
+
+
+def test_screen_notes_count_several_roles() -> None:
+    assert _screen_notes({"PAY": 3, "UNCLEAR_NO_PAY": 2, "BELOW_PAY": 4, "SENIOR_TITLE": 9}) == [
+        "Unclear title, kept on posted pay: 3 roles.",
+        "Unclear title and no posted pay, so not ranked: 2 roles in your areas.",
+    ]
+    assert _screen_notes({}) == []

@@ -35,7 +35,7 @@ sequenceDiagram
     CLI->>Src: fetch each configured board
     Src->>Lim: GET (rate-limited, robots.txt checked)
     Src-->>CLI: postings (a failed board is recorded, others continue)
-    CLI->>Disc: title taxonomy + geography
+    CLI->>Disc: role family + geography; level from title, job alert or posted pay
     CLI->>DB: upsert job (NEW, PREVIOUSLY_SEEN, MATERIALLY_CHANGED)
     alt no current analysis for this content
         CLI->>AI: JOB_ANALYSIS prompt
