@@ -118,7 +118,9 @@ class Pipeline:
             items.append(self._rank(self.store.get_job(job_id), discovery, now))
         analysed, budget_hit = self._analysed, self._budget_error is not None
 
-        status = _status(sources, items)
+        # Roles left for the routine are expected to be unranked now, not a fault.
+        waiting = self.routine and self.profile is not None
+        status = _status(sources, items, unranked_expected=waiting)
         unranked = sum(i.recommendation is None for i in items)
         notes += _network_notes(self.network)
         if budget_hit:
@@ -335,9 +337,11 @@ class Pipeline:
 _UNLOGGED = frozenset({"sources", "seen", "notes"})
 
 
-def _status(sources: list[SourceResult], items: list[DigestItem]) -> str:
+def _status(
+    sources: list[SourceResult], items: list[DigestItem], *, unranked_expected: bool = False
+) -> str:
     failed_sources = sum(s.status == "FAILED" for s in sources)
-    unranked = sum(i.recommendation is None for i in items)
+    unranked = 0 if unranked_expected else sum(i.recommendation is None for i in items)
     if sources and failed_sources == len(sources):
         status = "FAILED"
     elif failed_sources or unranked:

@@ -54,7 +54,8 @@ def service(
 def ran(config: SearchConfig, profile: CareerProfile, store: Store) -> Pipeline:
     pipeline = routine_run(config, profile, store)
     digest = pipeline.run()
-    assert digest.status == "PARTIAL"
+    # Roles waiting for the routine don't make the search look partial.
+    assert digest.status == "SUCCESS"
     assert all(item.recommendation is None for item in digest.items)
     assert digest.notes == []  # waiting for the routine is expected, not news
     return pipeline
@@ -93,6 +94,14 @@ def answer_all(work: Path) -> None:
         folder = work / workbench.ROLES_DIR / role.id
         (folder / workbench.ANALYSIS_FILE).write_text(json.dumps(analysis))
         (folder / workbench.MATCHING_FILE).write_text(json.dumps(matching))
+
+
+def test_a_routine_run_without_a_profile_is_still_partial(
+    config: SearchConfig, profile: CareerProfile, store: Store
+) -> None:
+    pipeline = routine_run(config, profile, store)
+    pipeline.profile = None
+    assert pipeline.run().status == "PARTIAL"
 
 
 def test_the_routine_ranks_the_runs_new_roles(

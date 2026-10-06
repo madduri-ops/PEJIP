@@ -65,6 +65,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- A search in routine mode reads SUCCESS, not PARTIAL, when its only unranked
+  roles are the ones waiting for the ranking routine.
 - The ranking routine's steps live in `docs/routine/INSTRUCTIONS.md`, so its
   stored prompt is one line and the steps are versioned with the code.
 - The portal shows each account's real search results instead of sample data
