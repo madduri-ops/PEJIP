@@ -20,3 +20,4 @@ architecture, update [docs/architecture/](../architecture/) in the same PR.
 | [0008](0008-ranking-through-a-claude-code-routine.md) | Rank roles through a Claude Code routine on Babu's plan | Accepted |
 | [0009](0009-private-inputs-outside-the-public-repository.md) | Keep Babu's private inputs outside the public repository | Accepted |
 | [0010](0010-one-deployment-separate-accounts.md) | One deployment, with each account's data kept separate | Accepted |
+| [0011](0011-title-is-one-signal-of-level.md) | A job title is one signal of level, not a gate | Accepted |

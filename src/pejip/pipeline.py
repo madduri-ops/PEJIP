@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -18,7 +18,7 @@ from pejip.analysis import EvidenceMatching, JobAnalysis, PostingText, analyze_j
 from pejip.config import AlertCompany, SearchConfig, SourceConfig
 from pejip.cost import BudgetExceededError
 from pejip.digest import Digest, DigestItem, SourceResult
-from pejip.discovery import classify_location, is_candidate
+from pejip.discovery import KEPT, PAY, UNCLEAR_NO_PAY, classify_location, screen
 from pejip.explain import build_explanation, network_points, verify_citations
 from pejip.logs import run_id_var
 from pejip.models import Posting
@@ -61,6 +61,7 @@ class Pipeline:
     _analysed: int = 0
     _budget_error: str | None = None
     _new_recommendations_only: bool = False
+    _screened: dict[str, int] = field(default_factory=dict)
 
     def run(self) -> Digest:
         run_id = str(uuid.uuid4())
@@ -73,6 +74,7 @@ class Pipeline:
     def _run(self, run_id: str) -> Digest:
         now = self.clock()
         self.store.start_run(run_id, now)
+        self._screened = {}
         purged = self.store.purge_expired(now, self.config.retention_days)
         log.info("run_started", extra={"purged_rows": purged})
 
@@ -89,7 +91,7 @@ class Pipeline:
                 continue
             result.fetched = len(postings)
             for posting in postings:
-                if is_candidate(posting, self.config.taxonomy, self.config.geography):
+                if self._keep(posting):
                     result.candidates += 1
                     upsert = self.store.upsert_job(posting, now)
                     seen.append((upsert.job_id, upsert.discovery))
@@ -122,6 +124,7 @@ class Pipeline:
         waiting = self.routine and self.profile is not None
         status = _status(sources, items, unranked_expected=waiting)
         unranked = sum(i.recommendation is None for i in items)
+        notes += _screen_notes(self._screened)
         notes += _network_notes(self.network)
         if budget_hit:
             notes.append("The monthly AI spend cap was reached; remaining roles are unranked.")
@@ -188,7 +191,7 @@ class Pipeline:
                 alert = parse_alert(inbox.read(key), companies)
                 result.fetched += len(alert.postings)
                 for posting in alert.postings:
-                    if is_candidate(posting, self.config.taxonomy, self.config.geography):
+                    if self._keep(posting):
                         result.candidates += 1
                         upsert = self.store.upsert_job(posting, now)
                         seen.append((upsert.job_id, upsert.discovery))
@@ -218,6 +221,13 @@ class Pipeline:
             },
         )
         return result
+
+    def _keep(self, posting: Posting) -> bool:
+        """Whether a posting goes on to ranking; the title alone never decides (discovery)."""
+        floor = None if self.profile is None else self.profile.compensation.minimum
+        basis = screen(posting, self.config.taxonomy, self.config.geography, floor)
+        self._screened[basis] = self._screened.get(basis, 0) + 1
+        return basis in KEPT
 
     def _rank(self, job: dict[str, Any], discovery: str, now: datetime) -> DigestItem:
         profile = self.profile
@@ -349,6 +359,18 @@ def _status(
     else:
         status = "SUCCESS"
     return status
+
+
+def _screen_notes(screened: dict[str, int]) -> list[str]:
+    """Counts of roles whose title alone did not show their level, so none goes unseen."""
+    notes = []
+    if kept := screened.get(PAY, 0):
+        roles = "1 role" if kept == 1 else f"{kept} roles"
+        notes.append(f"Unclear title, kept on posted pay: {roles}.")
+    if held := screened.get(UNCLEAR_NO_PAY, 0):
+        roles = "1 role" if held == 1 else f"{held} roles"
+        notes.append(f"Unclear title and no posted pay, so not ranked: {roles} in your areas.")
+    return notes
 
 
 def _network_notes(index: NetworkIndex | None) -> list[str]:

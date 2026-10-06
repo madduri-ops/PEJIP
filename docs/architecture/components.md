@@ -139,9 +139,14 @@ flowchart TB
 
 ## discovery
 
-- **Responsibility:** deterministic pre-filter by title taxonomy (with VP / Sr.
-  normalization) and geography scopes, before any AI spend.
-- **Interfaces:** `is_candidate`, `classify_location`, `normalize_title`.
+- **Responsibility:** deterministic pre-filter by role family (title words, with
+  VP / Sr. normalization) and geography scopes, before any AI spend. The title is
+  one signal of level, not a gate: a role is kept on a senior title, on coming from
+  one of Babu's job alerts, or on posted pay at or above the profile minimum. Only
+  an unclear title with no posted pay is held back, and the run counts those in
+  its digest notes.
+- **Interfaces:** `screen` (the basis a role was kept or held back on),
+  `is_candidate`, `classify_location`, `normalize_title`.
 
 ## ai.client and ai.prompts
 

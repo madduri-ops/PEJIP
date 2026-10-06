@@ -1,7 +1,14 @@
-"""Deterministic discovery filter: taxonomy titles and geography (spec 3, 4).
+"""Deterministic discovery filter: role family, level and geography (spec 3, 4).
 
 This runs before any AI call, so only plausibly senior roles in scope cost money.
 Final relevance is decided later by matching and scoring.
+
+A title is one signal of level, not a gate (Babu, 2026-10-06): levels differ by
+company, so a Meta Director can match a Yahoo VP. A role in one of the role
+families is kept when its title reads as senior, when it came from one of Babu's
+own job alerts (he chose those searches), or when its posted pay reaches his
+minimum. Only an unclear title with no posted pay from a careers board is held
+back, and the run counts those so none is dropped silently.
 """
 
 from __future__ import annotations
@@ -54,12 +61,56 @@ def _has_term(text: str, term: str) -> bool:
 
 
 def title_matches(title: str, taxonomy: TaxonomyConfig) -> bool:
+    """A title that reads as senior and names one of the role families."""
+    return _senior_title(normalize_title(title), taxonomy) and role_family_matches(title, taxonomy)
+
+
+def role_family_matches(title: str, taxonomy: TaxonomyConfig) -> bool:
     normalized = normalize_title(title)
+    return any(_has_term(normalized, t) for t in taxonomy.role_terms)
+
+
+def _senior_title(normalized: str, taxonomy: TaxonomyConfig) -> bool:
     if any(_has_term(normalized, p) for p in taxonomy.excluded_title_patterns):
         return False
-    if not any(_has_term(normalized, p) for p in taxonomy.seniority_patterns):
-        return False
-    return any(_has_term(normalized, t) for t in taxonomy.role_terms)
+    return any(_has_term(normalized, p) for p in taxonomy.seniority_patterns)
+
+
+# Why a posting goes on to ranking, or why it does not.
+SENIOR_TITLE = "SENIOR_TITLE"
+JOB_ALERT = "JOB_ALERT"
+PAY = "PAY"
+UNCLEAR_NO_PAY = "UNCLEAR_NO_PAY"
+OUT_OF_SCOPE = "OUT_OF_SCOPE"
+KEPT = frozenset({SENIOR_TITLE, JOB_ALERT, PAY})
+
+
+def screen(
+    posting: Posting,
+    taxonomy: TaxonomyConfig,
+    geography: GeographyConfig,
+    pay_floor: float | None = None,
+) -> str:
+    """Whether a posting goes on to ranking (a value in ``KEPT``) and on what basis.
+
+    ``pay_floor`` is the profile's minimum pay; posted pay at or above it keeps a
+    role whose title alone is unclear.
+    """
+    if not role_family_matches(posting.title, taxonomy):
+        return OUT_OF_SCOPE
+    if classify_location(posting.location, geography).preference == "INELIGIBLE":
+        return OUT_OF_SCOPE
+    normalized = normalize_title(posting.title)
+    excluded = any(_has_term(normalized, p) for p in taxonomy.excluded_title_patterns)
+    if _senior_title(normalized, taxonomy):
+        return SENIOR_TITLE
+    if not excluded and posting.extra.get("origin") == "job_alert_email":
+        return JOB_ALERT
+    pay = posting.compensation
+    top = None if pay is None else (pay.maximum if pay.maximum is not None else pay.minimum)
+    if top is None or pay_floor is None:
+        return UNCLEAR_NO_PAY
+    return PAY if top >= pay_floor else OUT_OF_SCOPE
 
 
 @dataclass(frozen=True)
@@ -85,8 +136,11 @@ def classify_location(location: str, geography: GeographyConfig) -> GeoMatch:
     return GeoMatch(None, "INELIGIBLE" if geography.hard_filter else "UNDESIRABLE")
 
 
-def is_candidate(posting: Posting, taxonomy: TaxonomyConfig, geography: GeographyConfig) -> bool:
+def is_candidate(
+    posting: Posting,
+    taxonomy: TaxonomyConfig,
+    geography: GeographyConfig,
+    pay_floor: float | None = None,
+) -> bool:
     """Should this posting go on to analysis?"""
-    if not title_matches(posting.title, taxonomy):
-        return False
-    return classify_location(posting.location, geography).preference != "INELIGIBLE"
+    return screen(posting, taxonomy, geography, pay_floor) in KEPT
