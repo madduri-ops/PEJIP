@@ -190,6 +190,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Fixed
 
+- Scheduled searches, digests and purges start again: the scheduler's permission
+  to decrypt its own settings named the wrong KMS encryption context key
+  (`aws:scheduler:schedule-arn` instead of `aws:scheduler:schedule:arn`), so AWS
+  refused every scheduled start.
 - A role that has not been scored yet no longer reads as "No concerns found",
   "No strong reasons found" and "Nothing urgent" on its page: each section says it
   is waiting for scoring, and Who you know no longer claims the LinkedIn import is
