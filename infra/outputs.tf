@@ -80,7 +80,7 @@ output "inbox_dns_records" {
 
 output "digest_topic_arn" {
   description = "SNS topic the daily run emails the digest through. Babu confirms its subscription email once."
-  value       = aws_sns_topic.digest.arn
+  value       = try(aws_sns_topic.digest[local.owner_account].arn, null)
 }
 
 output "profile_parameter_name" {

@@ -1,6 +1,6 @@
 # 0016: Separate, private accounts
 
-_Status: accepted (steps 1 and 2 of 6 implemented). Last updated: 2026-10-06._
+_Status: accepted (steps 1 to 3 of 6 implemented). Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -69,7 +69,17 @@ Build order, each a small high-risk PR:
    shared, as the $100 cap covers the whole deployment. The one-account guard
    stays until the portal's Settings page and the ranking routine are per account
    (steps 3 and 4).
-3. Per-account inbox, digest topic and daily run.
+3. **Per-account inbox, digest and scheduled runs** (this step). SES has one
+   receipt rule per account: `alerts@` stays Babu's and lands in
+   `inbound/babu/`; another account receives at `<id>@inbox.job-search.zephyr-mcg.com`
+   into `inbound/<id>/`, and each run reads only its own folder
+   (`PEJIP_INBOX_PREFIX`). Each account has its own SNS digest topic, subscribed
+   to its own email (`PEJIP_DIGEST_TOPICS`); Babu's keeps the name `pejip-digest`
+   and its confirmed subscription (Terraform `moved` blocks). `pejip run`,
+   `digest` and `purge` loop over `PEJIP_ACCOUNTS`; one account's crash is logged
+   with its id and the others still run, then the task fails. A place setting
+   without `{account}` is Babu's alone: any other account refuses it and defaults
+   to places under `accounts/<id>/`, and gets no digest rather than Babu's topic.
 4. Per-account ranking keys and the account-scoped ranking API.
 5. Delete-an-account, and `docs/SECURITY.md` updates.
 6. Onboard the friend: Google test user, registry entry, inbox address, ranking key.

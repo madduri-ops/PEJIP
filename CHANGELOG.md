@@ -12,6 +12,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Per-account job-alert inbox, digest email and scheduled runs (design doc 0016,
+  step 3): each account receives job alerts at its own address and its digest
+  at its own email; the daily run, digest and purge go through every account in
+  turn, and one account's failure doesn't stop the others. Babu's `alerts@`
+  address and digest subscription carry over unchanged.
 - Per-account storage (design doc 0016, step 2): each account's database,
   digests, profile, companies and LinkedIn files live under its own id
   (`/data/accounts/<id>/`, `/pejip/accounts/<id>/...`, `network/<id>/`). Babu's

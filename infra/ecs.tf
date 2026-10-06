@@ -207,7 +207,7 @@ data "aws_iam_policy_document" "ecs_task" {
   statement {
     sid       = "SendDigest"
     actions   = ["sns:Publish"]
-    resources = [aws_sns_topic.digest.arn]
+    resources = [for topic in aws_sns_topic.digest : topic.arn]
   }
 
   statement {
@@ -296,7 +296,11 @@ locals {
     { name = "PEJIP_NETWORK_PREFIX", value = "${local.network_prefix}{account}/" },
     { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
     { name = "PEJIP_COMPANIES_PARAMETER", value = local.companies_parameter },
-    { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
+    # Each account's own digest topic and job-alert folder (design doc 0016),
+    # and the accounts the scheduled commands run for.
+    { name = "PEJIP_DIGEST_TOPICS", value = join(",", [for id, topic in aws_sns_topic.digest : "${id}=${topic.arn}"]) },
+    { name = "PEJIP_INBOX_PREFIX", value = "${local.inbox_prefix}{account}/" },
+    { name = "PEJIP_ACCOUNTS", value = join(",", local.account_ids) },
     { name = "PEJIP_RANKER", value = var.ranker },
     { name = "PEJIP_RANKING_KEY_PARAMETER", value = local.ranking_key_parameter },
   ]
