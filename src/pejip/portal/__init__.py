@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from importlib.resources import files
 from typing import Annotated
 
-from fastapi import APIRouter, Path, Query, Request
+from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
@@ -37,12 +37,13 @@ Clock = Callable[[], datetime]
 
 
 def router(
-    data: PortalData,
+    data: PortalData | None = None,
     clock: Clock | None = None,
     config: SearchConfig | None = None,
     config_for: Callable[[str], SearchConfig | None] | None = None,
+    data_for: Callable[[str], PortalData] | None = None,
 ) -> APIRouter:
-    """The portal's routes, reading from ``data``.
+    """The portal's routes, reading the signed-in account's ``data_for``, else ``data``.
 
     Settings shows the signed-in account's search setup from ``config_for``
     (design doc 0016), or ``config`` where no account-aware source is given.
@@ -50,8 +51,30 @@ def router(
     now_fn = clock or (lambda: datetime.now(UTC))
     routes = APIRouter(tags=["portal"], default_response_class=HTMLResponse)
 
+    def account_of(request: Request) -> str:
+        signed_in = getattr(request.state, "account", None)
+        return signed_in.id if signed_in is not None else DEFAULT_ACCOUNT_ID
+
+    def account_data(request: Request) -> PortalData:
+        """Each page reads only the signed-in account's data (design doc 0016)."""
+        if data_for is not None:
+            return data_for(account_of(request))
+        if data is None:
+            msg = "the portal needs data or data_for"
+            raise ValueError(msg)
+        return data
+
+    AccountData = Annotated[PortalData, Depends(account_data)]  # noqa: N806 - a type alias
+
     def frame(  # noqa: PLR0913 - the parts of a page
-        *, active: str, heading: str, subtitle: str, body: str, title: str = "", crumb: str = ""
+        *,
+        data: PortalData,
+        active: str,
+        heading: str,
+        subtitle: str,
+        body: str,
+        title: str = "",
+        crumb: str = "",
     ) -> str:
         items = data.opportunities()
         return render.page(
@@ -68,10 +91,11 @@ def router(
         )
 
     @routes.get("/")
-    def home() -> str:
+    def home(data: AccountData) -> str:
         """Home: what needs attention since the last search (spec 12.4)."""
         body = render.home_body(data.opportunities(), data.latest_run(), now_fn())
         return frame(
+            data=data,
             active="home",
             heading="What needs your attention",
             subtitle="Ranked roles from the latest search.",
@@ -82,6 +106,7 @@ def router(
     @routes.get("/opportunities")
     def opportunities(  # noqa: PLR0913 - one parameter per filter
         *,
+        data: AccountData,
         view: Annotated[str, Query(max_length=32)] = "",
         priority: Annotated[str, Query(max_length=16)] = "",
         fit: Annotated[str, Query(max_length=8)] = "",
@@ -111,6 +136,7 @@ def router(
         listing = list_opportunities(data.opportunities(), filters, now_fn())
         body = render.opportunities_body(listing, filters, now_fn())
         return frame(
+            data=data,
             active="opportunities",
             heading="Opportunities",
             subtitle="Ranked by priority, then fit, then freshness.",
@@ -119,6 +145,7 @@ def router(
 
     @routes.get("/opportunities/{opportunity_id}", responses={404: {"description": "Not found"}})
     def opportunity(
+        data: AccountData,
         opportunity_id: Annotated[int, Path(ge=1, openapi_examples={"first": {"value": 1}})],
     ) -> HTMLResponse:
         """One opportunity with its full, cited explanation (spec 12.8, 12.9)."""
@@ -126,6 +153,7 @@ def router(
         found = next((o for o in items if o.id == opportunity_id), None)
         if found is None:
             html = frame(
+                data=data,
                 active="opportunities",
                 heading="Opportunity not found",
                 subtitle="",
@@ -133,6 +161,7 @@ def router(
             )
             return HTMLResponse(html, status_code=404)
         html = frame(
+            data=data,
             active="opportunities",
             heading=found.title,
             subtitle=f"{found.company} · {found.location}",
@@ -148,6 +177,7 @@ def router(
 
     @routes.get("/connections")
     def connections(
+        data: AccountData,
         q: Annotated[str, Query(max_length=MAX_PEOPLE_QUERY)] = "",
         company: Annotated[str, Query(max_length=MAX_COMPANY_FILTER)] = "",
         matured: Annotated[str, Query(max_length=1)] = "",
@@ -165,6 +195,7 @@ def router(
             now=now_fn(),
         )
         return frame(
+            data=data,
             active="connections",
             heading="Connections",
             subtitle="Who you know at the companies you are tracking, from your LinkedIn export.",
@@ -172,10 +203,11 @@ def router(
         )
 
     @routes.get("/companies")
-    def companies(view: Annotated[str, Query(max_length=16)] = "all") -> str:
+    def companies(data: AccountData, view: Annotated[str, Query(max_length=16)] = "all") -> str:
         """Companies that matter, whether or not they are hiring today (spec 12.18)."""
         listing = list_companies(data.companies(), data.opportunities(), view)
         return frame(
+            data=data,
             active="companies",
             heading="Companies",
             subtitle="Companies that matter to your career, whether or not they have a "
@@ -184,10 +216,11 @@ def router(
         )
 
     @routes.get("/watchlist")
-    def watched() -> str:
+    def watched(data: AccountData) -> str:
         """What changed in watched jobs and companies (spec 12.22)."""
         listing = watchlist(data.companies(), data.opportunities(), now_fn())
         return frame(
+            data=data,
             active="watchlist",
             heading="Watchlist",
             subtitle="What changed in the jobs and companies you are watching.",
@@ -195,12 +228,12 @@ def router(
         )
 
     @routes.get("/settings")
-    def settings(request: Request) -> str:
+    def settings(request: Request, data: AccountData) -> str:
         """What PEJIP searches for, when, and how it ranks (spec 12.35)."""
-        signed_in = getattr(request.state, "account", None)
-        account = signed_in.id if signed_in is not None else DEFAULT_ACCOUNT_ID
+        account = account_of(request)
         shown = config_for(account) if config_for is not None else config
         return frame(
+            data=data,
             active="settings",
             heading="Settings",
             subtitle="What PEJIP searches for, when, and how it ranks.",
@@ -208,14 +241,22 @@ def router(
         )
 
     @routes.get("/search-health")
-    def search_health() -> str:
+    def search_health(data: AccountData) -> str:
         """Search Health: what each recent run searched and what failed (spec 12.27)."""
         return frame(
+            data=data,
             active="search-health",
             heading="Search Health",
             subtitle="Did the searches cover everything they should?",
             body=render.search_health_body(data.recent_runs(), now_fn()),
         )
+
+    _add_session_routes(routes)
+    return routes
+
+
+def _add_session_routes(routes: APIRouter) -> None:
+    """Routes that read no account data: Sign out, where it lands, and the styles."""
 
     @routes.post("/signout", response_class=Response)
     def sign_out(request: Request) -> Response:
@@ -238,5 +279,3 @@ def router(
     def stylesheet() -> Response:
         """The portal's styles."""
         return Response(STYLESHEET, media_type="text/css")
-
-    return routes

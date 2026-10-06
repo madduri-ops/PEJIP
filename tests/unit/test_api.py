@@ -2,6 +2,7 @@
 
 import asyncio
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -11,7 +12,9 @@ from fastapi import FastAPI, Request
 from ci.alb_token import AlbSigner
 from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
+from pejip.models import Posting
 from pejip.portal.data import Company, Opportunity, SearchRun
+from pejip.store import Store
 from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 from tests.unit.test_profile_parameter import FakeSsm
 
@@ -317,3 +320,63 @@ def test_signed_out_page_and_styles_need_no_sign_in(signed_in_app: FastAPI) -> N
     assert page.headers["Content-Security-Policy"] == api.PAGE_CSP
     assert styles.status_code == 200
     assert ".signout" in styles.text
+
+
+def test_portal_reads_each_accounts_own_database(signer: AlbSigner, tmp_path: Path) -> None:
+    # With a database configured, each account sees its own searches (design doc 0013).
+    database = tmp_path / "accounts" / "{account}" / "pejip.db"
+    babu = database.parent.parent / ACCOUNT_ID / "pejip.db"
+    babu.parent.mkdir(parents=True)
+    store = Store(f"sqlite:///{babu}")
+    job = store.upsert_job(
+        Posting(
+            "greenhouse", "b:1", "Co", "VP Stored Role", "Oakland, CA", "Lead.", "https://e.com/1"
+        ),
+        datetime.now(UTC),
+    )
+    store.start_run("r", datetime.now(UTC))
+    store.finish_run(
+        "r", "OK", {"sources": [], "seen": [[job.job_id, "NEW_POSTING"]]}, datetime.now(UTC)
+    )
+    with key_server(signer) as key_url:
+        env = {
+            **auth_env(key_url),
+            "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL},friend=friend@example.com",
+            "PEJIP_DATABASE_URL": f"sqlite:///{database}",
+        }
+        app = api.create_app(env=env)
+        mine = _get(app, "/opportunities?view=all", signer.token(ALLOWED_EMAIL)).text
+        theirs = _get(app, "/", signer.token("friend@example.com")).text
+        _get(app, "/", signer.token("friend@example.com"))  # opened once per account
+
+    assert "VP Stored Role" in mine
+    assert "Sample data" not in mine
+    assert "VP Stored Role" not in theirs
+    assert "No search has run yet" in theirs
+    assert not (database.parent.parent / "friend").exists()  # the first search creates it
+
+
+def test_portal_adopts_babus_data_from_before_accounts(signer: AlbSigner, tmp_path: Path) -> None:
+    # Before his first search under accounts, Babu's roles are still in the old file.
+    legacy = tmp_path / "pejip.db"
+    store = Store(f"sqlite:///{legacy}")
+    job = store.upsert_job(
+        Posting(
+            "greenhouse", "b:1", "Co", "VP Legacy Role", "Oakland, CA", "Lead.", "https://e.com/1"
+        ),
+        datetime.now(UTC),
+    )
+    store.start_run("r", datetime.now(UTC))
+    store.finish_run(
+        "r", "OK", {"sources": [], "seen": [[job.job_id, "NEW_POSTING"]]}, datetime.now(UTC)
+    )
+    with key_server(signer) as key_url:
+        env = {
+            **auth_env(key_url),
+            "PEJIP_DATABASE_URL": f"sqlite:///{tmp_path}/accounts/{{account}}/pejip.db",
+            "PEJIP_LEGACY_DATABASE_URL": f"sqlite:///{legacy}",
+        }
+        page = _get(api.create_app(env=env), "/opportunities?view=all", signer.token(ALLOWED_EMAIL))
+
+    assert "VP Legacy Role" in page.text
+    assert (tmp_path / "accounts" / ACCOUNT_ID / "pejip.db").is_file()

@@ -271,6 +271,28 @@ class Store:
         run["finished_at"] = _aware(run["finished_at"])
         return run
 
+    def recent_runs(self, limit: int) -> list[dict[str, Any]]:
+        """The most recent finished runs, newest first."""
+        with self.engine.connect() as conn:
+            rows = (
+                conn.execute(
+                    select(runs)
+                    .where(runs.c.finished_at.is_not(None))
+                    .order_by(runs.c.started_at.desc())
+                    .limit(limit)
+                )
+                .mappings()
+                .all()
+            )
+        return [
+            {
+                **row,
+                "started_at": _aware(row["started_at"]),
+                "finished_at": _aware(row["finished_at"]),
+            }
+            for row in rows
+        ]
+
     def start_run(self, run_id: str, now: datetime) -> None:
         with self.engine.begin() as conn:
             conn.execute(

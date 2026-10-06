@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +25,24 @@ import pytest
 from ci.alb_token import AlbSigner
 from pejip.api import PAGE_CSP
 from pejip.auth import OIDC_DATA_HEADER, PUBLIC_PATHS
+from pejip.models import Posting
 from pejip.ranking_api import RANKING_PREFIX
+from pejip.store import Store
 from tests.alb import ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
 
 SIGNER = AlbSigner(ALB_ARN)
+
+
+def _seed(database: Path) -> None:
+    """One searched role, so the role page has something to show."""
+    store = Store(f"sqlite:///{database}")
+    now = datetime.now(UTC)
+    job = store.upsert_job(
+        Posting("greenhouse", "b:1", "Co", "VP Ops", "Oakland, CA", "Lead.", "https://e.com/1"),
+        now,
+    )
+    store.start_run("seed", now)
+    store.finish_run("seed", "OK", {"sources": [], "seen": [[job.job_id, "NEW_POSTING"]]}, now)
 
 
 def _free_port() -> int:
@@ -45,13 +60,14 @@ ROOT = Path(__file__).resolve().parents[2]
 def base_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
     port = _free_port()
     data = tmp_path_factory.mktemp("data")
+    _seed(data / "pejip.db")
     with key_server(SIGNER) as key_url:
         env = {
             **os.environ,
             **auth_env(key_url),
             "PEJIP_HOST": "127.0.0.1",
             "PEJIP_PORT": str(port),
-            # The ranking routine's endpoints, with a throwaway key and empty database.
+            # The ranking routine's endpoints, with a throwaway key and one seeded role.
             "PEJIP_RANKING_KEY_SHA256": hashlib.sha256(RANKING_KEY.encode()).hexdigest(),
             "PEJIP_DATABASE_URL": f"sqlite:///{data / 'pejip.db'}",
             "PEJIP_PROFILE": str(ROOT / "examples" / "profile.example.yaml"),
@@ -123,7 +139,7 @@ def test_ranking_endpoints_need_the_routines_key(base_url: str) -> None:
     assert httpx.get(queue, headers=wrong).status_code == 401
     response = httpx.get(queue, headers={"Authorization": f"Bearer {RANKING_KEY}"})
     assert response.status_code == 200
-    assert response.json()["roles"] == []
+    assert [r["title"] for r in response.json()["roles"]] == ["VP Ops"]  # the seeded role
     assert "email" not in response.json()["profile"]
 
 

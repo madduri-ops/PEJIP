@@ -1,6 +1,6 @@
 # 0013: Web portal (Home, Opportunities, Opportunity detail, Companies, Watchlist, Connections, Search Health, Settings)
 
-_Status: implemented (sample data). Last updated: 2026-10-05._
+_Status: implemented. Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -15,13 +15,11 @@ In scope: the Home, Opportunities, Opportunity detail, Companies, Watchlist,
 Search Health and Settings pages from the portal mocks (`Main`, `Opportunities`,
 `Opportunity`, `Companies`, `Watchlist`, `SearchHealth` and `Settings` boards on the shared mock canvas, style
 guide in the project files), served by the existing FastAPI app behind Google
-sign-in, reading from a data interface with synthetic sample data behind it.
+sign-in, reading each signed-in account's own database through a data interface
+(synthetic sample data when no database is configured, as in local runs).
 
 Out of scope for now:
 
-- Reading the real database. The persistent store is being added separately
-  ([0011: Daily run and storage](0011-daily-run-and-storage.md) on its branch); a
-  store-backed reader plugs into the same interface when it lands.
 - Feedback buttons (Interested, Watch, Not interested, Already applied), the detail
   page's Decide actions and "This explanation is wrong", and "Search now": they need
   storage and a run trigger. The pages leave them out rather than
@@ -52,8 +50,8 @@ flowchart LR
     routes --> views[pejip.portal.views: rank, views, filters, Pacific time]
     routes --> render[pejip.portal.render: HTML]
     routes --> data[(PortalData)]
-    data -.today.-> sample[SampleData]
-    data -.next.-> store[Store-backed reader]
+    data --> store[StoreData: the account's database]
+    data -.no database configured.-> sample[SampleData]
 ```
 
 - **Server-rendered HTML, no JavaScript.** Views and filters are links and a GET
@@ -114,14 +112,41 @@ the pipeline already writes (`pejip.digest.SourceResult`, error text left out).
 A company has "Matching jobs" when it has a role in the Immediate, High or Medium
 band; otherwise the page shows its stored `relevance` (strategically relevant, no
 current match, low relevance). Signals carry their source and date (spec 12.42);
-target companies come from `config/search.yaml` once the store-backed reader lands,
-and signals from the company-intelligence source when it exists.
+target companies come from the account's search setup (`config/search.yaml` plus
+its private company list), and signals from the company-intelligence source when it
+exists.
+
+### Reading the database (`pejip.portal.stored.StoreData`)
+
+When `PEJIP_DATABASE_URL` is set, `create_app` gives each signed-in account its own
+`StoreData`, opened on that account's first page view (design doc 0016):
+
+- **Roles** are the jobs any finished run saw in the last seven days (from each
+  run's `summary["seen"]`, the newest run's discovery winning), so a source that
+  failed today does not hide yesterday's roles. Each gets its latest
+  recommendation: Fit, Confidence, Priority, Fit components and the stored
+  explanation's points and citations. A role the routine has not ranked yet is
+  Unranked with Unknown confidence, so it appears only in "All active".
+- **Who you know** is read back from the explanation's lines (matured connection or
+  your call, with name and title); strength is not stored yet, so it shows Unknown.
+- **Search Health** shows the last ten finished runs; the next search is the next
+  weekday 5 AM, 10 AM or 3 PM Pacific slot (infra `run_schedule`).
+- **Companies** are the careers boards and job-alert companies in the search setup.
+  The Connections page waits for the LinkedIn import to be stored for the portal.
+- **Nothing is written.** An account whose SQLite file does not exist yet shows "No
+  search has run yet"; its first search run creates the file. The one exception is
+  Babu's data from before accounts: when it exists, the portal adopts it the way a
+  run does (`pejip.accounts.open_store`, never overwriting), so his roles show
+  before his first search under accounts.
 
 ## Data model
 
-No storage. `pejip.portal.sample` holds invented roles ("Company A", "Person A")
-with times relative to the clock; every page says the data is illustrative while it
-is in use.
+The portal stores nothing; it reads the `jobs`, `recommendations` and `runs`
+tables ([0012: Daily run and storage](0012-daily-run-and-storage.md)) through
+`Store.find_job`, `Store.latest_recommendation` and `Store.recent_runs`. Without a
+configured database, `pejip.portal.sample` holds invented roles ("Company A",
+"Person A") with times relative to the clock, and every page says the data is
+illustrative.
 
 ## Non-functional considerations
 
