@@ -9,6 +9,7 @@ from urllib.parse import quote
 import pytest
 
 from pejip.config import AlertCompany, SearchConfig
+from pejip.discovery import is_candidate
 from pejip.sources.email_alerts import (
     INBOX_PREFIX,
     MAX_CONTEXT_LINES,
@@ -198,6 +199,21 @@ def test_the_shipped_job_boards_read_their_own_alerts(
         "San Jose, CA",
     )
     assert posting.url == url
+
+
+def test_a_linkedin_alert_for_a_plain_director_role_goes_on_to_ranking(
+    config: SearchConfig,
+) -> None:
+    # Regression: a LinkedIn alert's Director role at Meta was parsed, then dropped by
+    # the title filter because only Senior and Executive Director counted.
+    assert config.inbox is not None
+    title = "Director, Technical Program Management \N{EM DASH} Meta Business AI"
+    link = "https://www.linkedin.com/comm/jobs/view/4300000001/?trackingId=x"
+    body = f'<a href="{link}">{title}</a><p>Meta · Menlo Park, CA</p>'
+    sender = "LinkedIn Job Alerts <jobalerts-noreply@linkedin.com>"
+    (posting,) = parse_alert(email(body, sender=sender), config.inbox.companies).postings
+    assert (posting.title, posting.company) == (title, "Meta")
+    assert is_candidate(posting, config.taxonomy, config.geography)
 
 
 def test_inbox_lists_every_page_reads_and_deletes() -> None:
