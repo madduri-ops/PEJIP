@@ -50,8 +50,11 @@ sequenceDiagram
    7 AM, 12 PM and 5 PM on weekdays, 2026-10-06). Unchanged, except that with `PEJIP_RANKER=routine` it
    never calls Claude and does not email. Roles already analysed and unchanged
    are still scored (the existing path); new and changed roles wait.
-2. **06:04, 11:04 and 16:04, the routine.** A Claude Code routine on Babu's account runs in a
-   cloud environment holding the access key. It runs
+2. **06:20, 11:20 and 16:20, the routine** (an hour earlier in winter: the routine's
+   cron is in UTC). A Claude Code routine on Babu's account runs in a
+   cloud environment holding the access key. Its prompt is one line pointing at
+   [docs/routine/INSTRUCTIONS.md](../routine/INSTRUCTIONS.md), so the steps are
+   versioned in the repository. It runs
    `python -m pejip.routine fetch`, which writes the queue to a scratch file
    outside the repository. For each role, Claude follows
    `src/pejip/prompts/job_analysis.v1.md` and then `evidence_matching.v1.md`,
