@@ -569,10 +569,26 @@ def _bars(o: Opportunity) -> str:
             f'<rect class="v{lo}" width="{score}" height="10" rx="5"/></svg>'
             f'<span class="s">{score}</span></div>'
         )
-    return f'<div class="bars">{"".join(rows)}</div>' if rows else _empty("Not scored yet.")
+    return (
+        f'<div class="bars">{"".join(rows)}</div>'
+        if rows
+        else _empty(
+            "Not scored yet. The next ranking run scores it, within a few hours on weekdays."
+        )
+    )
+
+
+def _scored(o: Opportunity) -> bool:
+    """Whether the role has been scored; until then its sections are pending, not empty."""
+    return bool(o.fit is not None or o.components or o.why_it_fits or o.concerns or o.why_now)
+
+
+PENDING = "Waiting for this role to be scored."
 
 
 def _network(o: Opportunity) -> str:
+    if o.connections is None and not _scored(o):
+        return f'<p class="note">{PENDING}</p>'
     if o.connections is None:
         return '<p class="note">Your LinkedIn connections have not been imported yet.</p>'
     if not o.connections:
@@ -667,19 +683,24 @@ def detail_body(
     fits = "".join(_point(p, i == 0) for i, p in enumerate(o.why_it_fits))
     concerns = "".join(_concern(p) for p in o.concerns)
     now_items = "".join(_point(p) for p in o.why_now)
+    scored = _scored(o)
+    no_concerns = _empty("No concerns found." if scored else PENDING)
+    no_fits = _empty("No strong reasons found." if scored else PENDING)
+    nothing_now = _empty("Nothing urgent." if scored else PENDING)
     return (
         summary + '<section class="grid2">'
         f'<div class="card" id="fit"><h2>Fit analysis · {fit}</h2>{_bars(o)}'
         '<p class="note">Fit measures qualification only. Network, freshness and urgency '
         "affect priority, never fit.</p></div>"
-        f'<div class="card" id="concerns"><h2>Concerns and gaps · {len(o.concerns)}</h2>'
-        f"{concerns or _empty('No concerns found.')}</div></section>"
+        f'<div class="card" id="concerns"><h2>Concerns and gaps · '
+        f"{len(o.concerns) if scored else 'Unknown'}</h2>"
+        f"{concerns or no_concerns}</div></section>"
         '<section class="card" id="why"><h2>Why it fits</h2>'
-        f'<div class="reasons">{fits or _empty("No strong reasons found.")}</div></section>'
+        f'<div class="reasons">{fits or no_fits}</div></section>'
         '<section class="grid2">'
         f'<div class="card" id="now"><div class="row spread"><h2>Why act now</h2>'
         f"{priority_pill(o.priority)}</div>"
-        + (f'<div class="reasons">{now_items}</div>' if now_items else _empty("Nothing urgent."))
+        + (f'<div class="reasons">{now_items}</div>' if now_items else nothing_now)
         + '<p class="note">Priority is separate from fit, so urgency and network never '
         "inflate how qualified you are.</p></div>"
         f'<div class="card" id="network"><h2>Who you know · '
