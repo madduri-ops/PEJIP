@@ -84,7 +84,9 @@ flowchart LR
 | `GET /search-health` | Latest run, failed sources with their impact and last success (no raw errors, spec 12.31), every source in the latest run, recent run history |
 | `GET /portal.css` | Styles |
 
-All nine require sign-in like every route except `/healthz`. `create_app(data=...)`
+All nine require sign-in like every route except `/healthz`. The sidebar's Sign out
+button posts to `/signout`, which lands on the public `/signed-out` page
+([0009](0009-google-sign-in.md)). `create_app(data=...)`
 takes any `pejip.portal.data.PortalData`:
 
 ```python

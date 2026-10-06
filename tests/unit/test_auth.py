@@ -19,6 +19,7 @@ from pejip.auth import (
     KeyStore,
     SignInRequiredError,
     parse_accounts,
+    session_cookie_names,
 )
 from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL
 
@@ -365,3 +366,10 @@ def test_key_store_rejects_keys_that_are_not_p256(key: object) -> None:
 
     with pytest.raises(SignInRequiredError):
         asyncio.run(store.get("k"))
+
+
+def test_session_cookie_names_always_include_the_first_shard() -> None:
+    assert session_cookie_names({}) == ["AWSELBAuthSessionCookie-0"]
+    assert session_cookie_names(
+        {"AWSELBAuthSessionCookie-2": "x", "AWSELBAuthSessionCookie": "y", "other": "z"}
+    ) == ["AWSELBAuthSessionCookie-0", "AWSELBAuthSessionCookie-2"]

@@ -128,7 +128,9 @@ def _nav(active: str, attention: int) -> str:
         '<nav class="nav" aria-label="Main">'
         '<div class="brand">Personal Executive Job Intelligence Platform</div>'
         + "".join(link(*item) for item in NAV)
-        + '<div class="foot">Signed in with Google</div></nav>'
+        + '<div class="foot">Signed in with Google'
+        '<form method="post" action="/signout">'
+        '<button class="signout" type="submit">Sign out</button></form></div></nav>'
     )
 
 
@@ -178,6 +180,24 @@ def page(  # noqa: PLR0913 - the frame every page shares
         f'<div class="topbar"><div><h1>{e(heading)}</h1>'
         f'<div class="muted">{e(subtitle)}</div></div>{run_line(run, now)}</div>'
         f"{banner}{body}</div></main></div></body></html>"
+    )
+
+
+def signed_out_page() -> str:
+    """The page Sign out lands on. It is public, so it shows nothing from the data."""
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1">'
+        "<title>PEJIP · Signed out</title>"
+        '<link rel="preconnect" href="https://fonts.googleapis.com">'
+        f'<link rel="stylesheet" href="{e(FONTS)}">'
+        '<link rel="stylesheet" href="/portal.css"></head><body>'
+        '<main class="out"><div class="card">'
+        '<div class="brand">Personal Executive Job Intelligence Platform</div>'
+        "<h1>You are signed out</h1>"
+        '<p class="note">Your PEJIP session has ended. You are still signed in to Google '
+        "itself; sign out there too if this is a shared computer.</p>"
+        '<a class="btn primary" href="/">Sign in again</a></div></main></body></html>'
     )
 
 

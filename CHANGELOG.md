@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Sign out button. It ends the PEJIP session and lands on a
+  signed-out page; Google itself stays signed in. Needs one `terraform apply` for
+  the load balancer rule that keeps the signed-out page open.
 - More than one account (design doc 0016, step 6): up to five people can sign in,
   each with separate data; `infra/README.md` has the steps for adding one.
 - Deleting an account (design doc 0016, step 5): `pejip export` and

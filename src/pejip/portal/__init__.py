@@ -11,9 +11,10 @@ from importlib.resources import files
 from typing import Annotated
 
 from fastapi import APIRouter, Path, Query, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
+from pejip.auth import session_cookie_names
 from pejip.config import SearchConfig
 from pejip.portal import render
 from pejip.portal.data import PortalData
@@ -215,6 +216,23 @@ def router(
             subtitle="Did the searches cover everything they should?",
             body=render.search_health_body(data.recent_runs(), now_fn()),
         )
+
+    @routes.post("/signout", response_class=Response)
+    def sign_out(request: Request) -> Response:
+        """Expire the load balancer's sign-in session, then show the signed-out page.
+
+        Google has no sign-out endpoint for a single site, so this ends PEJIP's session
+        only; Babu stays signed in to Google itself (ADR-0006).
+        """
+        response = RedirectResponse("/signed-out", status_code=303)
+        for name in session_cookie_names(request.cookies):
+            response.delete_cookie(name, path="/", secure=True, httponly=True)
+        return response
+
+    @routes.get("/signed-out")
+    def signed_out() -> str:
+        """Where Sign out lands. Open without sign-in, so it shows no data."""
+        return render.signed_out_page()
 
     @routes.get("/portal.css", response_class=Response)
     def stylesheet() -> Response:

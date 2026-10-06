@@ -22,6 +22,8 @@ from GitHub and must keep working.
   (`sign_in_session_seconds`). The callback is
   `https://job-search.zephyr-mcg.com/oauth2/idpresponse`, handled by the ALB.
 - **Health path stays open:** a listener rule forwards `/healthz` without sign-in.
+  (2026-10-06: a second rule does the same for the signed-out page and its
+  stylesheet, so Sign out does not sign Babu straight back in; design 0009.)
 - **One account, checked in the app:** the ALB passes the signed-in user's claims
   in `x-amzn-oidc-data`, an ES256 JWT it signs. `pejip.auth` verifies the signature
   with the ALB's public key for the token's `kid`, requires the `signer` to be
