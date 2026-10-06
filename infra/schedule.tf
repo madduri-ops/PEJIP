@@ -48,6 +48,12 @@ locals {
   }
 }
 
+# PEJIP's own schedule group, so the scheduler-failure alarm (monitoring.tf)
+# watches only PEJIP's schedules, never another app's in this account.
+resource "aws_scheduler_schedule_group" "pejip" {
+  name = local.name
+}
+
 moved {
   from = aws_scheduler_schedule.purge
   to   = aws_scheduler_schedule.task["purge"]
@@ -57,6 +63,7 @@ resource "aws_scheduler_schedule" "task" {
   for_each = local.scheduled_tasks
 
   name                         = each.value.name
+  group_name                   = aws_scheduler_schedule_group.pejip.name
   description                  = each.value.description
   schedule_expression          = each.value.expression
   schedule_expression_timezone = each.value.timezone
@@ -146,7 +153,7 @@ data "aws_iam_policy_document" "scheduler" {
     condition {
       test     = "ArnLike"
       variable = "kms:EncryptionContext:aws:scheduler:schedule:arn"
-      values   = ["arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/default/pejip-*"]
+      values   = ["arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/${local.name}/pejip-*"]
     }
   }
 

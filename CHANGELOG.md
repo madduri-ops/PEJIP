@@ -190,6 +190,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Fixed
 
+- A scheduled search, digest or purge that AWS refuses to start now emails an
+  alarm (`pejip-scheduler-failed`) within minutes instead of going unnoticed for
+  days. PEJIP's schedules move into their own `pejip-prod` schedule group so the
+  alarm watches only them, and `infra/README.md` has a check that starts a task
+  through the scheduler after an apply.
 - Scheduled searches, digests and purges start again: the scheduler's permission
   to decrypt its own settings named the wrong KMS encryption context key
   (`aws:scheduler:schedule-arn` instead of `aws:scheduler:schedule:arn`), so AWS

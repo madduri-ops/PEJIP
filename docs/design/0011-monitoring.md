@@ -1,6 +1,6 @@
 # 0011: Monitoring and alerts
 
-_Status: accepted. Last updated: 2026-10-05._
+_Status: accepted. Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -58,11 +58,18 @@ Alarms (all email through `pejip-alerts` on entering ALARM):
 | `pejip-source-failures` | Any source failed to fetch in the hour (the run is PARTIAL) |
 | `pejip-app-errors` | Any ERROR line in the hour |
 | `pejip-search-stalled` | No run finished SUCCESS or PARTIAL for 64 hours (searches run on weekdays only; the weekend gap is 62 hours); also emails when it clears |
+| `pejip-scheduler-failed` | EventBridge Scheduler could not start a scheduled search, digest or purge in the last five minutes (`TargetErrorCount` for the `pejip-prod` schedule group) |
 
 `pejip-search-stalled` treats missing data as breaching, so it would fire from
 the moment it exists. It is created only while the daily run schedule is on
 (`run_schedule_enabled`, [design 0012](0012-daily-run-and-storage.md)). Until the
 first run after it is created, it reads as stalled; starting a run by hand clears it.
+
+`pejip-scheduler-failed` exists because a start the scheduler is refused leaves no
+log line at all: on 2026-10-06 a wrong KMS condition blocked every scheduled task
+for two days, and only `pejip-search-stalled` would have noticed, after 64 hours.
+It reads Scheduler's own metric for PEJIP's schedule group, so other apps'
+schedules in the account are never watched.
 
 The dashboard has six widgets: search runs per day by outcome, a Logs Insights
 table of source failures by source, Claude spend this month against the cap,
@@ -88,7 +95,7 @@ which the redaction layer already allows in logs.
 
 ## Non-functional considerations
 
-- **Cost:** about $2 a month: five filter metrics at $0.30, five alarms at $0.10
+- **Cost:** about $2 a month: five filter metrics at $0.30, six alarms at $0.10
   (the stalled alarm reads two metrics), the dashboard is within the free three,
   and Logs Insights scans only when the dashboard is opened.
 - **Privacy:** no new data leaves the app; metric filters read lines that are
