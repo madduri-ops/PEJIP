@@ -1338,8 +1338,25 @@ def _saved_line(editing: SettingsEditing) -> str:
     return '<p class="note">Using the default settings.</p>'
 
 
+SAVE_BUTTON = (
+    '<div class="saverow"><button class="btn primary" type="submit">Save settings</button>'
+    '<span class="hint">Saves every list on this page. The next search uses them.</span></div>'
+)
+HOW_TO_EDIT = (
+    '<div class="howto" id="how-to-edit"><h2>How to change your search</h2><ol>'
+    "<li>Click into any list below and type: one entry per line. Add a line to add a "
+    "word or place; delete a line to remove it.</li>"
+    "<li>Press <strong>Save settings</strong> at the end of either section.</li>"
+    '<li>A "Saved" note at the top confirms it. The next search, ranking and digest '
+    "use what you saved.</li></ol></div>"
+)
+
+
 def _editable(editing: SettingsEditing) -> str:
-    """The Roles and Locations cards as one form, saved for the account's next runs."""
+    """The Roles and Locations cards as one form, saved for the account's next runs.
+
+    Each card ends with its own Save button; both send the whole form.
+    """
     reset = (
         '<form method="post" action="/settings" class="reset">'
         '<input type="hidden" name="action" value="reset">'
@@ -1348,17 +1365,22 @@ def _editable(editing: SettingsEditing) -> str:
         else ""
     )
     rule = (
-        "Only the fields below can be changed here. Companies come from your encrypted "
+        "Only the two sections below can be changed here. Companies come from your encrypted "
         "company list, and ranking weights change only through a reviewed change that "
         "passes the ranking test set."
     )
     return (
         _saved_line(editing)
+        + HOW_TO_EDIT
         + f'<form method="post" action="/settings" id="edit"><p class="note">{rule}</p>'
-        + _settings_card("Roles and titles", "roles", _roles_form(editing.form))
-        + _settings_card("Locations", "locations", _locations_form(editing.form))
-        + '<div class="row"><button class="btn primary" type="submit">Save settings</button>'
-        "</div></form>" + reset
+        + _settings_card(
+            "Roles and titles · editable", "roles", _roles_form(editing.form) + SAVE_BUTTON
+        )
+        + _settings_card(
+            "Locations · editable", "locations", _locations_form(editing.form) + SAVE_BUTTON
+        )
+        + "</form>"
+        + reset
     )
 
 

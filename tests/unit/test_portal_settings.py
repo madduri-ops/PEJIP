@@ -84,6 +84,9 @@ def test_the_page_offers_the_current_settings_as_a_form() -> None:
     assert "Remote roles in the US count here too." in html
     assert 'name="hard_filter" checked>' in html
     assert "Using the default settings." in html
+    assert "How to change your search" in html
+    assert html.count('<button class="btn primary" type="submit">Save settings</button>') == 2
+    assert "Roles and titles · editable" in html
     assert "Go back to the defaults" not in html
     assert "read-only here" not in html
     assert f"Scoring version {CONFIG.scoring.version}." in html  # still shown, read-only
@@ -143,11 +146,27 @@ def test_a_refused_save_shows_what_was_typed_and_why() -> None:
     assert settings.saves == []
 
 
+def test_a_save_from_the_live_page_is_accepted() -> None:
+    # Regression (Babu, 2026-10-06): the browser sent "Origin: null" because the
+    # page's Referrer-Policy is no-referrer, and Save answered "Forms are only
+    # accepted from this site." Sec-Fetch-Site says the post came from this site.
+    settings = FakeSettings()
+    headers = {"content-type": FORM, "origin": "null", "sec-fetch-site": "same-origin"}
+    response = _call(
+        _app(settings), "POST", "/settings", content=urlencode(_fields()), headers=headers
+    )
+    assert response.status_code == 303
+    assert len(settings.saves) == 1
+
+
 def test_forms_from_other_sites_are_refused() -> None:
     settings = FakeSettings()
     app = _app(settings)
     assert _post(app, _fields(), origin="https://evil.example").status_code == 403
     assert _post(app, _fields(), origin=None).status_code == 403
+    cross = {"content-type": FORM, "origin": "https://test", "sec-fetch-site": "cross-site"}
+    forged = _call(app, "POST", "/settings", content=urlencode(_fields()), headers=cross)
+    assert forged.status_code == 403
     assert settings.saves == []
 
 

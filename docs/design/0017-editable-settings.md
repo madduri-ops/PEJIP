@@ -69,7 +69,7 @@ says so.
   `excluded_title_patterns` (one per line or comma), `places.<SCOPE>`,
   `preference.<SCOPE>` (Preferred, Acceptable or Undesirable) for each location
   the page shows, and `hard_filter=on`; or `action=reset` to go back to the
-  defaults. Answers 303 to `/settings?saved=1`, 403 without a same-site `Origin`,
+  defaults. Answers 303 to `/settings?saved=1`, 403 unless sent from this site (`Sec-Fetch-Site`, else `Origin`; see 0013),
   404 where saving is not possible, 413 above 64 KB, and 422 with the page and the
   reason when a value is refused.
 - `portal.data.SearchSettings` (`saved_at(account)`, `save(account, saved)`),

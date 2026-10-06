@@ -166,3 +166,9 @@ textarea{font:inherit;font-size:14px;width:100%;padding:10px 12px;border:1px sol
 .saved{background:#EEF4F5;border:1px solid #B7CDD0;color:#0E5A64;border-radius:8px;padding:10px 14px}
 .formerr{background:#FDF0EE;border:1px solid #E7B7AE;color:#8A2A1A;border-radius:8px;padding:10px 14px}
 .reset{margin:12px 0 0}
+.howto{background:#EEF4F5;border:1px solid #B7CDD0;border-radius:12px;padding:14px 18px}
+.howto h2{color:#0E5A64;margin:0 0 8px}
+.howto ol{margin:0;padding-left:20px;font-size:14px;line-height:1.6}
+.saverow{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:8px;padding-top:14px;border-top:1px solid #EDEFF3}
+.saverow .hint{margin:0}
+.saved{font-weight:600}

@@ -42,10 +42,17 @@ MAX_SETTINGS_BYTES = 64 * 1024
 def same_origin(request: Request) -> bool:
     """True when the form was sent by a page on this site (the CSRF check).
 
-    Browsers send Origin with every form post. The load balancer keeps the Host
-    header, so a post from another site, which still carries the sign-in cookie,
-    has an Origin that does not match it.
+    Browsers mark every request with ``Sec-Fetch-Site``, which no page can set or
+    change, so it decides when present. It must: the pages send
+    ``Referrer-Policy: no-referrer``, under which browsers send ``Origin: null``
+    with a form post even from this site, so Origin alone refused Babu's own saves.
+    Without it (older browsers, scripts), Origin must match the Host header, which
+    the load balancer keeps; a post from another site, which still carries the
+    sign-in cookie, has an Origin that does not match.
     """
+    site = request.headers.get("sec-fetch-site")
+    if site is not None:
+        return site == "same-origin"
     origin = request.headers.get("origin")
     return origin is not None and urlsplit(origin).netloc == request.headers.get("host")
 

@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Settings shows how to change your search: a short how-to at the top, "editable"
+  on the two sections you can change, and a Save settings button at the end of each.
+
 - The Settings page is editable: change the seniority words, role words, titles
   left out, and each location's places and preference, then Save. The next
   search, ranking and digest use the saved values; "Go back to the defaults"
@@ -216,6 +219,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Fixed
 
+- Saving Settings and the decision buttons on a role no longer answer "Forms are
+  only accepted from this site." Browsers send `Origin: null` from these pages
+  (they ask for no referrer), so the same-site check now reads `Sec-Fetch-Site`.
 - Portal pages are fast again once many roles are scored: the role lists read jobs
   and their latest scores in batches, and the score, analysis and decision tables
   are indexed by job, instead of reading the whole scores table for every role.

@@ -175,3 +175,7 @@ def test_settings_are_saved_on_the_running_server(base_url: str) -> None:
     assert ">oakland</textarea>" in page
     assert httpx.post(url, content="action=reset", headers=host).status_code == 303
     assert "Using the default settings." in httpx.get(url, headers=signed_in).text
+    # What a browser sends from the live page: Origin null (no-referrer), Sec-Fetch-Site.
+    browser = {**form, "origin": "null", "sec-fetch-site": "same-origin"}
+    assert httpx.post(url, content=body, headers=browser).status_code == 303
+    assert httpx.post(url, content="action=reset", headers=browser).status_code == 303
