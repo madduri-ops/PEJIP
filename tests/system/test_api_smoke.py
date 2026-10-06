@@ -153,3 +153,25 @@ def test_portal_pages_carry_the_page_policy(base_url: str) -> None:
 
 def test_server_hides_its_identity(base_url: str) -> None:
     assert "server" not in httpx.get(f"{base_url}/healthz").headers
+
+
+def test_settings_are_saved_on_the_running_server(base_url: str) -> None:
+    # Design doc 0017: the Settings form saves to the account's database.
+    signed_in = {OIDC_DATA_HEADER: SIGNER.token(ALLOWED_EMAIL)}
+    form = {**signed_in, "content-type": "application/x-www-form-urlencoded"}
+    body = (
+        "seniority_patterns=vice+president&role_terms=operations&excluded_title_patterns="
+        "&places.BAY_AREA=oakland&preference.BAY_AREA=PREFERRED"
+        "&places.US_REMOTE=&preference.US_REMOTE=ACCEPTABLE&hard_filter=on"
+    )
+    url = f"{base_url}/settings"
+    elsewhere = httpx.post(url, content=body, headers={**form, "origin": "https://evil.example"})
+    assert elsewhere.status_code == 403
+    host = {**form, "origin": base_url}
+    saved = httpx.post(url, content=body, headers=host)
+    assert saved.status_code == 303
+    page = httpx.get(f"{url}?saved=1", headers=signed_in).text
+    assert "Saved. The next search, ranking and digest use these settings." in page
+    assert ">oakland</textarea>" in page
+    assert httpx.post(url, content="action=reset", headers=host).status_code == 303
+    assert "Using the default settings." in httpx.get(url, headers=signed_in).text

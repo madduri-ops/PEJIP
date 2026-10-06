@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol, runtime_checkable
 
+from pejip.search_settings import SavedSettings
+
 # Priority bands in the order the portal ranks them (spec 9.25).
 PRIORITY_ORDER = ("IMMEDIATE", "HIGH", "MEDIUM", "LOW", "UNRANKED", "EXCLUDED")
 
@@ -238,3 +240,13 @@ class Decisions(Protocol):
 
     def decide(self, opportunity_id: int, decision: str | None) -> bool:
         """Record a decision (None clears it); False when the role is unknown."""
+
+
+class SearchSettings(Protocol):
+    """Where the Settings page saves each account's search settings (design doc 0017)."""
+
+    def saved_at(self, account: str) -> datetime | None:
+        """When the account last saved its settings; None while it uses the defaults."""
+
+    def save(self, account: str, saved: SavedSettings | None) -> None:
+        """Keep ``saved`` for the account's next runs; None goes back to the defaults."""

@@ -12,11 +12,13 @@ from typing import Any, ClassVar
 import pytest
 
 from pejip import cli
-from pejip.config import Settings
+from pejip.config import Settings, load_config
 from pejip.digest import Digest
 from pejip.models import Posting
 from pejip.network.loader import CONNECTIONS_KEY
 from pejip.network.matching import NetworkIndex
+from pejip.search_settings import current
+from pejip.sources.http import PoliteClient
 from pejip.store import Store
 from tests.conftest import NOW, ROOT
 from tests.linkedin import export, row
@@ -727,3 +729,30 @@ def test_one_accounts_crash_spares_the_others(
     assert seen == ["babu", "friend"]
     crashed = [r for r in caplog.records if r.getMessage() == event]
     assert [getattr(r, "account", None) for r in crashed] == ["babu"]
+
+
+class DigestPipeline(RecordingPipeline):
+    """Records what the digest built its Pipeline with."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.http = PoliteClient(load_config(ROOT / "config" / "search.yaml").fetch)
+
+    def digest_from(self, run: dict[str, Any]) -> Digest:
+        return Digest(run["id"], NOW, "SUCCESS", [])
+
+
+def test_search_and_digest_use_the_settings_saved_on_the_portal(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Design doc 0017: the latest saved Settings reach every scheduled run.
+    store = _finished_run(env, [])
+    config = load_config(ROOT / "config" / "search.yaml")
+    mine = config.taxonomy.model_copy(update={"role_terms": ["privacy"]})
+    store.save_search_settings({**current(config).model_dump(), "taxonomy": mine.model_dump()}, NOW)
+    monkeypatch.setattr(cli, "Pipeline", DigestPipeline)
+
+    assert cli.main(["run"]) == 0
+    assert RecordingPipeline.built[-1][0][0].taxonomy.role_terms == ["privacy"]
+    assert cli.main(["digest"]) == 0
+    assert RecordingPipeline.built[-1][0][0].taxonomy.role_terms == ["privacy"]

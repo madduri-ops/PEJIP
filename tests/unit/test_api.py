@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 from ci.alb_token import AlbSigner
 from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
+from pejip.config import load_config
 from pejip.models import Posting
 from pejip.portal.data import Company, Opportunity, SearchRun
 from pejip.store import Store
@@ -198,7 +199,7 @@ def test_settings_page_reads_the_search_configuration(signer: AlbSigner, tmp_pat
         missing = {**auth_env(key_url), "PEJIP_CONFIG": str(tmp_path / "absent.yaml")}
         absent = _get(api.create_app(env=missing), "/settings", token).text
 
-    assert "Seniority a title needs" in default
+    assert "Role words a title needs" in default
     assert "The search configuration is not available on this server." in absent
 
 
@@ -239,7 +240,7 @@ def test_settings_page_opens_without_a_readable_company_list(
         ]
 
     for page in pages:
-        assert "Seniority a title needs" in page
+        assert "Role words a title needs" in page
         assert "Northwind Robotics" not in page
 
 
@@ -434,3 +435,77 @@ def test_a_decision_is_saved_in_the_accounts_database(signer: AlbSigner, tmp_pat
     assert saved.status_code == 303
     assert store.latest_decisions() == {job.job_id: "ALREADY_APPLIED"}
     assert "Current: <strong>Already applied</strong>" in page
+
+
+def _post_form(app: FastAPI, path: str, token: str, body: str) -> httpx.Response:
+    async def call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+            return await client.post(
+                path,
+                content=body,
+                headers={
+                    OIDC_DATA_HEADER: token,
+                    "origin": "https://test",
+                    "content-type": "application/x-www-form-urlencoded",
+                },
+            )
+
+    return asyncio.run(call())
+
+
+SETTINGS_FORM = (
+    "seniority_patterns=chief&role_terms=privacy&excluded_title_patterns="
+    "&places.BAY_AREA=oakland&preference.BAY_AREA=PREFERRED"
+    "&places.US_REMOTE=&preference.US_REMOTE=UNDESIRABLE"
+)
+
+
+def test_saved_settings_are_kept_in_the_accounts_database_and_shown(
+    signer: AlbSigner, tmp_path: Path
+) -> None:
+    # Design doc 0017: saving before any search creates the account's database.
+    database = tmp_path / "accounts" / ACCOUNT_ID / "pejip.db"
+    env_url = f"sqlite:///{tmp_path}/accounts/{{account}}/pejip.db"
+    with key_server(signer) as key_url:
+        app = api.create_app(env={**auth_env(key_url), "PEJIP_DATABASE_URL": env_url})
+        token = signer.token(ALLOWED_EMAIL)
+        before = _get(app, "/settings", token).text
+        saved = _post_form(app, "/settings", token, SETTINGS_FORM)
+        after = _get(app, "/settings?saved=1", token).text
+        reset = _post_form(app, "/settings", token, "action=reset")
+        defaults = _get(app, "/settings", token).text
+
+    assert "Using the default settings." in before
+    assert saved.status_code == 303
+    assert '<textarea id="role_terms" name="role_terms" rows="6"' in after
+    assert ">privacy</textarea>" in after
+    assert "Saved. The next search, ranking and digest use these settings." in after
+    assert reset.status_code == 303
+    assert ">privacy</textarea>" not in defaults
+    assert database.is_file()
+    assert Store(f"sqlite:///{database}").saved_search_settings() is None
+
+
+def test_settings_stay_saved_when_the_company_list_is_unreadable(
+    signer: AlbSigner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    database = tmp_path / "pejip.db"
+    store = Store(f"sqlite:///{database}")
+    config = load_config(Path("config/search.yaml"))
+    mine = config.taxonomy.model_copy(update={"role_terms": ["privacy"]})
+    store.save_search_settings(
+        {"taxonomy": mine.model_dump(), "geography": config.geography.model_dump()},
+        datetime.now(UTC),
+    )
+    monkeypatch.setattr(api, "make_ssm_client", lambda _region: FakeSsm(error="AccessDenied"))
+    with key_server(signer) as key_url:
+        env = {
+            **auth_env(key_url),
+            "PEJIP_DATABASE_URL": f"sqlite:///{database}",
+            "PEJIP_COMPANIES_PARAMETER": "/pejip/companies",
+        }
+        page = _get(api.create_app(env=env), "/settings", signer.token(ALLOWED_EMAIL)).text
+
+    assert ">privacy</textarea>" in page
+    assert "Your settings, saved" in page

@@ -14,6 +14,7 @@ for the routes to key data by (design doc 0016). The ranking routes need the rou
 import logging
 import os
 from collections.abc import Awaitable, Callable, Mapping
+from datetime import UTC, datetime
 
 import uvicorn
 import yaml
@@ -32,7 +33,7 @@ from pejip.auth import (
     AuthSettings,
     SignInRequiredError,
 )
-from pejip.companies import load_search_config
+from pejip.companies import apply_saved, load_search_config
 from pejip.config import SearchConfig, Settings, load_config
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
@@ -40,6 +41,7 @@ from pejip.portal.stored import StoreData
 from pejip.profile import make_ssm_client
 from pejip.ranking_api import RANKING_PREFIX, RankingService, RankingServices, screen
 from pejip.ranking_api import router as ranking_router
+from pejip.search_settings import SavedSettings
 from pejip.store import Store
 
 log = logging.getLogger(__name__)
@@ -70,39 +72,68 @@ PAGE_CSP = (
 )
 
 
-def _search_config(env: Mapping[str, str], account: str) -> SearchConfig | None:
-    """The search configuration Settings shows an account; None without the file.
-
-    The account's private companies are included (ADR-0009, design doc 0016). If
-    they can't be read, the page still opens with the shipped setup; the daily
-    run reports the problem.
-    """
-    settings = Settings.from_env(dict(env), account=account)
-    if not settings.config_path.is_file():
-        return None
-    try:
-        config, _ = load_search_config(settings, make_ssm_client)
-    except (OSError, ValidationError, yaml.YAMLError, ClientError, BotoCoreError):
-        log.warning("company_list_unreadable")
-        return load_config(settings.config_path)
-    return config
-
-
-def _portal_data(env: Mapping[str, str], account: str, config: SearchConfig | None) -> PortalData:
-    """The account's database as the portal reads it (design doc 0013).
+def _existing_store(settings: Settings) -> Store | None:
+    """The account's database, or None before its first search run or save.
 
     An empty SQLite database is not created here: the account's first search run
     makes it, and until then the pages say no search has run. Babu's data from
     before accounts is adopted the same way a run adopts it (design doc 0016).
     """
-    settings = Settings.from_env(dict(env), account=account)
     database = sqlite_path(settings.database_url)
     legacy = sqlite_path(settings.legacy_database_url or "")
     if database is not None and not database.is_file():
         if legacy is None or not legacy.is_file():
-            return StoreData(None, config)
-        return StoreData(open_store(settings), config)
-    return StoreData(Store(settings.database_url), config)
+            return None
+        return open_store(settings)
+    return Store(settings.database_url)
+
+
+def _search_config(env: Mapping[str, str], account: str) -> SearchConfig | None:
+    """The search configuration Settings shows an account; None without the file.
+
+    The account's private companies (ADR-0009, design doc 0016) and the settings
+    it saved (design doc 0017) are included. If the companies can't be read, the
+    page still opens without them; the daily run reports the problem.
+    """
+    settings = Settings.from_env(dict(env), account=account)
+    if not settings.config_path.is_file():
+        return None
+    store = _existing_store(settings) if "PEJIP_DATABASE_URL" in env else None
+    try:
+        config, _ = load_search_config(settings, make_ssm_client, store)
+    except (OSError, ValidationError, yaml.YAMLError, ClientError, BotoCoreError):
+        log.warning("company_list_unreadable")
+        config, _ = apply_saved(load_config(settings.config_path), store)
+    return config
+
+
+def _portal_data(env: Mapping[str, str], account: str, config: SearchConfig | None) -> PortalData:
+    """The account's database as the portal reads it (design doc 0013)."""
+    return StoreData(_existing_store(Settings.from_env(dict(env), account=account)), config)
+
+
+class AccountSettings:
+    """Saves the search settings each account edits on the portal (design doc 0017).
+
+    ``forget`` drops what the app has cached for the account, so the next page
+    shows the saved values; the scheduled runs read them fresh each time.
+    """
+
+    def __init__(self, env: Mapping[str, str], forget: Callable[[str], None]) -> None:
+        self._env = env
+        self._forget = forget
+
+    def saved_at(self, account: str) -> datetime | None:
+        store = _existing_store(Settings.from_env(dict(self._env), account=account))
+        saved = store.saved_search_settings() if store is not None else None
+        return saved[1] if saved is not None else None
+
+    def save(self, account: str, saved: SavedSettings | None) -> None:
+        # Saving before the first search run creates the account's database.
+        store = open_store(Settings.from_env(dict(self._env), account=account))
+        store.save_search_settings(saved.model_dump() if saved else None, datetime.now(UTC))
+        log.info("search_settings_saved", extra={"reset": saved is None})
+        self._forget(account)
 
 
 def create_app(
@@ -188,10 +219,20 @@ def create_app(
             stored[account] = _portal_data(environment, account, config_for(account))
         return stored[account]
 
+    def forget(account: str) -> None:
+        configs.pop(account, None)
+        stored.pop(account, None)
+
     if data is not None:
         app.include_router(portal.router(data, config_for=config_for))
     elif "PEJIP_DATABASE_URL" in environment:
-        app.include_router(portal.router(config_for=config_for, data_for=data_for))
+        app.include_router(
+            portal.router(
+                config_for=config_for,
+                data_for=data_for,
+                search_settings=AccountSettings(environment, forget),
+            )
+        )
     else:
         app.include_router(portal.router(SampleData(), config_for=config_for))
     app.include_router(ranking_router(ranking_service))

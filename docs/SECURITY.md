@@ -52,6 +52,10 @@ recommendations and Babu's decisions about roles from the portal as personal dat
   role's recommendation, so they follow its 90-day retention, export and deletion.
 - **Retention:** each run deletes jobs, analyses, recommendations, decisions, AI usage
   and run records older than 90 days (`pejip purge` does the same on demand).
+  The search settings saved on the Settings page (title words and locations,
+  not career data) are kept until changed, like the company list, so they never
+  silently revert ([design 0017](design/0017-editable-settings.md)); export and
+  delete-all include them.
 - **Export and deletion:** `pejip export <file>` writes every stored row as JSON;
   `pejip delete-all --yes` deletes them all, with the account's digests. Both act
   on one account (`--account <id>`, default Babu's). Removing an account entirely,

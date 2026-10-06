@@ -9,6 +9,7 @@ the pages carry no inline script or style, so the strict content security policy
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from urllib.parse import quote
@@ -52,8 +53,10 @@ from pejip.portal.views import (
     latest_signal,
     rank,
     set_aside,
+    to_pacific,
     when,
 )
+from pejip.search_settings import PREFERENCES, TERM_FIELDS, SettingsForm
 
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600"
@@ -1107,8 +1110,14 @@ ADAPTER_LABEL = {
     "lever": "Public Lever job board",
     "ashby": "Public Ashby job board",
 }
-MONTHLY_AI_CAP = "$100"
 ANY_PLACE = "Any remote role in the US"
+# The weekday schedule set in infra (variables.tf run_schedule and digest_schedule,
+# design docs 0012 and 0015). Keep these in step with it.
+SEARCH_TIMES = "Weekdays at 5 AM, 10 AM and 3 PM Pacific"
+RANKING_TIMES = "The Claude Code routine on your plan, about 20 to 80 minutes after each search"
+DIGEST_TIMES = (
+    "As soon as ranking finishes; otherwise at 7 AM, 12 PM and 5 PM Pacific, unranked roles noted"
+)
 
 
 def _chips(values: Iterable[str]) -> str:
@@ -1160,9 +1169,11 @@ def _sources(config: SearchConfig, address: str) -> str:
         else ""
     )
     alert_html = (
-        f'<h3>Job-alert emails</h3><p class="note">Sign up for each company\'s job alerts with '
-        f"<strong>{e(address)}</strong>. PEJIP reads only links to the careers pages "
-        f'listed here.</p><div class="list">{alerts}</div>'
+        '<h3>Job-alert emails</h3><p class="note">Sign up for each site\'s job alerts with '
+        "your own email address and have your mailbox forward them automatically to "
+        f"<strong>{e(address)}</strong>, or sign up with that address directly. PEJIP "
+        "reads only links to the careers pages and job boards listed here; the rest of "
+        f'your forwarded mail is deleted unread.</p><div class="list">{alerts}</div>'
         if alerts
         else '<p class="note">Job-alert emails are not set up.</p>'
     )
@@ -1175,12 +1186,25 @@ def _sources(config: SearchConfig, address: str) -> str:
     )
 
 
+PRIORITY_LABEL = {
+    "FIT": "Fit",
+    "FRESHNESS": "Freshness",
+    "COMPENSATION": "Pay against your profile's minimum",
+    "LOCATION": "Location preference",
+}
+
+
 def _ranking(config: SearchConfig) -> str:
     s = config.scoring
     weights = "".join(
         f'<div class="kv"><span class="lbl">{e(COMPONENT_LABEL.get(k, words(k)))}</span>'
         f'<span class="v">{v:.0f}%</span></div>'
         for k, v in s.fit_weights.items()
+    )
+    priority = "".join(
+        f'<div class="kv"><span class="lbl">{e(PRIORITY_LABEL.get(k, words(k)))}</span>'
+        f'<span class="v">{v:.0f}%</span></div>'
+        for k, v in s.priority_weights.items()
     )
     bands = "".join(
         f'<div class="kv"><span class="lbl">{e(words(band))}</span>'
@@ -1189,19 +1213,165 @@ def _ranking(config: SearchConfig) -> str:
         + "</span></div>"
         for band, threshold in s.priority_thresholds.items()
     )
+    boost = s.network_priority_boost
+    network = (
+        '<h3>Your network</h3><p class="note">'
+        + " ".join(
+            f"{label} adds {boost[key]:.0f} Priority points."
+            for key, label in (
+                ("MATURED", "A matured connection at the company"),
+                ("CONNECTED", "Otherwise, any first-degree connection there"),
+            )
+            if key in boost
+        )
+        + f" Only for roles with Fit {s.network_min_fit:.0f} or more; having no "
+        "connections never lowers a role.</p>"
+        if boost
+        else ""
+    )
     return (
-        f'<p class="note">Scoring version {e(s.version)}.</p>'
+        f'<p class="note">Scoring version {e(s.version)}. Roles are analysed by the ranking '
+        "routine on your Claude plan, then scored here.</p>"
         f'<h3>What makes up Fit</h3><div class="summary">{weights}</div>'
+        f'<h3>What makes up Priority</h3><div class="summary">{priority}</div>'
         f'<h3>Priority bands</h3><div class="summary">{bands}</div>'
-        '<p class="note">Fit measures qualification only. Freshness, pay and location '
-        "affect priority, never fit.</p>"
+        f'<p class="note">Immediate also needs a role posted in the last '
+        f"{s.immediate_max_age_days} days. A low-confidence analysis is held to Medium. "
+        "A role paying below a minimum your profile marks as firm is excluded. A role "
+        "whose only shortfall is a level below your target, and which would otherwise have "
+        f"Fit {s.strong_match_fit:.0f} or more, is flagged in the digest as your call.</p>"
+        + network
+        + '<p class="note">Fit measures qualification only. Freshness, pay, location and '
+        "your network affect priority, never fit.</p>"
     )
 
 
-def settings_body(config: SearchConfig | None, address: str = ALERT_ADDRESS) -> str:
-    """What PEJIP searches for, when, and how it ranks: read-only for now (12.35).
+@dataclass(frozen=True)
+class SettingsEditing:
+    """The Settings form's state: its values, when it was last saved, and any problem."""
 
-    ``address`` is the signed-in account's own job-alert address.
+    form: SettingsForm
+    saved_at: datetime | None = None
+    error: str = ""
+    just_saved: bool = False
+
+
+def _textarea(name: str, label: str, value: str, hint: str) -> str:
+    return (
+        f'<div class="field"><label for="{name}">{e(label)}</label>'
+        f'<p class="hint" id="{name}-hint">{e(hint)}</p>'
+        f'<textarea id="{name}" name="{name}" rows="6" aria-describedby="{name}-hint">'
+        f"{e(value)}</textarea></div>"
+    )
+
+
+# How discovery uses the title words (discovery.screen, ADR-0011): a title is one
+# signal of level, not a gate.
+TITLE_RULE = (
+    '<p class="note">A role is considered when its title has a role word. It goes on to '
+    "ranking when its title reads as senior, when it came from one of your job alerts, or "
+    "when its posted pay reaches your profile's minimum. Posted pay below your minimum "
+    "skips it whatever the title. A careers-site role with an unclear title and no posted "
+    "pay is held back, and the digest counts those.</p>"
+)
+TERM_HINTS = {
+    "role_terms": "Such as operations or platform.",
+    "seniority_patterns": "Such as vice president or head of.",
+    "excluded_title_patterns": (
+        "A title with one of these is not senior, even from a job alert; "
+        "posted pay at or above your minimum can still keep it."
+    ),
+}
+
+
+def _roles_form(form: SettingsForm) -> str:
+    return TITLE_RULE + "".join(
+        _textarea(name, label, form.terms[name], f"One per line. {TERM_HINTS[name]}")
+        for name, label in TERM_FIELDS.items()
+    )
+
+
+def _locations_form(form: SettingsForm) -> str:
+    rows = ""
+    for key, places in form.places.items():
+        label = SCOPE_LABEL.get(key, words(key))
+        chosen = form.preferences.get(key, "")
+        options = "".join(
+            f'<option value="{p}"{" selected" if p == chosen else ""}>{e(words(p))}</option>'
+            for p in PREFERENCES
+        )
+        hint = "One per line." + (
+            " Remote roles in the US count here too." if key == "US_REMOTE" else ""
+        )
+        rows += (
+            f'<fieldset class="scope"><legend>{e(label)}</legend>'
+            f'<div class="field"><label for="preference.{key}">Preference</label>'
+            f'<select id="preference.{key}" name="preference.{key}">{options}</select></div>'
+            + _textarea(f"places.{key}", "Places", places, hint)
+            + "</fieldset>"
+        )
+    checked = " checked" if form.hard_filter else ""
+    return (
+        rows + '<div class="check"><input type="checkbox" id="hard_filter" name="hard_filter"'
+        f'{checked}><label for="hard_filter">Hide roles outside every location</label></div>'
+    )
+
+
+def _saved_line(editing: SettingsEditing) -> str:
+    if editing.error:
+        return f'<p class="formerr" role="alert">Not saved. {e(editing.error)}</p>'
+    if editing.just_saved:
+        state = (
+            "Saved. The next search, ranking and digest use these settings."
+            if editing.saved_at
+            else "Back to the default settings. The next search uses them."
+        )
+        return f'<p class="saved" role="status">{state}</p>'
+    if editing.saved_at:
+        local = to_pacific(editing.saved_at)
+        hour = f"{local:%I}".lstrip("0")
+        return (
+            f'<p class="note">Your settings, saved {local:%b} {local.day}, {hour}:'
+            f"{local:%M %p %Z}. Changes to the default settings no longer reach these "
+            "fields until you go back to the defaults.</p>"
+        )
+    return '<p class="note">Using the default settings.</p>'
+
+
+def _editable(editing: SettingsEditing) -> str:
+    """The Roles and Locations cards as one form, saved for the account's next runs."""
+    reset = (
+        '<form method="post" action="/settings" class="reset">'
+        '<input type="hidden" name="action" value="reset">'
+        '<button class="btn" type="submit">Go back to the defaults</button></form>'
+        if editing.saved_at
+        else ""
+    )
+    rule = (
+        "Only the fields below can be changed here. Companies come from your encrypted "
+        "company list, and ranking weights change only through a reviewed change that "
+        "passes the ranking test set."
+    )
+    return (
+        _saved_line(editing)
+        + f'<form method="post" action="/settings" id="edit"><p class="note">{rule}</p>'
+        + _settings_card("Roles and titles", "roles", _roles_form(editing.form))
+        + _settings_card("Locations", "locations", _locations_form(editing.form))
+        + '<div class="row"><button class="btn primary" type="submit">Save settings</button>'
+        "</div></form>" + reset
+    )
+
+
+def settings_body(
+    config: SearchConfig | None,
+    address: str = ALERT_ADDRESS,
+    editing: SettingsEditing | None = None,
+) -> str:
+    """What PEJIP searches for, when, and how it ranks (12.35).
+
+    ``address`` is the signed-in account's own job-alert address. With ``editing``
+    the roles and locations are a form the account saves (design doc 0017);
+    without it they are read-only.
     """
     if config is None:
         return _empty("The search configuration is not available on this server.")
@@ -1217,37 +1387,45 @@ def settings_body(config: SearchConfig | None, address: str = ALERT_ADDRESS) -> 
             ("privacy", "Privacy and data"),
         )
     )
-    roles = (
-        "<h3>Seniority a title needs</h3>"
-        + _chips(t.seniority_patterns)
-        + "<h3>Role words a title needs</h3>"
-        + _chips(t.role_terms)
-        + "<h3>Titles always left out</h3>"
-        + _chips(t.excluded_title_patterns)
+    roles = TITLE_RULE + "".join(
+        f"<h3>{e(label)}</h3>" + _chips(getattr(t, name)) for name, label in TERM_FIELDS.items()
     )
     schedule = (
         '<div class="summary">'
-        + _kv("Search", "Weekdays; digests at 7 AM, 12 PM and 5 PM Pacific")
-        + _kv("Roles analysed per search", str(config.ai.max_jobs_per_run))
-        + _kv("AI spending cap", f"{MONTHLY_AI_CAP} a month")
+        + _kv("Search", SEARCH_TIMES)
+        + _kv("Ranking", RANKING_TIMES)
+        + _kv("Digest email", DIGEST_TIMES)
+        + _kv("Roles ranked per search, at most", str(config.ai.max_jobs_per_run))
         + "</div>"
     )
     privacy = (
         '<div class="summary">'
-        + _kv("Kept", f"{config.retention_days} days, then deleted")
+        + _kv(
+            "Kept",
+            f"Roles, rankings and decisions {config.retention_days} days, then deleted; "
+            "saved search settings until you change them",
+        )
         + _kv("Storage and transfer", "Encrypted at rest and in transit")
         + _kv(
-            "Shared with", "Anthropic (Claude), only the job and profile text each analysis needs"
+            "Shared with",
+            "Anthropic (Claude, through the ranking routine on your plan), only the job "
+            "text and the parts of your profile ranking needs",
         )
+        + _kv("Digest email", "The full digest; copies in your mailbox are yours to keep")
         + _kv("Logs", "No personal data")
         + "</div>"
     )
-    return (
-        '<p class="note">These settings are read-only here for now; they change through '
+    search = (
+        _editable(editing)
+        if editing is not None
+        else '<p class="note">These settings are read-only here; they change through '
         "the search configuration file.</p>"
-        f'<nav class="views" aria-label="Settings sections">{jump}</nav>'
         + _settings_card("Roles and titles", "roles", roles)
         + _settings_card("Locations", "locations", _locations(config))
+    )
+    return (
+        f'<nav class="views" aria-label="Settings sections">{jump}</nav>'
+        + search
         + _settings_card("Search schedule", "schedule", schedule)
         + _settings_card("Sources", "sources", _sources(config, address))
         + _settings_card("Ranking", "ranking", _ranking(config))

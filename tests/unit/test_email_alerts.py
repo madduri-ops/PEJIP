@@ -381,3 +381,12 @@ def test_an_email_in_an_unknown_charset_yields_nothing() -> None:
     )
     alert = parse_alert(raw, COMPANIES)
     assert (alert.postings, alert.confirm_links) == ([], [])
+
+
+def test_a_company_alert_forwarded_from_a_personal_mailbox_is_read_like_a_direct_one() -> None:
+    # Babu signs up with his own address and his mailbox forwards everything, so the
+    # sender is his, not the company's: company alerts are read whoever sent them.
+    direct = parse_alert(email(HTML_ALERT), COMPANIES)
+    forwarded = parse_alert(email(HTML_ALERT, sender="babu@mail.test"), COMPANIES)
+    assert [p.url for p in forwarded.postings] == [p.url for p in direct.postings]
+    assert forwarded.postings

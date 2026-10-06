@@ -35,6 +35,7 @@ from pejip.profile import (
 from pejip.retention import delete_files, purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
+from pejip.store import Store
 
 log = logging.getLogger("pejip")
 
@@ -49,8 +50,9 @@ def _load_profile(settings: Settings) -> CareerProfile | None:
     return load_profile(settings.profile_path)
 
 
-def _load_config(settings: Settings) -> tuple[SearchConfig, str | None]:
-    return load_search_config(settings, make_ssm_client)
+def _load_config(settings: Settings, store: Store | None = None) -> tuple[SearchConfig, str | None]:
+    """The account's search setup, with the settings it saved on the portal in ``store``."""
+    return load_search_config(settings, make_ssm_client, store)
 
 
 ROUTINE_PENDING = "the ranking routine has not analysed it yet"
@@ -83,9 +85,9 @@ def _ai_client(settings: Settings, config: SearchConfig, ledger: SqliteLedger) -
 
 
 def _cmd_run(settings: Settings) -> int:
-    config, companies_note = _load_config(settings)
-    profile = _load_profile(settings)
     store = open_store(settings)
+    config, companies_note = _load_config(settings, store)
+    profile = _load_profile(settings)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
     network, network_problem = _network(config, settings)
@@ -124,8 +126,8 @@ def _cmd_run(settings: Settings) -> int:
 
 def _cmd_digest(settings: Settings) -> int:
     """Score the latest run's roles with the analyses stored since, and email the digest."""
-    config, companies_note = _load_config(settings)
     store = open_store(settings)
+    config, companies_note = _load_config(settings, store)
     run = store.latest_run()
     if run is None:
         log.error("digest_without_run")

@@ -153,3 +153,16 @@ details.ev[open] summary .more{color:#4A5466}
 /* Your decision (spec 10.2): one button per choice, the current one selected. */
 .decide{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
 .decide form{margin:0}
+
+/* Settings form (design doc 0017). */
+textarea{font:inherit;font-size:14px;width:100%;padding:10px 12px;border:1px solid #C5CBD5;border-radius:8px;background:#fff;color:#18202E;resize:vertical}
+.field{margin:0 0 16px}
+.hint{font-size:13px;color:#5A6475;margin:0 0 6px}
+.scope{border:1px solid #E1E4EA;border-radius:8px;padding:12px 16px;margin:0 0 16px}
+.scope legend{font-weight:600;padding:0 6px}
+.check{display:flex;gap:10px;align-items:center}
+.check input{min-height:20px;width:20px;height:20px}
+.check label{margin:0}
+.saved{background:#EEF4F5;border:1px solid #B7CDD0;color:#0E5A64;border-radius:8px;padding:10px 14px}
+.formerr{background:#FDF0EE;border:1px solid #E7B7AE;color:#8A2A1A;border-radius:8px;padding:10px 14px}
+.reset{margin:12px 0 0}

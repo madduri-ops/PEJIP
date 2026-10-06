@@ -100,6 +100,18 @@ decisions = Table(
     Column("created_at", DateTime(timezone=True), nullable=False),
 )
 
+# The search settings an account saved on the portal (design doc 0017): one row,
+# replaced on each save and removed by a reset. They are kept until changed, not
+# purged after 90 days, so a quiet quarter never silently undoes them; export and
+# delete-all cover them like every other table.
+search_settings = Table(
+    "search_settings",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("settings", JSON, nullable=False),
+    Column("saved_at", DateTime(timezone=True), nullable=False),
+)
+
 runs = Table(
     "runs",
     metadata,
@@ -275,6 +287,24 @@ class Store:
             ).all()
         current: dict[int, str | None] = dict(rows)  # in order, so the latest wins
         return {job_id: d for job_id, d in current.items() if d is not None}
+
+    # Search settings --------------------------------------------------------
+
+    def save_search_settings(self, settings: dict[str, Any] | None, now: datetime) -> None:
+        """Keep ``settings`` as the account's search settings; None goes back to the defaults."""
+        with self.engine.begin() as conn:
+            conn.execute(delete(search_settings))
+            if settings is not None:
+                conn.execute(insert(search_settings).values(settings=settings, saved_at=now))
+
+    def saved_search_settings(self) -> tuple[dict[str, Any], datetime] | None:
+        """The saved search settings and when they were saved, or None."""
+        with self.engine.connect() as conn:
+            row = conn.execute(select(search_settings)).mappings().first()
+        if row is None:
+            return None
+        saved_at: datetime = row["saved_at"]
+        return row["settings"], saved_at.replace(tzinfo=saved_at.tzinfo or UTC)
 
     def needs_analysis(self, job: dict[str, Any]) -> bool:
         """True when the posting has no successful analysis of its current text."""

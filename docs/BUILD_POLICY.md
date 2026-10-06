@@ -4,7 +4,7 @@ This is the binding CI/CD policy for PEJIP. Every change, by a person or by Clau
 must comply with it. When the policy changes, update this file in the same change
 (see [Keeping this policy current](#keeping-this-policy-current)).
 
-_Owner: Babu (@madduri-ops). Last updated: 2026-10-05._
+_Owner: Babu (@madduri-ops). Last updated: 2026-10-06._
 
 ## 1. Code quality and coverage
 
@@ -117,6 +117,12 @@ dashboard. The full decision is [ADR-0001](adr/0001-aws-hosting-isolated-from-kr
   design docs in the same PR. A new feature adds its design doc in the PR that
   introduces it. The PR template carries a docs checkbox, and stale or missing docs
   block the merge the same way a failing gate does.
+- **The portal's Settings page stays true:** Settings tells Babu what PEJIP searches
+  for, when it runs, how it ranks and what it keeps. A pull request that changes any
+  of those (search words or locations, sources or alert set-up, the schedule, the
+  ranker, scoring, retention, or what is shared) updates `settings_body` in
+  `src/pejip/portal/render.py` and its tests in the same PR. The PR template
+  carries a checkbox for it.
 - Architecture decision records live in `docs/adr/`. A significant decision gets an
   ADR, and the architecture and design docs are updated to reflect it.
 - Security posture and reporting live in `docs/SECURITY.md`.
