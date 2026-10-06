@@ -1162,9 +1162,11 @@ def _sources(config: SearchConfig, address: str) -> str:
         else ""
     )
     alert_html = (
-        f'<h3>Job-alert emails</h3><p class="note">Sign up for each company\'s job alerts with '
-        f"<strong>{e(address)}</strong>. PEJIP reads only links to the careers pages "
-        f'listed here.</p><div class="list">{alerts}</div>'
+        '<h3>Job-alert emails</h3><p class="note">Sign up for each site\'s job alerts with '
+        "your own email address and have your mailbox forward them automatically to "
+        f"<strong>{e(address)}</strong>, or sign up with that address directly. PEJIP "
+        "reads only links to the careers pages and job boards listed here; the rest of "
+        f'your forwarded mail is deleted unread.</p><div class="list">{alerts}</div>'
         if alerts
         else '<p class="note">Job-alert emails are not set up.</p>'
     )
