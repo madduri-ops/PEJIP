@@ -9,6 +9,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from importlib.resources import files
 from typing import Annotated
+from urllib.parse import parse_qs, urlsplit
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -17,7 +18,7 @@ from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
 from pejip.auth import session_cookie_names
 from pejip.config import SearchConfig
 from pejip.portal import render
-from pejip.portal.data import PortalData
+from pejip.portal.data import DECISIONS, Decisions, PortalData
 from pejip.portal.views import (
     MAX_COMPANY_FILTER,
     MAX_PEOPLE_QUERY,
@@ -30,6 +31,21 @@ from pejip.portal.views import (
     referral_paths,
     watchlist,
 )
+
+# A decision form sends one short field; anything bigger is not from the page.
+MAX_FORM_BYTES = 256
+
+
+def same_origin(request: Request) -> bool:
+    """True when the form was sent by a page on this site (the CSRF check).
+
+    Browsers send Origin with every form post. The load balancer keeps the Host
+    header, so a post from another site, which still carries the sign-in cookie,
+    has an Origin that does not match it.
+    """
+    origin = request.headers.get("origin")
+    return origin is not None and urlsplit(origin).netloc == request.headers.get("host")
+
 
 STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encoding="utf-8")
 
@@ -170,10 +186,13 @@ def router(
                 now_fn(),
                 company=next((c for c in data.companies() if c.name == found.company), None),
                 open_roles=sum(1 for o in items if o.company == found.company),
+                decide=isinstance(data, Decisions) and not data.is_sample,
             ),
             crumb='<div class="crumb"><a href="/opportunities">Opportunities</a></div>',
         )
         return HTMLResponse(html)
+
+    _add_decision_route(routes, account_data)
 
     @routes.get("/connections")
     def connections(
@@ -282,3 +301,33 @@ def _add_session_routes(routes: APIRouter) -> None:
     def stylesheet() -> Response:
         """The portal's styles."""
         return Response(STYLESHEET, media_type="text/css")
+
+
+def _add_decision_route(routes: APIRouter, account_data: Callable[[Request], PortalData]) -> None:
+    """The form the role page's decision buttons post to."""
+
+    @routes.post(
+        "/opportunities/{opportunity_id}/decision",
+        response_class=Response,
+        responses={303: {"description": "Back to the role"}, 403: {}, 404: {}, 422: {}},
+    )
+    async def decide(
+        request: Request,
+        data: Annotated[PortalData, Depends(account_data)],
+        opportunity_id: Annotated[int, Path(ge=1)],
+    ) -> Response:
+        """Record Babu's decision about a role (spec 10.2), then show the role again."""
+        if not same_origin(request):
+            return Response("Forms are only accepted from this site.", status_code=403)
+        body = await request.body()
+        fields = (
+            parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True)
+            if len(body) <= MAX_FORM_BYTES
+            else {}
+        )
+        choice = fields.get("decision", [None])[0]  # "" clears the decision
+        if choice is None or choice not in {*DECISIONS, ""}:
+            return Response("Not a decision this page offers.", status_code=422)
+        if not isinstance(data, Decisions) or not data.decide(opportunity_id, choice or None):
+            return Response("Opportunity not found.", status_code=404)
+        return RedirectResponse(f"/opportunities/{opportunity_id}#decision", status_code=303)

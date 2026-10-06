@@ -187,15 +187,28 @@ class StoreData:
         for run in reversed(self._runs()):  # oldest first, so the newest run wins
             if run["started_at"] >= now - ACTIVE_FOR:
                 discovery.update({int(j): d for j, d in run["summary"].get("seen", [])})
+        decided = self._store.latest_decisions()
         found = []
         for job_id, how in discovery.items():
             job = self._store.find_job(job_id)
             if job is not None:
-                found.append(self._opportunity(job, how, self._store.latest_recommendation(job_id)))
+                rec = self._store.latest_recommendation(job_id)
+                found.append(self._opportunity(job, how, rec, decided.get(job_id)))
         return found
 
+    def decide(self, opportunity_id: int, decision: str | None) -> bool:
+        """Record Babu's decision; False when the account has no such role."""
+        if self._store is None or self._store.find_job(opportunity_id) is None:
+            return False
+        self._store.add_decision(opportunity_id, decision, self._clock())
+        return True
+
     def _opportunity(
-        self, job: dict[str, Any], discovery: str, rec: dict[str, Any] | None
+        self,
+        job: dict[str, Any],
+        discovery: str,
+        rec: dict[str, Any] | None,
+        decision: str | None,
     ) -> Opportunity:
         detail = rec["detail"] if rec else {}
         explanation = detail.get("explanation", {})
@@ -248,6 +261,8 @@ class StoreData:
             requisition=job["source_job_id"],
             last_verified_at=job["last_seen_at"],
             history=tuple(history),
+            decision=decision,
+            watched=decision == "WATCH",
         )
 
     def companies(self) -> list[Company]:

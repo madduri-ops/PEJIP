@@ -149,3 +149,7 @@ details.ev[open] summary .more{color:#4A5466}
 .netli{padding-left:0;padding-right:0}
 .netli .chip{margin-left:auto}
 .list.bare{border:0}
+
+/* Your decision (spec 10.2): one button per choice, the current one selected. */
+.decide{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.decide form{margin:0}

@@ -20,16 +20,16 @@ sign-in, reading each signed-in account's own database through a data interface
 
 Out of scope for now:
 
-- Feedback buttons (Interested, Watch, Not interested, Already applied), the detail
-  page's Decide actions and "This explanation is wrong", and "Search now": they need
-  storage and a run trigger. The pages leave them out rather than
-  show buttons that do nothing.
+- Reason codes and comments on decisions (spec 10.3), Great match and Archive,
+  watching a company, "This explanation is wrong", and "Search now": they need more
+  storage and a run trigger. The pages leave them out rather than show buttons that
+  do nothing.
 - On Connections, uploading an export, answering "Your call" titles and unresolved
   employers on the page, relationship strength entry, the referral goal tracker and
   import history: they need storage. Imports and decisions come from the files
   `pejip run` reads ([0014](0014-connection-matching.md)) until then.
-- The Already applied and Archived views and the role family and job status filters
-  from the Opportunities mock: they need stored feedback and job status.
+- The Archived view and the role family and job status filters from the
+  Opportunities mock: they need archiving and job status.
 - Editing settings, and the Settings sections that need stored data (career profile,
   compensation, notifications, LinkedIn import, learned preferences): Settings is a
   read-only view of `config/search.yaml` until settings are stored.
@@ -82,6 +82,7 @@ flowchart LR
 | `GET /connections` | The last LinkedIn import as a snapshot (date, counts, open roles with a matured connection), who Babu knows for each role with connections and each urgent role without (matured, your call, how many below the role's level), employer names waiting for a decision, and every imported connection with search (`q`), matched company (`company`, or `unmatched`) and `matured=1` |
 | `GET /settings` | The real search configuration, read-only: seniority, role words and excluded titles; locations and whether they are a hard filter; schedule and AI limits; careers-site boards and job-alert companies with PEJIP's alert address; Fit weights and priority bands; retention and sharing |
 | `GET /search-health` | Latest run, failed sources with their impact and last success (no raw errors, spec 12.31), every source in the latest run, recent run history |
+| `POST /opportunities/{opportunity_id}/decision` | Records Babu's decision about the role (form field `decision`: `INTERESTED`, `WATCH`, `NOT_INTERESTED`, `ALREADY_APPLIED`, or empty to clear) and answers 303 back to the role; 403 without a same-site `Origin`, 422 for any other value, 404 for an unknown role or read-only data |
 | `GET /portal.css` | Styles |
 
 All nine require sign-in like every route except `/healthz`. The sidebar's Sign out
@@ -117,6 +118,27 @@ current match, low relevance). Signals carry their source and date (spec 12.42);
 target companies come from the account's search setup (`config/search.yaml` plus
 its private company list), and signals from the company-intelligence source when it
 exists.
+
+### Decisions (spec 10.2)
+
+When the data source also records decisions (`pejip.portal.data.Decisions`, which
+`StoreData` is and the sample data is not), the role page shows a **Your decision**
+card: Interested, Watch, Not interested and Already applied, the current choice
+selected, plus Clear. Each button is a one-field form posting to
+`/opportunities/{id}/decision`, so no script is needed.
+
+- **Where it is kept:** a `decisions` table in the account's database. Every click is
+  a row with the recommendation, Fit and Priority Babu saw (spec 10.4); the latest
+  row per job is current, and an empty decision clears it. Decisions never change
+  Fit or Priority (spec 10.10); later preference learning reads them.
+- **What it changes on the pages:** Watch makes the role watched (the Watched view and
+  Watchlist). Not interested and Already applied take the role off Home and out of
+  every view except All active and, for Already applied, its own view; Interested
+  has its own view. Cards show the decision as a chip.
+- **Forgery:** the sign-in cookie rides along on a post from any site, so the route
+  accepts a post only when its `Origin` header matches the request's `Host`
+  (browsers always send `Origin` on form posts; the load balancer keeps `Host`),
+  and only a body under 256 bytes naming a known decision.
 
 ### Reading the database (`pejip.portal.stored.StoreData`)
 

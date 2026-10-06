@@ -15,6 +15,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - Job-alert emails from Ladders, Indeed, Glassdoor, Built In and Wellfound
   become roles, the same way LinkedIn alerts do. Babu sets up each site's alert
   with his Yahoo address.
+- Decisions on each role (design doc 0013): Interested, Watch, Not interested and
+  Already applied buttons on the role page, saved with the score you saw. Watched
+  roles show in Watched and the Watchlist; Not interested and Already applied roles
+  leave Home and the lists but stay under All active, with new Interested and
+  Already applied views.
 - Ashby job boards: a company list can name `adapter: ashby` boards (for
   example OpenAI), read from Ashby's public job posting API with the same rate
   limit and `robots.txt` rules as Greenhouse and Lever.

@@ -396,3 +396,41 @@ def test_portal_adopts_babus_data_from_before_accounts(signer: AlbSigner, tmp_pa
 
     assert "VP Legacy Role" in page.text
     assert (tmp_path / "accounts" / ACCOUNT_ID / "pejip.db").is_file()
+
+
+def test_a_decision_is_saved_in_the_accounts_database(signer: AlbSigner, tmp_path: Path) -> None:
+    database = tmp_path / "pejip.db"
+    store = Store(f"sqlite:///{database}")
+    job = store.upsert_job(
+        Posting("greenhouse", "b:1", "Co", "VP Ops", "Oakland, CA", "Lead.", "https://e.com/1"),
+        datetime.now(UTC),
+    )
+    store.start_run("r", datetime.now(UTC))
+    store.finish_run(
+        "r", "OK", {"sources": [], "seen": [[job.job_id, "NEW_POSTING"]]}, datetime.now(UTC)
+    )
+    with key_server(signer) as key_url:
+        app = api.create_app(
+            env={**auth_env(key_url), "PEJIP_DATABASE_URL": f"sqlite:///{database}"}
+        )
+        token = signer.token(ALLOWED_EMAIL)
+
+        async def post() -> httpx.Response:
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="https://test") as client:
+                return await client.post(
+                    f"/opportunities/{job.job_id}/decision",
+                    content="decision=ALREADY_APPLIED",
+                    headers={
+                        OIDC_DATA_HEADER: token,
+                        "origin": "https://test",
+                        "content-type": "application/x-www-form-urlencoded",
+                    },
+                )
+
+        saved = asyncio.run(post())
+        page = _get(app, f"/opportunities/{job.job_id}", token).text
+
+    assert saved.status_code == 303
+    assert store.latest_decisions() == {job.job_id: "ALREADY_APPLIED"}
+    assert "Current: <strong>Already applied</strong>" in page
