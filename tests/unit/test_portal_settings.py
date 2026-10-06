@@ -77,7 +77,7 @@ def test_the_page_offers_the_current_settings_as_a_form() -> None:
     html = _call(_app(FakeSettings()), "GET", "/settings").text
 
     assert '<form method="post" action="/settings" id="edit">' in html
-    assert '<label for="seniority_patterns">Seniority a title needs</label>' in html
+    assert '<label for="seniority_patterns">Words that make a title senior</label>' in html
     assert "vice president\nhead of\n" in html
     assert '<option value="PREFERRED" selected>Preferred</option>' in html
     assert "<legend>San Francisco Bay Area</legend>" in html
@@ -181,6 +181,8 @@ def test_the_page_describes_the_current_schedule_ranking_and_privacy() -> None:
     html = _call(_app(None), "GET", "/settings").text
 
     assert "Weekdays at 5 AM, 10 AM and 3 PM Pacific" in html
+    assert "when it came from one of your job alerts" in html
+    assert "<h3>Words that never count as senior</h3>" in html
     assert "As soon as ranking finishes; otherwise at 7 AM, 12 PM and 5 PM Pacific" in html
     assert "AI spending cap" not in html
     assert "Pay against your profile&#x27;s minimum" in html

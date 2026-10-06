@@ -10,9 +10,10 @@ use next, without a code change or a pull request.
 
 ## Scope
 
-In scope, per account: which titles count (seniority words, role words, titles
-always left out) and where roles may be (each location's places and preference,
-and whether roles outside every location are hidden). These are the fields the
+In scope, per account: the title words discovery uses (role words, words that make
+a title senior, words that never count as senior; see ADR-0011, where a title is
+one signal of level rather than a gate) and where roles may be (each location's
+places and preference, and whether roles outside every location are hidden). These are the fields the
 discovery filter and the digest's location priority read.
 
 Out of scope, still read-only on the page:

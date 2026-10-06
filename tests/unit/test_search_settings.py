@@ -73,14 +73,13 @@ def test_only_the_offered_locations_are_read_and_the_box_can_be_cleared() -> Non
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"seniority_patterns": " \n "}, "Seniority a title needs: enter at least one"),
         ({"role_terms": ""}, "Role words a title needs: enter at least one"),
         (
             {"role_terms": "\n".join(f"term{n}" for n in range(MAX_TERMS + 1))},
             f"at most {MAX_TERMS} entries",
         ),
         ({"role_terms": "a" * (MAX_TERM_CHARS + 1)}, "can't be used"),
-        ({"excluded_title_patterns": "<script>"}, "Titles always left out: “<script>”"),
+        ({"excluded_title_patterns": "<script>"}, "Words that never count as senior: “<script>”"),
         ({"places.BAY_AREA": "-oakland"}, "Places for Bay Area"),
         ({"preference.US_REMOTE": "SOMETIMES"}, "Choose a preference for Us Remote"),
     ],
@@ -88,6 +87,11 @@ def test_only_the_offered_locations_are_read_and_the_box_can_be_cleared() -> Non
 def test_bad_values_are_refused_with_the_field_named(changes: dict[str, str], message: str) -> None:
     with pytest.raises(SettingsError, match=message):
         SettingsForm.posted(_fields(**changes), SCOPES).parse()
+
+
+def test_senior_words_may_be_empty_since_alerts_and_pay_also_keep_roles() -> None:
+    saved = SettingsForm.posted(_fields(seniority_patterns=""), SCOPES).parse()
+    assert saved.taxonomy.seniority_patterns == []
 
 
 def test_messages_use_the_pages_names_for_locations() -> None:

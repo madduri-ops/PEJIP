@@ -1263,14 +1263,28 @@ def _textarea(name: str, label: str, value: str, hint: str) -> str:
     )
 
 
+# How discovery uses the title words (discovery.screen, ADR-0011): a title is one
+# signal of level, not a gate.
+TITLE_RULE = (
+    '<p class="note">A role is considered when its title has a role word. It goes on to '
+    "ranking when its title reads as senior, when it came from one of your job alerts, or "
+    "when its posted pay reaches your profile's minimum. Posted pay below your minimum "
+    "skips it whatever the title. A careers-site role with an unclear title and no posted "
+    "pay is held back, and the digest counts those.</p>"
+)
+TERM_HINTS = {
+    "role_terms": "Such as operations or platform.",
+    "seniority_patterns": "Such as vice president or head of.",
+    "excluded_title_patterns": (
+        "A title with one of these is not senior, even from a job alert; "
+        "posted pay at or above your minimum can still keep it."
+    ),
+}
+
+
 def _roles_form(form: SettingsForm) -> str:
-    hints = {
-        "seniority_patterns": "A title needs one of these, such as vice president or head of.",
-        "role_terms": "A title also needs one of these, such as operations or platform.",
-        "excluded_title_patterns": "A title with any of these is never searched.",
-    }
-    return "".join(
-        _textarea(name, label, form.terms[name], f"One per line. {hints[name]}")
+    return TITLE_RULE + "".join(
+        _textarea(name, label, form.terms[name], f"One per line. {TERM_HINTS[name]}")
         for name, label in TERM_FIELDS.items()
     )
 
@@ -1371,13 +1385,8 @@ def settings_body(
             ("privacy", "Privacy and data"),
         )
     )
-    roles = (
-        "<h3>Seniority a title needs</h3>"
-        + _chips(t.seniority_patterns)
-        + "<h3>Role words a title needs</h3>"
-        + _chips(t.role_terms)
-        + "<h3>Titles always left out</h3>"
-        + _chips(t.excluded_title_patterns)
+    roles = TITLE_RULE + "".join(
+        f"<h3>{e(label)}</h3>" + _chips(getattr(t, name)) for name, label in TERM_FIELDS.items()
     )
     schedule = (
         '<div class="summary">'

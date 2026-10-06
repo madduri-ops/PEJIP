@@ -31,12 +31,12 @@ PREFERENCES: tuple[str, ...] = get_args(Preference)
 
 # The form's text areas, in the order the page shows them.
 TERM_FIELDS = {
-    "seniority_patterns": "Seniority a title needs",
     "role_terms": "Role words a title needs",
-    "excluded_title_patterns": "Titles always left out",
+    "seniority_patterns": "Words that make a title senior",
+    "excluded_title_patterns": "Words that never count as senior",
 }
-# A title must match at least one of each of these, so an empty list finds nothing.
-REQUIRED_FIELDS = ("seniority_patterns", "role_terms")
+# Every considered role's title has a role word, so an empty list finds nothing.
+REQUIRED_FIELDS = ("role_terms",)
 
 
 class SavedSettings(BaseModel):

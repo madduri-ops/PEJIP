@@ -199,7 +199,7 @@ def test_settings_page_reads_the_search_configuration(signer: AlbSigner, tmp_pat
         missing = {**auth_env(key_url), "PEJIP_CONFIG": str(tmp_path / "absent.yaml")}
         absent = _get(api.create_app(env=missing), "/settings", token).text
 
-    assert "Seniority a title needs" in default
+    assert "Role words a title needs" in default
     assert "The search configuration is not available on this server." in absent
 
 
@@ -240,7 +240,7 @@ def test_settings_page_opens_without_a_readable_company_list(
         ]
 
     for page in pages:
-        assert "Seniority a title needs" in page
+        assert "Role words a title needs" in page
         assert "Northwind Robotics" not in page
 
 
