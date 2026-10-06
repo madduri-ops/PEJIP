@@ -302,6 +302,22 @@ def test_sign_out_expires_every_session_shard(signed_in_app: FastAPI, signer: Al
         assert "HttpOnly" in header
 
 
+def test_sign_out_also_answers_the_return_from_google(
+    signed_in_app: FastAPI, signer: AlbSigner
+) -> None:
+    # With an expired session the load balancer signs Babu in again, then sends the
+    # browser back to /signout as a GET.
+    response = _get(signed_in_app, "/signout", signer.token(ALLOWED_EMAIL))
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/signed-out"
+    assert response.headers.get_list("set-cookie")[0].startswith('AWSELBAuthSessionCookie-0=""')
+
+
+def test_pages_allow_forms_to_reach_google_sign_in() -> None:
+    assert "form-action 'self' https://accounts.google.com;" in api.PAGE_CSP
+
+
 def test_sign_out_needs_sign_in(signed_in_app: FastAPI) -> None:
     response = _post(signed_in_app, "/signout", None, {})
 

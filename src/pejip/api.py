@@ -58,9 +58,14 @@ SECURITY_HEADERS = {
 
 # Portal pages: no script at all, styles only from the app and Google Fonts (the
 # IBM Plex typefaces), forms post only back to the app.
+# Forms post only to the app. Google's sign-in page is allowed too because the
+# load balancer answers a form sent with an expired session by redirecting to it,
+# and browsers apply form-action to redirects: without it, Sign out silently does
+# nothing once the session has lapsed.
 PAGE_CSP = (
     "default-src 'none'; style-src 'self' https://fonts.googleapis.com; "
-    "font-src https://fonts.gstatic.com; img-src 'self'; form-action 'self'; "
+    "font-src https://fonts.gstatic.com; img-src 'self'; "
+    "form-action 'self' https://accounts.google.com; "
     "base-uri 'none'; frame-ancestors 'none'"
 )
 

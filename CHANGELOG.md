@@ -172,6 +172,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Fixed
 
+- Sign out no longer silently does nothing when the sign-in session has expired
+  or the signed-out page is not yet public: the page policy lets the form reach
+  Google's sign-in page, and `/signout` also answers the return from it.
 - The Terraform plan check can read the load balancer's WAF association again
   (`wafv2:GetWebACLForResource` is checked against every regional web ACL).
 - Deploy waits for the ECS rollout to finish instead of failing a healthy

@@ -199,7 +199,7 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}`, `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` and `/portal.css`; `POST /signout` and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
+  `/opportunities/{id}`, `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` and `/portal.css`; `POST /signout` (and `GET`, for the return from an expired session) and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
   shows the search setup with Babu's private companies (ADR-0009). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz`, `/signed-out` and `/portal.css` (and the ranking routes, below) requires Google sign-in: `pejip.auth` checks the ALB's signed
