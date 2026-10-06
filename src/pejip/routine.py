@@ -15,7 +15,8 @@ before they rank real roles (policy section 12)::
         --scorer pejip.golden_eval:replay_scorer
 
 In production the session first runs ``fetch`` to get the waiting roles from PEJIP
-and finally ``submit`` to post the answers back. Both read ``PEJIP_RANKING_URL``
+and finally ``submit`` to post the answers back, which also tells PEJIP to email
+the digest now rather than at its scheduled time. Both read ``PEJIP_RANKING_URL``
 (PEJIP's address) and ``PEJIP_RANKING_KEY`` (the routine's key) from the
 environment.
 
@@ -144,6 +145,8 @@ def _cmd_submit(work: Path, model: str) -> int:
         _say(f"Refused role {item['job_id']}: {item['reason']}")
     if missing:
         _say("Not answered (offered again next time): " + ", ".join(missing))
+    _exchange("POST", "done", {})
+    _say("Asked PEJIP to email the digest now.")
     return 0
 
 
@@ -179,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--work", type=Path, required=True, help="working folder")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("fetch", help="get the waiting roles from PEJIP")
-    submit = sub.add_parser("submit", help="post the answers back to PEJIP")
+    submit = sub.add_parser("submit", help="post the answers back and have PEJIP email the digest")
     submit.add_argument("--model", required=True, help="the model the session ran on")
     step = sub.add_parser("next", help="name the next step and write its instructions")
     step.add_argument("--role", help="only this role")

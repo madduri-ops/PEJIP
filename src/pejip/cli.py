@@ -130,6 +130,10 @@ def _cmd_digest(settings: Settings) -> int:
     if run is None:
         log.error("digest_without_run")
         return 1
+    if run["summary"].get("digest_sent_at"):
+        # The routine finished early and its `done` already emailed this run's digest.
+        log.info("digest_already_sent", extra={"run_id": run["id"]})
+        return 0
     profile = _load_profile(settings)
     network, network_problem = _network(config, settings)
     pipeline = Pipeline(
@@ -167,7 +171,21 @@ def _cmd_digest(settings: Settings) -> int:
             "changed roles are unranked. They will be offered to it again tomorrow."
         )
     _deliver(settings, config, digest)
+    store.mark_digest_sent(run["id"], datetime.now(UTC))
     return 1 if digest.status == "FAILED" else 0
+
+
+def digest_now(settings: Settings) -> None:
+    """Email the digest as soon as the ranking routine reports it is done (design doc 0015).
+
+    Runs in the web app, after the routine's request has been answered, so a
+    failure can't reach the routine: it is logged at ERROR instead, which the
+    pejip-app-errors alarm emails, and the scheduled digest still sends it.
+    """
+    try:
+        _cmd_digest(settings)
+    except Exception:  # noqa: BLE001 - logged for the alarm; the scheduled digest retries
+        _log_crash("digest", settings.account)
 
 
 def _deliver(settings: Settings, config: SearchConfig, digest: Digest) -> None:

@@ -606,6 +606,44 @@ def test_digest_of_a_stale_run_says_so_and_alarms(
     assert "No search has finished since" in written.read_text()
 
 
+def test_the_digest_is_sent_once_per_run(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = _finished_run(env, [])
+    sns = FakeSns()
+    monkeypatch.setattr(cli, "make_sns_client", lambda _r: sns)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.setenv("PEJIP_RANKER", "routine")
+    monkeypatch.setenv("PEJIP_DIGEST_TOPIC_ARN", "arn:aws:sns:us-west-2:111111111111:pejip-digest")
+    # The routine's `done` sends it early; the scheduled digest then stays quiet.
+    cli.digest_now(Settings.from_env())
+    run = store.latest_run()
+    assert run is not None
+    assert run["summary"]["digest_sent_at"]
+    assert run["summary"]["notes"] == ["n"]  # the rest of the summary is kept
+    with caplog.at_level("INFO", logger="pejip"):
+        assert cli.main(["digest"]) == 0
+    assert len(sns.calls) == 1
+    assert "digest_already_sent" in [r.getMessage() for r in caplog.records]
+
+
+def test_an_early_digest_that_crashes_is_logged_not_raised(
+    env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = _finished_run(env, [])
+
+    def broken(*_args: Any, **_kwargs: Any) -> None:
+        raise ConnectionError
+
+    monkeypatch.setattr(cli, "_deliver", broken)
+    with caplog.at_level("ERROR", logger="pejip"):
+        cli.digest_now(Settings.from_env())
+    assert "digest_crashed" in [r.getMessage() for r in caplog.records]
+    run = store.latest_run()
+    assert run is not None
+    assert "digest_sent_at" not in run["summary"]  # so the scheduled digest still sends it
+
+
 def test_a_crashing_digest_logs_an_error(
     env: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
