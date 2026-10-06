@@ -25,8 +25,8 @@ unclear, and California postings must state pay.
   title ("if the pay is not in our range, just ignore it", Babu, 2026-10-06), before
   any ranking work is spent on it.
 - A careers-board role with an unclear title and no posted pay is held back. Each
-  run's digest notes count the roles kept on pay, held back for no pay and left
-  out for low pay, so none is dropped silently.
+  run's digest notes count the roles kept on pay and held back for no pay. Roles
+  left out for low pay are not mentioned at all ("don't even bring it to me").
 - Fit and Priority are unchanged: the analysis still infers the role's real level
   from its scope.
 

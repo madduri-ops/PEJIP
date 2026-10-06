@@ -144,7 +144,7 @@ flowchart TB
   one signal of level, not a gate: a role is kept on a senior title, on coming from
   one of Babu's job alerts, or on posted pay at or above the profile minimum.
   Posted pay below the minimum rules a role out whatever its title, and an unclear
-  title with no posted pay is held back; the run counts both in its digest notes.
+  title with no posted pay is held back and counted in the digest notes.
 - **Interfaces:** `screen` (the basis a role was kept or held back on),
   `is_candidate`, `classify_location`, `normalize_title`.
 
