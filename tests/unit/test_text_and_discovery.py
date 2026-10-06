@@ -57,6 +57,11 @@ def test_normalize_title(title: str, expected: str) -> None:
         ("Head of AI Transformation", True),
         ("Assistant Vice President, Operations", False),
         ("Associate Director, Programs", False),
+        # Plain Director counts (a Meta role from a LinkedIn alert was once dropped here).
+        ("Director, Technical Program Management \N{EM DASH} Meta Business AI", True),
+        ("Dir. Engineering Productivity", True),
+        ("Assistant Director, Operations", False),
+        ("Director of Sales", False),
         ("Senior Software Engineer, Platform", False),
         ("VP of Sales", False),
         ("Head of Maintenance", False),

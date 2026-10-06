@@ -195,6 +195,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Fixed
 
+- Director roles (for example a LinkedIn alert's "Director, Technical Program
+  Management" at Meta) are no longer dropped before ranking: plain Director now
+  counts as a senior title. Assistant and Associate Director are still left out.
 - A scheduled search, digest or purge that AWS refuses to start now emails an
   alarm (`pejip-scheduler-failed`) within minutes instead of going unnoticed for
   days. PEJIP's schedules move into their own `pejip-prod` schedule group so the
