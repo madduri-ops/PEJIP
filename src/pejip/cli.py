@@ -13,6 +13,7 @@ import yaml
 from botocore.exceptions import BotoCoreError, ClientError
 from pydantic import ValidationError
 
+from pejip.accounts import open_store
 from pejip.ai.client import AIClient
 from pejip.companies import load_search_config
 from pejip.config import SearchConfig, Settings, load_config
@@ -33,7 +34,6 @@ from pejip.profile import (
 from pejip.retention import purge_files
 from pejip.sources.email_alerts import S3Inbox, make_s3_client
 from pejip.sources.http import PoliteClient
-from pejip.store import Store
 
 log = logging.getLogger("pejip")
 
@@ -84,7 +84,7 @@ def _ai_client(settings: Settings, config: SearchConfig, ledger: SqliteLedger) -
 def _cmd_run(settings: Settings) -> int:
     config, companies_note = _load_config(settings)
     profile = _load_profile(settings)
-    store = Store(settings.database_url)
+    store = open_store(settings)
     ledger = SqliteLedger(settings.ai_ledger_path)
     http = PoliteClient(config.fetch)
     network, network_problem = _network(config, settings)
@@ -122,7 +122,7 @@ def _cmd_run(settings: Settings) -> int:
 def _cmd_digest(settings: Settings) -> int:
     """Score the latest run's roles with the analyses stored since, and email the digest."""
     config, companies_note = _load_config(settings)
-    store = Store(settings.database_url)
+    store = open_store(settings)
     run = store.latest_run()
     if run is None:
         log.error("digest_without_run")
@@ -192,7 +192,7 @@ def _network(config: SearchConfig, settings: Settings) -> tuple[NetworkIndex | N
             index: NetworkIndex | None = load_index(config, *paths)[1]
         elif settings.network_bucket:
             client = make_s3_client(settings.aws_region)
-            index = load_index_s3(client, settings.network_bucket, config)
+            index = load_index_s3(client, settings.network_bucket, config, settings.network_prefix)
         else:
             index = None
     except (*_FILE_ERRORS, ClientError, BotoCoreError) as exc:
@@ -259,7 +259,7 @@ def _company_lines(index: NetworkIndex) -> list[str]:
 
 def _cmd_purge(settings: Settings) -> int:
     config = load_config(settings.config_path)
-    deleted = Store(settings.database_url).purge_expired(datetime.now(UTC), config.retention_days)
+    deleted = open_store(settings).purge_expired(datetime.now(UTC), config.retention_days)
     log.info("purge_finished", extra={"deleted_rows": deleted})
     _purge_output(settings, config.retention_days)
     return 0
@@ -272,7 +272,7 @@ def _purge_output(settings: Settings, retention_days: int) -> None:
 
 
 def _cmd_export(settings: Settings, out: Path) -> int:
-    out.write_text(Store(settings.database_url).export_all(), encoding="utf-8")
+    out.write_text(open_store(settings).export_all(), encoding="utf-8")
     log.info("export_written", extra={"path": str(out)})
     return 0
 
@@ -281,7 +281,7 @@ def _cmd_delete_all(settings: Settings, confirmed: bool) -> int:
     if not confirmed:
         sys.stderr.write("Refusing to delete without --yes.\n")
         return 2
-    Store(settings.database_url).delete_all()
+    open_store(settings).delete_all()
     log.info("all_data_deleted")
     return 0
 

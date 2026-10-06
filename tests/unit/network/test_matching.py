@@ -233,6 +233,24 @@ def test_no_upload_means_no_network_and_other_errors_are_raised(config: SearchCo
         load_index_s3(UploadS3({}, error="AccessDenied"), "bucket", config)
 
 
+def test_only_the_accounts_own_folder_is_read(config: SearchConfig) -> None:
+    # Another account's export sits in the same bucket; it is never listed or read.
+    s3 = UploadS3(
+        {
+            "network/friend/Connections.csv": export(row(company="Databricks", position="SVP")),
+            "network/babu/network-decisions.yaml": b"titles: []",
+        }
+    )
+    assert load_index_s3(s3, "bucket", config, "network/babu/") is None
+    assert s3.bodies == []
+
+    s3.objects["network/babu/Connections.csv"] = export(row(company="Databricks", position="VP"))
+    index = load_index_s3(s3, "bucket", config, "network/babu/")
+    assert index is not None
+    assert index.signal("Databricks", "VP").facts().matured == 1
+    assert len(s3.bodies) == 2
+
+
 def test_an_oversized_upload_is_refused_unread(config: SearchConfig) -> None:
     s3 = UploadS3({CONNECTIONS_KEY: b"x"})
     body = Body(b"")

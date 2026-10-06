@@ -11,7 +11,7 @@ flowchart LR
     filter -->|upsert by fingerprint| jobs[(jobs)]
     jobs -->|new or changed content| analyse[JOB_ANALYSIS]
     analyse -->|quotes grounded| match[EVIDENCE_MATCHING]
-    profile[/profile: profile.yaml, or SSM /pejip/profile on AWS/] --> match
+    profile[/profile: profile.yaml, or SSM /pejip/accounts/&lt;account&gt;/profile on AWS/] --> match
     match -->|evidence ids validated| analyses[(analyses)]
     analyses --> score[Fit, Confidence, Priority]
     jobs --> score
@@ -47,9 +47,9 @@ machine, sent to the Anthropic API or the ranking routine for matching (see
 | `analyses` | AI analysis and matching output, provenance | analysis (via pipeline) | 90 days |
 | `recommendations` | Scores, components, reasons, explanation | scoring (via pipeline) | 90 days |
 | `runs` | Run status and per-source results | pipeline | 90 days |
-| `profile.yaml` or SSM `/pejip/profile` | Career profile (personal data; a local file, or on AWS a SecureString Babu stores) | Babu | Babu's own |
-| Private company list (`PEJIP_COMPANIES` or SSM `/pejip/companies`) | Babu's target companies, kept out of the public repository (ADR-0009) | Babu | Babu's own |
-| LinkedIn export and decisions file | First-degree connections and Babu's network decisions (personal data; local files at `PEJIP_CONNECTIONS`, `PEJIP_NETWORK_DECISIONS`, or on AWS `network/` in the inbox bucket) | Babu | Local files: Babu's own. On AWS: 90 days after upload |
+| `profile.yaml` or SSM `/pejip/accounts/<account>/profile` | Career profile (personal data; a local file, or on AWS a SecureString Babu stores) | Babu | Babu's own |
+| Private company list (`PEJIP_COMPANIES` or SSM `/pejip/accounts/<account>/companies`) | Babu's target companies, kept out of the public repository (ADR-0009) | Babu | Babu's own |
+| LinkedIn export and decisions file | First-degree connections and Babu's network decisions (personal data; local files at `PEJIP_CONNECTIONS`, `PEJIP_NETWORK_DECISIONS`, or on AWS `network/<account>/` in the inbox bucket) | Babu | Local files: Babu's own. On AWS: 90 days after upload |
 | `output/digest-*.md` | Digest per run (on AWS also emailed through `pejip-digest`) | cli | 90 days |
 | `ai_spend` (SQLite) | Per-call AI feature, model, tokens and cost; no personal data | AI cost guard | Kept; needed for monthly spend history |
 

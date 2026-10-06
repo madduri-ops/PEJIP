@@ -1,6 +1,6 @@
 # 0016: Separate, private accounts
 
-_Status: accepted (step 1 of 6 implemented). Last updated: 2026-10-06._
+_Status: accepted (steps 1 and 2 of 6 implemented). Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -54,8 +54,21 @@ Build order, each a small high-risk PR:
    (`id`, `email`) for the verified email and keeps it on `request.state.account`.
    Until step 2 lands, the registry may hold only one account; the app and the
    Terraform variable both refuse a second.
-2. Per-account storage, and a one-time, reversible move of Babu's data to
-   `accounts/babu/`.
+2. **Per-account storage** (this step). Settings that name a personal place
+   carry an `{account}` placeholder that `Settings.from_env` fills from
+   `PEJIP_ACCOUNT` (default `babu`): the database
+   (`/data/accounts/{account}/pejip.db`), digests
+   (`/data/accounts/{account}/output`), profile and companies
+   (`/pejip/accounts/{account}/...`) and LinkedIn files (`network/{account}/`).
+   `pejip.accounts.open_store` makes the folder and, for Babu's account only,
+   adopts the pre-account data: a consistent copy of `/data/pejip.db` (the
+   original stays for a rollback; the copy is linked into place so it can never
+   overwrite a database already there) and a move of the old digests, so the
+   90-day purge still covers them. Babu copies the SSM parameters and moves the
+   S3 files by hand before applying (`infra/README.md`). The AI spend ledger stays
+   shared, as the $100 cap covers the whole deployment. The one-account guard
+   stays until the portal's Settings page and the ranking routine are per account
+   (steps 3 and 4).
 3. Per-account inbox, digest topic and daily run.
 4. Per-account ranking keys and the account-scoped ranking API.
 5. Delete-an-account, and `docs/SECURITY.md` updates.
@@ -67,6 +80,11 @@ Build order, each a small high-risk PR:
   letters, digits and dashes, starting with a letter (they name folders and
   parameter paths); ids and emails are unique; emails compare without case.
   Malformed entries stop the app at start, and the error never repeats an email.
+- **Per-account settings:** `PEJIP_ACCOUNT` (default `babu`) picks the account a
+  command works on; `PEJIP_DATABASE_URL`, `PEJIP_OUTPUT_DIR`,
+  `PEJIP_PROFILE_PARAMETER`, `PEJIP_COMPANIES_PARAMETER` and
+  `PEJIP_NETWORK_PREFIX` may hold `{account}`. `PEJIP_LEGACY_DATABASE_URL` and
+  `PEJIP_LEGACY_OUTPUT_DIR` name the pre-account places, read only for `babu`.
 - **`PEJIP_AUTH_ALLOWED_EMAIL`:** still read when `PEJIP_AUTH_ACCOUNTS` is absent,
   as account `babu`, so a rollback to an older task definition keeps working.
 - **Terraform:** variable `sign_in_accounts` (`map(string)`, sensitive, empty by
@@ -77,8 +95,11 @@ Build order, each a small high-risk PR:
 
 ## Data model
 
-Step 1 changes no stored data. The account id becomes the key of every storage path
-from step 2 on.
+Step 1 changes no stored data. From step 2 the account id is part of every storage
+path: the database schema is unchanged, there is just one database per account.
+Rollback: an older task definition still points at `/data/pejip.db`, which the
+adoption copied and left in place (it misses only what was written after the
+move).
 
 ## Non-functional considerations
 

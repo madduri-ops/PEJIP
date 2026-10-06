@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from pejip import accounts
 from pejip.retention import RETENTION_DAYS
 
 Adapter = Literal["greenhouse", "lever"]
@@ -220,15 +221,39 @@ class Settings:
     ai_enabled: bool = True
     ranker: str = "api"
     ranking_key_parameter: str | None = None
+    account: str = accounts.DEFAULT_ACCOUNT_ID
+    network_prefix: str = "network/"
+    legacy_database_url: str | None = None
+    legacy_output_dir: Path | None = None
 
     @classmethod
-    def from_env(cls, env: dict[str, str] | None = None) -> Settings:
+    def from_env(cls, env: dict[str, str] | None = None, account: str | None = None) -> Settings:
+        """Read the settings for ``account`` (``PEJIP_ACCOUNT``, else Babu's).
+
+        Settings naming a per-account place carry an ``{account}`` placeholder
+        (design doc 0016), filled in here. The pre-account locations
+        (``PEJIP_LEGACY_DATABASE_URL``, ``PEJIP_LEGACY_OUTPUT_DIR``) are kept only
+        for Babu's account, the one account that may adopt them.
+        """
         e = dict(os.environ) if env is None else env
+        who = accounts.check_account_id(
+            account or e.get("PEJIP_ACCOUNT") or accounts.DEFAULT_ACCOUNT_ID
+        )
+
+        def place(name: str, default: str | None = None) -> str | None:
+            value = e.get(name) or default
+            return accounts.fill(value, who) if value else None
+
+        adopts = who == accounts.DEFAULT_ACCOUNT_ID
+        legacy_output = e.get("PEJIP_LEGACY_OUTPUT_DIR") if adopts else None
         return cls(
+            account=who,
             config_path=Path(e.get("PEJIP_CONFIG", "config/search.yaml")),
             profile_path=Path(e.get("PEJIP_PROFILE", "profile.yaml")),
-            database_url=e.get("PEJIP_DATABASE_URL", "sqlite:///pejip.db"),
-            output_dir=Path(e.get("PEJIP_OUTPUT_DIR", "output")),
+            database_url=place("PEJIP_DATABASE_URL", "sqlite:///pejip.db") or "",
+            output_dir=Path(place("PEJIP_OUTPUT_DIR", "output") or ""),
+            legacy_database_url=(e.get("PEJIP_LEGACY_DATABASE_URL") or None) if adopts else None,
+            legacy_output_dir=_optional_path(legacy_output),
             ai_ledger_path=Path(e.get("PEJIP_AI_LEDGER", "pejip-ai-spend.db")),
             # The job-alert inbox is read only where a bucket is named (in AWS).
             inbox_bucket=e.get("PEJIP_INBOX_BUCKET") or None,
@@ -237,14 +262,15 @@ class Settings:
             # kept outside the repository (design doc 0014).
             connections_path=_optional_path(e.get("PEJIP_CONNECTIONS")),
             network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
-            # On AWS they are uploaded to network/ in this bucket instead.
+            # On AWS they are uploaded to network/<account>/ in this bucket instead.
             network_bucket=e.get("PEJIP_NETWORK_BUCKET") or None,
+            network_prefix=place("PEJIP_NETWORK_PREFIX", "network/") or "",
             # Babu's target companies, kept out of the public repository (ADR-0009):
             # a local file, or on AWS an encrypted SSM parameter.
             companies_path=_optional_path(e.get("PEJIP_COMPANIES")),
-            companies_parameter=e.get("PEJIP_COMPANIES_PARAMETER") or None,
+            companies_parameter=place("PEJIP_COMPANIES_PARAMETER"),
             # In AWS the profile is an encrypted SSM parameter, not a file.
-            profile_parameter=e.get("PEJIP_PROFILE_PARAMETER") or None,
+            profile_parameter=place("PEJIP_PROFILE_PARAMETER"),
             # Where `pejip run` emails the digest (an SNS topic), when set.
             digest_topic_arn=e.get("PEJIP_DIGEST_TOPIC_ARN") or None,
             # Off until the workload can sign in to Claude; roles are then unranked.

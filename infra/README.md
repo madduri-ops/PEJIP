@@ -107,7 +107,7 @@ creates the data file system, schedules and digest topic:
    `pejip-digest`. No digest is delivered until then.
 3. Store the career profile (the same YAML as `examples/profile.example.yaml`)
    from CloudShell, after uploading the file:
-   `aws ssm put-parameter --name /pejip/profile --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://profile.yaml`,
+   `aws ssm put-parameter --name /pejip/accounts/babu/profile --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://profile.yaml`,
    then delete the uploaded copy. To replace it later, add `--overwrite`.
 4. Create the app's Claude Console rule (the App column in
    [design 0007](../docs/design/0007-claude-identity-federation.md)) and set its
@@ -124,6 +124,27 @@ aws ecs run-task --cluster pejip-prod --task-definition pejip-prod --launch-type
   --overrides '{"cpu":"512","memory":"1024","containerOverrides":[{"name":"pejip","command":["pejip","run"]}]}'
 ```
 
+## Moving to per-account places (once, before applying design 0016 step 2)
+
+[Design 0016](../docs/design/0016-accounts.md). Each account's data now lives
+under its own id. Babu's database and digests on EFS move by themselves the first
+time the app opens them (the old database stays as it was, for a rollback). The
+profile, companies and LinkedIn files move by hand, from CloudShell, **before**
+`terraform apply`, so no run looks for them in the new place too early:
+
+```sh
+for name in profile companies; do
+  if value=$(aws ssm get-parameter --name /pejip/$name --with-decryption --query Parameter.Value --output text 2>/dev/null); then
+    aws ssm put-parameter --name /pejip/accounts/babu/$name --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value "$value"
+  fi
+done
+aws s3 mv --recursive s3://pejip-inbox-275704950192/network/ s3://pejip-inbox-275704950192/network/babu/ --exclude "babu/*"
+```
+
+Then pull and apply as usual. Once a digest has arrived from the new places, the
+old parameters can go: `aws ssm delete-parameter --name /pejip/profile` and the
+same for `/pejip/companies`.
+
 ## Target companies (once, then on each change)
 
 [ADR-0009](../docs/adr/0009-private-inputs-outside-the-public-repository.md). Babu's
@@ -131,7 +152,7 @@ target companies are not in the public repository. From CloudShell, upload the l
 (same format as `examples/companies.example.yaml`), store it, then delete the copy:
 
 ```sh
-aws ssm put-parameter --name /pejip/companies --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://companies.yaml
+aws ssm put-parameter --name /pejip/accounts/babu/companies --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://companies.yaml
 rm companies.yaml
 ```
 
@@ -145,13 +166,13 @@ the test boards in `config/search.yaml` are searched.
 CloudShell (Actions, Upload file), then delete the uploaded copy:
 
 ```sh
-aws s3 cp Connections.csv s3://pejip-inbox-275704950192/network/Connections.csv
+aws s3 cp Connections.csv s3://pejip-inbox-275704950192/network/babu/Connections.csv
 rm Connections.csv
 ```
 
 The bucket encrypts it with `alias/pejip` and deletes it 90 days later; the next
 morning's run uses it and the digest says when it was last refreshed. Answers to
-"Your call" questions go in `network/network-decisions.yaml` the same way (see
+"Your call" questions go in `network/babu/network-decisions.yaml` the same way (see
 `examples/network-decisions.example.yaml`). A new upload replaces the old one.
 
 ## Ranking routine (once, then every 90 days)

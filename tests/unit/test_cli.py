@@ -56,6 +56,27 @@ def test_run_writes_the_digest(
     assert f"finished **{status}**" in written[0].read_text()
 
 
+def test_commands_work_on_the_accounts_own_database(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Babu's pre-account database is adopted into accounts/babu; a command for
+    # another account starts empty and never sees Babu's rows (design doc 0016).
+    legacy = Store(f"sqlite:///{env / 'cli.db'}")
+    legacy.start_run("babu-run", NOW)
+    legacy.engine.dispose()
+    monkeypatch.setenv("PEJIP_DATABASE_URL", f"sqlite:///{env}/accounts/{{account}}/pejip.db")
+    monkeypatch.setenv("PEJIP_LEGACY_DATABASE_URL", f"sqlite:///{env / 'cli.db'}")
+
+    babu_export, friend_export = env / "babu.json", env / "friend.json"
+    assert cli.main(["export", str(babu_export)]) == 0
+    monkeypatch.setenv("PEJIP_ACCOUNT", "friend")
+    assert cli.main(["export", str(friend_export)]) == 0
+
+    assert [r["id"] for r in json.loads(babu_export.read_text())["runs"]] == ["babu-run"]
+    assert json.loads(friend_export.read_text())["runs"] == []
+    assert (env / "accounts" / "babu" / "pejip.db").is_file()
+
+
 def test_purge_export_and_delete(env: Path, capsys: pytest.CaptureFixture[str]) -> None:
     store = Store(f"sqlite:///{env / 'cli.db'}")
     store.start_run("r1", NOW)
