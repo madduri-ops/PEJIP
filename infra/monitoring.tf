@@ -76,18 +76,20 @@ resource "aws_cloudwatch_metric_alarm" "app_errors" {
   alarm_actions       = local.alarm_actions
 }
 
-# A stalled pipeline: no run finished (SUCCESS or PARTIAL) in 26 hours, which
+# A stalled pipeline: no run finished (SUCCESS or PARTIAL) in 64 hours, which
 # covers a schedule that stopped, a task that never started and a crash before
-# run_finished. It exists only while the daily run schedule is on
+# run_finished. Searches run on weekdays only, and the weekend gap from Friday
+# 15:00 to Monday 05:00 is 62 hours. A single failed search on a weekday is
+# caught sooner, by the next digest's digest_run_stale error. It exists only while the daily run schedule is on
 # (schedule.tf); otherwise it would alarm for a search that is not meant to run.
 # This one also emails when it clears.
 resource "aws_cloudwatch_metric_alarm" "search_stalled" {
   count = var.run_schedule_enabled ? 1 : 0
 
   alarm_name          = "pejip-search-stalled"
-  alarm_description   = "No PEJIP search run has finished in 26 hours. Check the daily search schedule and the task's logs."
-  evaluation_periods  = 26
-  datapoints_to_alarm = 26
+  alarm_description   = "No PEJIP search run has finished in 64 hours. Check the search schedule and the task's logs."
+  evaluation_periods  = 64
+  datapoints_to_alarm = 64
   comparison_operator = "LessThanThreshold"
   threshold           = 1
   treat_missing_data  = "breaching"

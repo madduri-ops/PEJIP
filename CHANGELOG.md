@@ -21,6 +21,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- Searches run on weekdays only, at 5 AM, 10 AM and 3 PM Pacific, and the ranked
+  digest arrives at 7 AM, 12 PM and 5 PM. The stalled-search alarm waits 64
+  hours so weekends don't trip it; a digest built from a search more than 4
+  hours old says so and alarms.
 - Job analysis and evidence matching can run in a Claude Code session as well as
   through the API: `python -m pejip.routine` lays out each step with the same
   prompt, input and schema, and checks every answer the way the API path does

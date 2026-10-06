@@ -1,10 +1,11 @@
 # Daily tasks (design doc 0012, policy section 10). EventBridge Scheduler runs
 # the PEJIP image as one-off Fargate tasks with a command override:
 #
-# - `pejip run` every morning: find roles, rank them, store them on the data
-#   file system (efs.tf) and email the digest (digest.tf). With ranker =
-#   "routine" (design doc 0015) it leaves new roles for the Claude Code routine
-#   at 07:00 and `pejip digest` emails the ranked digest at 08:00 instead.
+# - `pejip run` at 05:00, 10:00 and 15:00 on weekdays: find roles, rank them,
+#   store them on the data file system (efs.tf) and email the digest
+#   (digest.tf). With ranker = "routine" (design doc 0015) it leaves new roles
+#   for the Claude Code routine an hour later, and `pejip digest` emails the
+#   ranked digest two hours after each search (07:00, 12:00, 17:00).
 # - `pejip purge` once a day, so data past its 90-day window is deleted even on
 #   a day the run fails.
 #

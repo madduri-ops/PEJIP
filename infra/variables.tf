@@ -128,15 +128,15 @@ variable "purge_schedule_enabled" {
 }
 
 variable "run_schedule_enabled" {
-  description = "Turns on the daily `pejip run` that finds, ranks and emails the digest."
+  description = "Turns on the scheduled `pejip run` (and, in routine mode, `pejip digest`)."
   type        = bool
   default     = true
 }
 
 variable "run_schedule" {
-  description = "When the daily search runs: an EventBridge Scheduler cron expression in run_schedule_timezone."
+  description = "When the search runs: an EventBridge Scheduler cron expression in run_schedule_timezone. Babu chose (2026-10-06) digests at 7 AM, 12 PM and 5 PM on weekdays, so searches start two hours earlier."
   type        = string
-  default     = "cron(0 6 * * ? *)"
+  default     = "cron(0 5,10,15 ? * MON-FRI *)"
 }
 
 variable "ranker" {
@@ -151,9 +151,9 @@ variable "ranker" {
 }
 
 variable "digest_schedule" {
-  description = "When the digest is emailed with the routine's rankings, in run_schedule_timezone (two hours after the run, one after the routine)."
+  description = "When the digest is emailed with the routine's rankings, in run_schedule_timezone: two hours after each search, one after each routine run (at :04)."
   type        = string
-  default     = "cron(0 8 * * ? *)"
+  default     = "cron(0 7,12,17 ? * MON-FRI *)"
 }
 
 variable "run_schedule_timezone" {

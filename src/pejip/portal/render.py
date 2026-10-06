@@ -1124,7 +1124,7 @@ def settings_body(config: SearchConfig | None) -> str:
     )
     schedule = (
         '<div class="summary">'
-        + _kv("Search", "Daily at 6:00 AM Pacific")
+        + _kv("Search", "Weekdays; digests at 7 AM, 12 PM and 5 PM Pacific")
         + _kv("Roles analysed per search", str(config.ai.max_jobs_per_run))
         + _kv("AI spending cap", f"{MONTHLY_AI_CAP} a month")
         + "</div>"
