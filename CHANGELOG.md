@@ -12,6 +12,8 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- More than one account (design doc 0016, step 6): up to five people can sign in,
+  each with separate data; `infra/README.md` has the steps for adding one.
 - Deleting an account (design doc 0016, step 5): `pejip export` and
   `pejip delete-all` take `--account`, and delete-all also removes that account's
   digests; `infra/README.md` has the steps for removing an account entirely, and

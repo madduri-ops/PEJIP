@@ -32,6 +32,8 @@ if TYPE_CHECKING:
 
 # Account ids name folders and parameter paths, so they are kept plain.
 ACCOUNT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+# The local part of Babu's job-alert address, kept from before accounts.
+BABU_ALERTS = "alerts"
 
 # Babu's account: the one ``PEJIP_AUTH_ALLOWED_EMAIL`` signs in as, the account a
 # command works on unless ``PEJIP_ACCOUNT`` names another, and the only account
@@ -51,6 +53,10 @@ def check_account_id(account: str) -> str:
     """Return ``account`` if it is a valid id, else raise ValueError."""
     if not ACCOUNT_ID_PATTERN.fullmatch(account):
         msg = "account ids are lowercase letters, digits and dashes, starting with a letter"
+        raise ValueError(msg)
+    if account == BABU_ALERTS:
+        # Another account receives job alerts at <id>@, which alerts@ already is.
+        msg = f"'{BABU_ALERTS}' is Babu's job-alert address and can't be an account id"
         raise ValueError(msg)
     return account
 
@@ -77,7 +83,7 @@ def parse_pairs(value: str, name: str) -> dict[str, str]:
 
 def alert_address(account: str) -> str:
     """The address an account signs up for job alerts with."""
-    local = "alerts" if account == DEFAULT_ACCOUNT_ID else account
+    local = BABU_ALERTS if account == DEFAULT_ACCOUNT_ID else account
     return f"{local}@{INBOX_DOMAIN}"
 
 

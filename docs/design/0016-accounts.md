@@ -1,6 +1,6 @@
 # 0016: Separate, private accounts
 
-_Status: accepted (steps 1 to 5 of 6 implemented). Last updated: 2026-10-06._
+_Status: accepted (implemented). Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -52,8 +52,8 @@ Build order, each a small high-risk PR:
 
 1. **Account registry and sign-in** (this step). The app returns an `Account`
    (`id`, `email`) for the verified email and keeps it on `request.state.account`.
-   Until step 2 lands, the registry may hold only one account; the app and the
-   Terraform variable both refuse a second.
+   Until step 6, the registry could hold only one account; the app and the
+   Terraform variable both refused a second.
 2. **Per-account storage** (this step). Settings that name a personal place
    carry an `{account}` placeholder that `Settings.from_env` fills from
    `PEJIP_ACCOUNT` (default `babu`): the database
@@ -95,7 +95,11 @@ Build order, each a small high-risk PR:
    the rest: the registry entry, its stored inputs, inbox mail and test user.
    `docs/SECURITY.md` records administrator visibility, each account's full
    digest and its own ranking plan.
-6. Onboard the friend: Google test user, registry entry, inbox address, ranking key.
+6. **Opening the site to more accounts** (this step). The registry holds up to
+   five accounts (`auth.MAX_ACCOUNTS` and the Terraform validation), so each
+   one's scheduled work and digest topic keep the cost known. Terraform also
+   requires `babu` in the registry and refuses the id `alerts`, Babu's job-alert
+   address. `infra/README.md` ("Adding an account") has the onboarding steps.
 
 ## Interfaces
 

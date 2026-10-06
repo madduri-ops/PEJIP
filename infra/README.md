@@ -48,8 +48,8 @@ Terraform 1.13.3 to `~/bin`.
 cd ~/PEJIP && git pull && cd infra
 export TF_VAR_alert_email='you@example.com'
 export TF_VAR_sign_in_email='you@gmail.com'   # optional; defaults to the alert email
-# optional account registry (design 0016); one account until per-account storage lands
-# export TF_VAR_sign_in_accounts='{ babu = "you@gmail.com" }'
+# optional account registry (design 0016), up to 5 accounts, babu always included
+# export TF_VAR_sign_in_accounts='{ babu = "you@gmail.com", friend = "friend@gmail.com" }'
 terraform init
 terraform plan
 terraform apply
@@ -232,6 +232,32 @@ account registry: `sign_in_accounts`, or `sign_in_email` alone as account `babu`
    commit running now.
 
 To rotate the secret, update the parameter (`--overwrite`) and run `terraform apply`.
+
+## Adding an account
+
+[Design 0016](../docs/design/0016-accounts.md). Up to five people can each have a
+separate account on the one site. For a new person:
+
+1. Pick an id: lowercase letters, digits and dashes, starting with a letter, and
+   not `alerts` (for example their first name). Tell them, before they join, that
+   as the AWS administrator you could technically see their data, and that their
+   full digest is emailed to them (`docs/SECURITY.md`).
+2. In Google Cloud Console, add their Gmail address as a test user on the OAuth
+   consent screen.
+3. In CloudShell, list every account, Babu's included, and apply:
+   `export TF_VAR_sign_in_accounts='{ babu = "you@gmail.com", <id> = "them@gmail.com" }'`,
+   then `terraform plan` and `terraform apply`. Keep that export for every later
+   apply, or the account is removed. Then run the Deploy workflow on `main`.
+4. They click the link in the "AWS Notification - Subscription Confirmation"
+   email for `pejip-digest-<id>`.
+5. Store their profile and target companies as under "Daily run and storage" and
+   "Target companies", and later their `Connections.csv`, with `<id>` in place of
+   `babu` in each path. Delete each uploaded copy afterwards.
+6. Make their ranking key as in step 1 of "Ranking routine", with `<id>` in the
+   parameter name, and send them the key privately. They do steps 3 and 4 of
+   "Ranking routine" on their own claude.ai plan.
+7. They sign in at `https://job-search.zephyr-mcg.com`; the Settings page shows
+   the address to sign up for job alerts with, `<id>@inbox.job-search.zephyr-mcg.com`.
 
 ## Removing an account
 

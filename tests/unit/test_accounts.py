@@ -337,3 +337,9 @@ def test_account_ids(env: dict[str, str], expected: list[str]) -> None:
 def test_account_ids_refuse_a_bad_id() -> None:
     with pytest.raises(ValueError, match="account ids"):
         account_ids({"PEJIP_ACCOUNTS": "babu,../x"})
+
+
+def test_alerts_is_not_an_account_id() -> None:
+    # alerts@ is Babu's job-alert address; another account receives at <id>@.
+    with pytest.raises(ValueError, match="job-alert address"):
+        accounts.check_account_id("alerts")
