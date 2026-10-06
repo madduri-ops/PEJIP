@@ -347,9 +347,13 @@ data "aws_iam_policy_document" "plan" {
   }
 
   statement {
-    sid       = "ReadSchedules"
-    actions   = ["scheduler:GetSchedule", "scheduler:ListTagsForResource"]
-    resources = ["arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/default/pejip-*"]
+    sid     = "ReadSchedules"
+    actions = ["scheduler:GetSchedule", "scheduler:GetScheduleGroup", "scheduler:ListTagsForResource"]
+    resources = [
+      "arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/default/pejip-*",
+      "arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule/${local.name}/pejip-*",
+      "arn:aws:scheduler:${var.aws_region}:${local.account_id}:schedule-group/${local.name}",
+    ]
   }
 
   # The data file system (efs.tf). Configuration only; the plan role can't mount it.

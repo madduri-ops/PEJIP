@@ -1,6 +1,6 @@
 # 0012: Daily run and storage on AWS
 
-_Status: accepted. Last updated: 2026-10-05._
+_Status: accepted. Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -102,7 +102,11 @@ the data file system (root `/pejip`, owner 10001, mode 0700):
   past 90 days); no backups. The digest email is listed in `docs/SECURITY.md`.
 - **Reliability:** a failed source or analysis is isolated as before; failed
   and missing runs alarm through monitoring (design 0011); Scheduler retries a
-  task that fails to launch three times within an hour.
+  task that fails to launch three times within an hour. The schedules live in
+  their own group, `pejip-prod`, and `pejip-scheduler-failed` emails within
+  minutes when Scheduler cannot start a task. After an apply that changes the
+  schedules or the scheduler role, the check in `infra/README.md` ("Checking the
+  schedules") starts a purge through the scheduler's own role.
 - **Cost:** EFS at about $0.30 per GB-month for megabytes of data; a daily run of
   a few minutes at 0.5 vCPU is cents a month; SNS email is free at this volume.
 - **Tests:** `tests/unit/test_cli.py` (SSM profile, Claude switch, digest email),

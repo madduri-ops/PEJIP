@@ -21,10 +21,10 @@ section 5.1.
 | `ecs.tf` | ECS cluster and service `pejip-prod`, task definition (data volume, run settings, Claude switch), roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
 | `efs.tf` | EFS file system `pejip-prod-data` (KMS-encrypted, TLS-only, no backups) holding the SQLite database, spend ledger and digests, with its access point and mount targets ([design](../docs/design/0012-daily-run-and-storage.md)) |
 | `digest.tf` | SNS topic `pejip-digest` that emails Babu the daily digest |
-| `schedule.tf` | `pejip-run-daily` (weekdays 05:00, 10:00, 15:00 Pacific, `pejip run`), `pejip-digest-daily` (weekdays 07:00, 12:00, 17:00, `pejip digest`) and `pejip-purge-daily` (`pejip purge`) schedules and their `pejip-scheduler` role |
+| `schedule.tf` | `pejip-run-daily` (weekdays 05:00, 10:00, 15:00 Pacific, `pejip run`), `pejip-digest-daily` (weekdays 07:00, 12:00, 17:00, `pejip digest`) and `pejip-purge-daily` (`pejip purge`) schedules in the `pejip-prod` schedule group, and their `pejip-scheduler` role |
 | `inbox.tf` | Job-alert inbox: SES receiving for `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket `pejip-inbox-275704950192` (90-day expiry) ([design](../docs/design/0010-job-alert-inbox.md)) |
 | `alarms.tf` | 5xx, unhealthy target, tasks-below-desired, CPU and memory alarms to `pejip-alerts` |
-| `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-search-run-failed`, `pejip-source-failures`, `pejip-app-errors` and `pejip-search-stalled` (only while `run_schedule_enabled` is on); dashboard `pejip` ([design](../docs/design/0011-monitoring.md)) |
+| `monitoring.tf` | Log metric filters for search runs, source failures and errors; alarms `pejip-search-run-failed`, `pejip-source-failures`, `pejip-app-errors`, `pejip-search-stalled` (only while `run_schedule_enabled` is on) and `pejip-scheduler-failed`; dashboard `pejip` ([design](../docs/design/0011-monitoring.md)) |
 
 The hosting decisions (public subnets without NAT, WAF rules, DNS at the registrar,
 cost) are in [ADR-0005](../docs/adr/0005-app-hosting-and-continuous-deploy.md) and
@@ -123,6 +123,38 @@ aws ecs run-task --cluster pejip-prod --task-definition pejip-prod --launch-type
   --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -json | jq -r '.public_subnet_ids.value | join(",")')],securityGroups=[$(terraform output -raw tasks_security_group_id)],assignPublicIp=ENABLED}" \
   --overrides '{"cpu":"512","memory":"1024","containerOverrides":[{"name":"pejip","command":["pejip","run"]}]}'
 ```
+
+## Checking the schedules (after an apply that changes them)
+
+Starting a task with `aws ecs run-task` uses your own permissions, so it can work
+while the scheduler's role is refused. After any apply that changes `schedule.tf`,
+the scheduler role or the KMS key, start a purge through the scheduler itself: a
+one-time copy of `pejip-purge-daily` a minute from now, deleted once it has run.
+A purge only deletes data past 90 days, so it is safe to run at any time.
+
+```sh
+aws scheduler get-schedule --group-name pejip-prod --name pejip-purge-daily --query Target > ~/check-target.json
+aws scheduler create-schedule --group-name pejip-prod --name pejip-check \
+  --schedule-expression "at($(date -u -d '+1 minute' +%Y-%m-%dT%H:%M:%S))" \
+  --flexible-time-window Mode=OFF --action-after-completion DELETE \
+  --kms-key-arn "$(aws kms describe-key --key-id alias/pejip --query KeyMetadata.Arn --output text)" \
+  --target file://$HOME/check-target.json
+rm ~/check-target.json
+```
+
+About three minutes later, this should print one `purge_finished` line:
+
+```sh
+aws logs filter-log-events --log-group-name /ecs/pejip-prod --filter-pattern '"purge_finished"' \
+  --start-time $(( ($(date +%s) - 600) * 1000 )) --query 'events[].message' --output text
+```
+
+If it prints nothing, the scheduler could not start the task, and
+`pejip-scheduler-failed` emails within a few minutes. CloudTrail's `RunTask` and
+`Decrypt` events for the `pejip-scheduler` role name the refused permission. If
+the check schedule is still listed (`aws scheduler list-schedules --group-name
+pejip-prod`), delete it with `aws scheduler delete-schedule --group-name pejip-prod
+--name pejip-check` before trying again.
 
 ## Moving to per-account places (once, before applying design 0016 step 2)
 

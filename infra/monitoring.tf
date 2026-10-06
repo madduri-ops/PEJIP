@@ -76,6 +76,24 @@ resource "aws_cloudwatch_metric_alarm" "app_errors" {
   alarm_actions       = local.alarm_actions
 }
 
+# The scheduler could not start a scheduled task (a search, digest or purge):
+# for example a permission it lacks. Without this, a refused start shows only as
+# a missing run, which search_stalled notices after 64 hours.
+resource "aws_cloudwatch_metric_alarm" "scheduler_failed" {
+  alarm_name          = "pejip-scheduler-failed"
+  alarm_description   = "EventBridge Scheduler could not start a PEJIP task. Check CloudTrail for the pejip-scheduler role's AccessDenied errors."
+  namespace           = "AWS/Scheduler"
+  metric_name         = "TargetErrorCount"
+  dimensions          = { ScheduleGroup = aws_scheduler_schedule_group.pejip.name }
+  statistic           = "Sum"
+  period              = 300
+  evaluation_periods  = 1
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  threshold           = 1
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = local.alarm_actions
+}
+
 # A stalled pipeline: no run finished (SUCCESS or PARTIAL) in 64 hours, which
 # covers a schedule that stopped, a task that never started and a crash before
 # run_finished. Searches run on weekdays only, and the weekend gap from Friday
