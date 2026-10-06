@@ -65,6 +65,8 @@ flowchart LR
   unranked roles appear only in "All active".
 - **Unknowns are shown** as "Unknown" or "Not published", never hidden (spec 12.41);
   each Fit number links to its explanation (12.40); concerns sit next to reasons.
+  A role the ranking has not scored yet says its sections are waiting for scoring,
+  never "No concerns found" or "No strong reasons found", which would read as findings.
 - **Times** are shown in Pacific time. The Alpine image has no time zone database,
   so `views.to_pacific` applies the US daylight saving rules itself.
 

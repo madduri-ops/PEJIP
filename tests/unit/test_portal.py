@@ -219,10 +219,29 @@ def test_opportunity_detail_with_unknowns() -> None:
 
     assert "Fit analysis · Unknown" in html
     assert "Not scored yet." in html
-    assert "No strong reasons found." in html
-    assert "Nothing urgent." in html
     assert "Who you know · Unknown" in html
+
+
+def test_an_unscored_role_waits_instead_of_reporting_nothing() -> None:
+    # A role the ranking has not reached says its sections are waiting, never that
+    # nothing was found.
+    role = _role(fit=None, components=(), why_it_fits=(), concerns=(), why_now=(), connections=None)
+    html = _get(FakeData([role], None), "/opportunities/1").text
+
+    assert "Concerns and gaps · Unknown" in html
+    assert html.count("Waiting for this role to be scored.") == 4
+    assert "No strong reasons found." not in html
+    assert "No concerns found." not in html
+    assert "Nothing urgent." not in html
+    assert "Who you know · Unknown" in html
+    assert "have not been imported yet" not in html
+
+
+def test_opportunity_detail_scored_without_network_data() -> None:
+    html = _get(FakeData([_role(connections=None, why_now=())], None), "/opportunities/1").text
+
     assert "have not been imported yet" in html
+    assert "Nothing urgent." in html
 
 
 def test_opportunity_detail_variants() -> None:

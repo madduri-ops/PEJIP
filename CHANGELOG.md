@@ -175,6 +175,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Fixed
 
+- A role that has not been scored yet no longer reads as "No concerns found",
+  "No strong reasons found" and "Nothing urgent" on its page: each section says it
+  is waiting for scoring, and Who you know no longer claims the LinkedIn import is
+  missing.
 - Sign out no longer silently does nothing when the sign-in session has expired
   or the signed-out page is not yet public: the page policy lets the form reach
   Google's sign-in page, and `/signout` also answers the return from it.
