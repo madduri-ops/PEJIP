@@ -4,6 +4,7 @@ import pytest
 
 from pejip.config import GeographyConfig, GeoScope, SearchConfig
 from pejip.discovery import (
+    BELOW_PAY,
     JOB_ALERT,
     OUT_OF_SCOPE,
     PAY,
@@ -141,7 +142,10 @@ def _pay(low: float | None, high: float | None) -> Compensation:
         ("Lead Portfolio Program Manager", _pay(200_000, 300_000), None, PAY),
         ("Principal Program Manager", _pay(270_000, None), None, PAY),
         ("Assistant Vice President, Operations", _pay(250_000, 280_000), None, PAY),
-        ("Lead Portfolio Program Manager", _pay(150_000, 220_000), None, OUT_OF_SCOPE),
+        # Posted pay below the minimum rules a role out, whatever its title.
+        ("Lead Portfolio Program Manager", _pay(150_000, 220_000), None, BELOW_PAY),
+        ("Vice President, Technology", _pay(180_000, 240_000), None, BELOW_PAY),
+        ("Director, Program Management", _pay(None, 200_000), "job_alert_email", BELOW_PAY),
         ("Lead Portfolio Program Manager", _pay(None, None), None, UNCLEAR_NO_PAY),
         ("Lead Portfolio Program Manager", None, None, UNCLEAR_NO_PAY),
         # Babu chose his job-alert searches, so an alert's role is kept on its title's area.

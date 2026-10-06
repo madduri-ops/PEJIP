@@ -18,7 +18,7 @@ from pejip.analysis import EvidenceMatching, JobAnalysis, PostingText, analyze_j
 from pejip.config import AlertCompany, SearchConfig, SourceConfig
 from pejip.cost import BudgetExceededError
 from pejip.digest import Digest, DigestItem, SourceResult
-from pejip.discovery import KEPT, PAY, UNCLEAR_NO_PAY, classify_location, screen
+from pejip.discovery import BELOW_PAY, KEPT, PAY, UNCLEAR_NO_PAY, classify_location, screen
 from pejip.explain import build_explanation, network_points, verify_citations
 from pejip.logs import run_id_var
 from pejip.models import Posting
@@ -362,7 +362,7 @@ def _status(
 
 
 def _screen_notes(screened: dict[str, int]) -> list[str]:
-    """Counts of roles whose title alone did not show their level, so none goes unseen."""
+    """Counts of roles kept or left out on pay or an unclear title, so none goes unseen."""
     notes = []
     if kept := screened.get(PAY, 0):
         roles = "1 role" if kept == 1 else f"{kept} roles"
@@ -370,6 +370,9 @@ def _screen_notes(screened: dict[str, int]) -> list[str]:
     if held := screened.get(UNCLEAR_NO_PAY, 0):
         roles = "1 role" if held == 1 else f"{held} roles"
         notes.append(f"Unclear title and no posted pay, so not ranked: {roles} in your areas.")
+    if low := screened.get(BELOW_PAY, 0):
+        roles = "1 role" if low == 1 else f"{low} roles"
+        notes.append(f"Posted pay below your minimum, so not ranked: {roles} in your areas.")
     return notes
 
 

@@ -7,8 +7,9 @@ A title is one signal of level, not a gate (Babu, 2026-10-06): levels differ by
 company, so a Meta Director can match a Yahoo VP. A role in one of the role
 families is kept when its title reads as senior, when it came from one of Babu's
 own job alerts (he chose those searches), or when its posted pay reaches his
-minimum. Only an unclear title with no posted pay from a careers board is held
-back, and the run counts those so none is dropped silently.
+minimum. Posted pay below his minimum rules a role out whatever its title. An
+unclear title with no posted pay from a careers board is held back too, and the
+run counts both so none is dropped silently.
 """
 
 from __future__ import annotations
@@ -81,6 +82,7 @@ SENIOR_TITLE = "SENIOR_TITLE"
 JOB_ALERT = "JOB_ALERT"
 PAY = "PAY"
 UNCLEAR_NO_PAY = "UNCLEAR_NO_PAY"
+BELOW_PAY = "BELOW_PAY"
 OUT_OF_SCOPE = "OUT_OF_SCOPE"
 KEPT = frozenset({SENIOR_TITLE, JOB_ALERT, PAY})
 
@@ -93,24 +95,26 @@ def screen(
 ) -> str:
     """Whether a posting goes on to ranking (a value in ``KEPT``) and on what basis.
 
-    ``pay_floor`` is the profile's minimum pay; posted pay at or above it keeps a
+    ``pay_floor`` is the profile's minimum pay. Posted pay below it rules a role
+    out whatever its title (Babu, 2026-10-06); posted pay at or above it keeps a
     role whose title alone is unclear.
     """
-    if not role_family_matches(posting.title, taxonomy):
+    ineligible = classify_location(posting.location, geography).preference == "INELIGIBLE"
+    if ineligible or not role_family_matches(posting.title, taxonomy):
         return OUT_OF_SCOPE
-    if classify_location(posting.location, geography).preference == "INELIGIBLE":
-        return OUT_OF_SCOPE
+    pay = posting.compensation
+    top = None if pay is None else (pay.maximum if pay.maximum is not None else pay.minimum)
+    if top is not None and pay_floor is not None and top < pay_floor:
+        return BELOW_PAY
     normalized = normalize_title(posting.title)
     excluded = any(_has_term(normalized, p) for p in taxonomy.excluded_title_patterns)
     if _senior_title(normalized, taxonomy):
         return SENIOR_TITLE
     if not excluded and posting.extra.get("origin") == "job_alert_email":
         return JOB_ALERT
-    pay = posting.compensation
-    top = None if pay is None else (pay.maximum if pay.maximum is not None else pay.minimum)
     if top is None or pay_floor is None:
         return UNCLEAR_NO_PAY
-    return PAY if top >= pay_floor else OUT_OF_SCOPE
+    return PAY
 
 
 @dataclass(frozen=True)

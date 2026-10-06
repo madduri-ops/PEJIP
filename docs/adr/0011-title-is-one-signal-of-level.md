@@ -21,9 +21,12 @@ unclear, and California postings must state pay.
   (he chose those searches); or the top of its posted pay is at or above the
   profile's minimum. Excluded titles such as Assistant Vice President are kept on
   pay too.
-- A careers-board role with an unclear title and no posted pay is held back, and
-  each run's digest notes count those, and the roles kept on pay, so none is
-  dropped silently.
+- Posted pay whose top is below the profile minimum rules a role out whatever its
+  title ("if the pay is not in our range, just ignore it", Babu, 2026-10-06), before
+  any ranking work is spent on it.
+- A careers-board role with an unclear title and no posted pay is held back. Each
+  run's digest notes count the roles kept on pay, held back for no pay and left
+  out for low pay, so none is dropped silently.
 - Fit and Priority are unchanged: the analysis still infers the role's real level
   from its scope.
 

@@ -195,6 +195,7 @@ def test_an_unclear_title_is_kept_on_pay_and_held_back_without_it(
     assert digest.notes == [
         "Unclear title, kept on posted pay: 1 role.",
         "Unclear title and no posted pay, so not ranked: 1 role in your areas.",
+        "Posted pay below your minimum, so not ranked: 1 role in your areas.",
     ]
 
 
@@ -482,8 +483,9 @@ def test_without_claude_roles_analysed_before_are_still_scored(
 
 
 def test_screen_notes_count_several_roles() -> None:
-    assert _screen_notes({"PAY": 3, "UNCLEAR_NO_PAY": 2, "SENIOR_TITLE": 9}) == [
+    assert _screen_notes({"PAY": 3, "UNCLEAR_NO_PAY": 2, "BELOW_PAY": 4, "SENIOR_TITLE": 9}) == [
         "Unclear title, kept on posted pay: 3 roles.",
         "Unclear title and no posted pay, so not ranked: 2 roles in your areas.",
+        "Posted pay below your minimum, so not ranked: 4 roles in your areas.",
     ]
     assert _screen_notes({}) == []

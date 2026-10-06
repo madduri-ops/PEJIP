@@ -73,8 +73,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - A job title no longer decides on its own whether a role is ranked (ADR-0011).
   Roles from your job alerts are kept whatever their level word, and a
   careers-board role with an unclear title is kept when its posted pay reaches
-  your minimum. The digest notes count roles kept on pay and roles held back for
-  an unclear title with no pay.
+  your minimum. A role whose posted pay is below your minimum is skipped whatever
+  its title. The digest notes count roles kept on pay, held back for an unclear
+  title with no pay, and skipped for low pay.
 - A search in routine mode reads SUCCESS, not PARTIAL, when its only unranked
   roles are the ones waiting for the ranking routine.
 - The ranking routine's steps live in `docs/routine/INSTRUCTIONS.md`, so its
