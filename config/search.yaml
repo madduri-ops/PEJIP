@@ -75,9 +75,14 @@ taxonomy:
     - senior director
     - executive director
     - chief
+    # Plain Director added 2026-10-06 after a LinkedIn alert's "Director, Technical
+    # Program Management" at Meta was dropped here: at large companies Director is a
+    # senior-leadership level. Scoring still ranks it below Senior Director.
+    - director
   excluded_title_patterns:
     - assistant vice president
     - associate director
+    - assistant director
     - intern
   # Role-family terms (spec 3.1). A title needs a seniority pattern and one of these.
   role_terms:
