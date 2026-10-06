@@ -104,9 +104,10 @@ def test_settings_prefer_the_registry_over_the_allowed_email() -> None:
     assert settings.accounts == (Account(ACCOUNT_ID, ALLOWED_EMAIL),)
 
 
-def test_settings_refuse_a_second_account_until_storage_is_per_account() -> None:
-    # A second account would see the first one's data (design doc 0016).
-    with pytest.raises(ValueError, match="only one account"):
+def test_settings_refuse_more_accounts_than_the_cap(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The cap keeps the shared site's cost known (design doc 0016).
+    monkeypatch.setattr(auth, "MAX_ACCOUNTS", 1)
+    with pytest.raises(ValueError, match="at most 1 accounts"):
         AuthSettings.from_env(
             {
                 "PEJIP_AUTH_ACCOUNTS": f"{ACCOUNT_ID}={ALLOWED_EMAIL},friend=friend@example.com",
@@ -268,10 +269,7 @@ def test_returns_the_signed_in_account(signer: AlbSigner) -> None:
     assert account == Account(ACCOUNT_ID, ALLOWED_EMAIL)
 
 
-def test_each_email_signs_in_as_its_own_account(
-    signer: AlbSigner, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.setattr(auth, "MAX_ACCOUNTS", 2)
+def test_each_email_signs_in_as_its_own_account(signer: AlbSigner) -> None:
     store, _ = _store({f"/{signer.kid}": httpx.Response(200, content=signer.public_pem())})
     settings = AuthSettings.from_env(
         {
