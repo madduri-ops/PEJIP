@@ -57,7 +57,7 @@ Alarms (all email through `pejip-alerts` on entering ALARM):
 | `pejip-search-run-failed` | A run finished FAILED (every source failed) |
 | `pejip-source-failures` | Any source failed to fetch in the hour (the run is PARTIAL) |
 | `pejip-app-errors` | Any ERROR line in the hour |
-| `pejip-search-stalled` | No run finished SUCCESS or PARTIAL for 26 hours; also emails when it clears |
+| `pejip-search-stalled` | No run finished SUCCESS or PARTIAL for 64 hours (searches run on weekdays only; the weekend gap is 62 hours); also emails when it clears |
 
 `pejip-search-stalled` treats missing data as breaching, so it would fire from
 the moment it exists. It is created only while the daily run schedule is on

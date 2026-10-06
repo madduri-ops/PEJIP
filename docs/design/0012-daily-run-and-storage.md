@@ -26,7 +26,7 @@ sequenceDiagram
     participant C as Claude API
     participant E as EFS /data
     participant N as SNS pejip-digest
-    S->>T: 06:00 Pacific, RunTask (command override)
+    S->>T: weekdays 05:00, 10:00, 15:00 Pacific, RunTask (command override)
     T->>P: GetParameter (decrypted)
     T->>J: fetch boards, read alert emails
     T->>C: analyse new or changed roles (CostGuard, keyless)
@@ -51,7 +51,7 @@ sequenceDiagram
 - **Run outcome for monitoring:** every run logs `run_finished` with its
   `status` (SUCCESS, PARTIAL or FAILED) to `/ecs/pejip-prod`. Monitoring (design
   0011) turns those log events into metrics in the `PEJIP` namespace and alarms
-  on a FAILED run and on no completed run in 26 hours, which also covers a task
+  on a FAILED run and on no completed run in 64 hours (26 before searches moved to weekdays only), which also covers a task
   that crashed or never started. The run exits 1 when it FAILED.
 
 ## Interfaces
