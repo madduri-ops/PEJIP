@@ -73,10 +73,12 @@ agent; no personal data is sent to them.
 
 ## Access to the hosted app
 
-Every route except `/healthz` and `/api/ranking/*` needs Google sign-in at the load balancer, and the
+Every route except `/healthz`, `/api/ranking/*` and the signed-out page (`/signed-out`
+with `/portal.css`, which show no data) needs Google sign-in at the load balancer, and the
 app admits only the configured address (`pejip.auth`, ADR-0006). Portal pages run
 no script and send a strict content security policy; every value they show is
-HTML-escaped ([design 0013](design/0013-web-portal.md)). The OAuth client
+HTML-escaped ([design 0013](design/0013-web-portal.md)). Sign out expires the
+load balancer's session cookies ([design 0009](design/0009-google-sign-in.md)). The OAuth client
 ID and secret are in SSM Parameter Store (`/pejip/google-oauth/*`, encrypted with
 `alias/pejip`), never in the repository.
 

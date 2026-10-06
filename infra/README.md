@@ -17,7 +17,7 @@ section 5.1.
 | `ai_cost.tf` | Alarms `pejip-ai-spend-50pct` to `-100pct` on the app's month-to-date Claude spend, emailing through `pejip-alerts` ([design](../docs/design/0002-ai-cost-guard.md)) |
 | `network.tf` | `pejip-vpc` (`10.20.0.0/16`), two public subnets, internet gateway, locked default security group, VPC flow logs |
 | `alb.tf` | ACM certificate for `job-search.zephyr-mcg.com`, ALB `pejip-alb` (HTTPS with Google sign-in, HTTP redirect), WAF `pejip-alb` with blocked-request logs |
-| `auth.tf` | Google sign-in: reads the OAuth client from SSM, keeps `/healthz` open, lets the ALB reach Google ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md)) |
+| `auth.tf` | Google sign-in: reads the OAuth client from SSM, keeps `/healthz` and the signed-out page open, lets the ALB reach Google ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md)) |
 | `ecs.tf` | ECS cluster and service `pejip-prod`, task definition (data volume, run settings, Claude switch), roles `pejip-ecs-execution` and `pejip-ecs-task`, log group `/ecs/pejip-prod` |
 | `efs.tf` | EFS file system `pejip-prod-data` (KMS-encrypted, TLS-only, no backups) holding the SQLite database, spend ledger and digests, with its access point and mount targets ([design](../docs/design/0012-daily-run-and-storage.md)) |
 | `digest.tf` | SNS topic `pejip-digest` that emails Babu the daily digest |
@@ -175,7 +175,7 @@ so the old key stops working then.
 
 ## Google sign-in
 
-Every route except `/healthz` requires signing in with the Google account in
+Every route except `/healthz` and the signed-out page requires signing in with the Google account in
 `sign_in_email` ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md),
 [design 0009](../docs/design/0009-google-sign-in.md)). One-time setup:
 

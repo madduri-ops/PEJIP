@@ -68,6 +68,25 @@ resource "aws_lb_listener_rule" "ranking" {
   }
 }
 
+# Sign out (POST /signout) expires the load balancer's session cookie and lands
+# here. This page and its stylesheet skip sign-in, or Google would sign Babu
+# straight back in. The page shows no data.
+resource "aws_lb_listener_rule" "signed_out" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 3
+
+  condition {
+    path_pattern {
+      values = ["/signed-out", "/portal.css"]
+    }
+  }
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app.arn
+  }
+}
+
 # The load balancer calls Google's token and user info endpoints itself when a
 # sign-in completes.
 resource "aws_vpc_security_group_egress_rule" "alb_to_google" {

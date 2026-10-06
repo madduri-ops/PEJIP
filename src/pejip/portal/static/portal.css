@@ -11,6 +11,11 @@ a{color:#0E5A64}a:hover{color:#083C43}
 .nav a.nl.on{background:#2A3550;color:#fff}
 .nav .count{margin-left:auto;background:#B4441A;color:#fff;font-size:12px;font-weight:600;border-radius:10px;padding:1px 8px}
 .nav .foot{margin-top:24px;padding:12px;font-size:12px;color:#9AA4B5;border-top:1px solid #2A3348}
+.nav .signout{margin-top:8px;padding:0;border:0;background:none;color:#C9D1DE;font:inherit;text-decoration:underline;cursor:pointer}
+.nav .signout:hover{color:#fff}
+.out{display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
+.out .card{max-width:420px;display:flex;flex-direction:column;gap:12px}
+.out .brand{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5B6577}
 .main{flex:999 1 560px;min-width:0;padding:32px 40px 64px}
 .wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
 .topbar{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}

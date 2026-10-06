@@ -64,7 +64,7 @@ search, error and stalled-run alarms and the `pejip` dashboard
 `alerts@inbox.job-search.zephyr-mcg.com` into the encrypted bucket
 `pejip-inbox-275704950192` ([design 0010](../design/0010-job-alert-inbox.md)). Tasks sit in the public subnets without a NAT gateway; their
 security group admits only the ALB. The ALB signs every request in with Google
-except `/healthz`, and the app admits only Babu's address
+except `/healthz` and the signed-out page, and the app admits only Babu's address
 ([ADR-0006](../adr/0006-google-sign-in-at-the-load-balancer.md)). The Deploy workflow builds and scans the image
 on every pull request and ships `main` with a health gate and automatic rollback
 ([design 0005](../design/0005-app-hosting-and-deploy.md)). Releases are tagged

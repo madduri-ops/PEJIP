@@ -227,3 +227,55 @@ def test_settings_page_opens_without_a_readable_company_list(
     for page in pages:
         assert "Seniority a title needs" in page
         assert "Northwind Robotics" not in page
+
+
+def _post(app: FastAPI, path: str, token: str | None, cookies: dict[str, str]) -> httpx.Response:
+    async def call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        headers = {OIDC_DATA_HEADER: token} if token else {}
+        async with httpx.AsyncClient(
+            transport=transport, base_url="https://test", cookies=cookies
+        ) as client:
+            return await client.post(path, headers=headers)
+
+    return asyncio.run(call())
+
+
+def test_sign_out_expires_every_session_shard(signed_in_app: FastAPI, signer: AlbSigner) -> None:
+    cookies = {
+        "AWSELBAuthSessionCookie-0": "a",
+        "AWSELBAuthSessionCookie-1": "b",
+        "other": "kept",
+    }
+    response = _post(signed_in_app, "/signout", signer.token(ALLOWED_EMAIL), cookies)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/signed-out"
+    expired = response.headers.get_list("set-cookie")
+    assert len(expired) == 2
+    for shard, header in zip(("0", "1"), expired, strict=True):
+        assert header.startswith(f'AWSELBAuthSessionCookie-{shard}=""')
+        assert "Max-Age=0" in header
+        assert "Path=/" in header
+        assert "Secure" in header
+        assert "HttpOnly" in header
+
+
+def test_sign_out_needs_sign_in(signed_in_app: FastAPI) -> None:
+    response = _post(signed_in_app, "/signout", None, {})
+
+    assert response.status_code == 401
+    assert "set-cookie" not in response.headers
+
+
+def test_signed_out_page_and_styles_need_no_sign_in(signed_in_app: FastAPI) -> None:
+    page = _get(signed_in_app, "/signed-out")
+    styles = _get(signed_in_app, "/portal.css")
+
+    assert page.status_code == 200
+    assert "You are signed out" in page.text
+    assert '<a class="btn primary" href="/">Sign in again</a>' in page.text
+    assert "Sample data" not in page.text
+    assert page.headers["Content-Security-Policy"] == api.PAGE_CSP
+    assert styles.status_code == 200
+    assert ".signout" in styles.text

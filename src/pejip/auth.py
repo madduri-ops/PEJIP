@@ -29,9 +29,13 @@ from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
 OIDC_DATA_HEADER = "x-amzn-oidc-data"
 
-# Reachable without signing in: the load balancer and the post-deploy health gate
-# poll it.
-PUBLIC_PATHS = frozenset({"/healthz"})
+# Reachable without signing in: the post-deploy health gate polls /healthz, and the
+# page Sign out lands on (with its stylesheet) must not sign Babu straight back in.
+PUBLIC_PATHS = frozenset({"/healthz", "/signed-out", "/portal.css"})
+
+# The load balancer keeps the sign-in session in this cookie, split into shards
+# named -0, -1 and so on when it is large.
+ALB_SESSION_COOKIE = "AWSELBAuthSessionCookie"
 
 # Where AWS publishes the load balancer's signing keys, by region and key id.
 ALB_KEY_URL = "https://public-keys.auth.elb.{region}.amazonaws.com/{kid}"
@@ -193,3 +197,14 @@ def _verify_signature(key: ec.EllipticCurvePublicKey, parts: list[str]) -> None:
         )
     except InvalidSignature as error:
         raise SignInRequiredError from error
+
+
+def session_cookie_names(cookies: Mapping[str, str]) -> list[str]:
+    """Every load balancer session cookie shard to expire on sign-out.
+
+    The first shard is always included, so sign-out clears the session even when
+    the browser did not send the cookie with this request.
+    """
+    names = {name for name in cookies if name.startswith(f"{ALB_SESSION_COOKIE}-")}
+    names.add(f"{ALB_SESSION_COOKIE}-0")
+    return sorted(names)

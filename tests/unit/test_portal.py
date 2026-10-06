@@ -596,6 +596,8 @@ def test_navigation_links_every_page() -> None:
     assert '<a class="nl" href="/watchlist">Watchlist</a>' in html
     assert '<a class="nl" href="/settings">Settings</a>' in html
     assert '<a class="nl" href="/connections">Connections</a>' in html
+    assert '<form method="post" action="/signout">' in html
+    assert '<button class="signout" type="submit">Sign out</button>' in html
     assert "Soon" not in html
 
 

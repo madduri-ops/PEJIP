@@ -1,6 +1,6 @@
 # 0009: Google sign-in
 
-_Status: implemented. Last updated: 2026-10-05._
+_Status: implemented. Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -11,10 +11,11 @@ through the load balancer, is refused. Decision record:
 
 ## Scope
 
-In scope: Google sign-in on every route except `/healthz`, one allowed address,
-tests and DAST with sign-in on, the Terraform and setup steps.
+In scope: Google sign-in on every route except `/healthz` and the signed-out page,
+one allowed address, sign-out, tests and DAST with sign-in on, the Terraform and
+setup steps.
 
-Out of scope: more than one user, roles, a sign-out button, sign-in for the
+Out of scope: more than one user, roles, signing out of Google itself, sign-in for the
 batch commands (they run as ECS tasks, not over HTTP).
 
 ## Design
@@ -40,6 +41,16 @@ sequenceDiagram
 
 `/healthz` matches a listener rule ahead of sign-in and goes straight to the app,
 which also skips the check for it.
+
+**Sign out.** The sidebar's Sign out button posts to `/signout` (signed in like any
+route). The app answers 303 to `/signed-out` and expires every
+`AWSELBAuthSessionCookie-N` shard the browser sent, always including `-0`
+(`Max-Age=0`, `Path=/`, `Secure`, `HttpOnly`), which is how AWS says to end an ALB
+session. Google has no sign-out endpoint for one site, so Babu stays signed in to
+Google itself, and the page says so. `/signed-out` and `/portal.css` match a
+second listener rule ahead of sign-in (`aws_lb_listener_rule.signed_out`), or the
+next request would sign Babu straight back in; the page shows no data. "Sign in
+again" goes to `/`, which starts a fresh sign-in.
 
 The app fetches the ALB's public key for the token's `kid` from
 `https://public-keys.auth.elb.us-west-2.amazonaws.com/<kid>` once and keeps it in

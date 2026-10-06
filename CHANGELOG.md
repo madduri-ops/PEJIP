@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The portal has a Sign out button. It ends the PEJIP session and lands on a
+  signed-out page; Google itself stays signed in. Needs one `terraform apply` for
+  the load balancer rule that keeps the signed-out page open.
 - Ranking through a Claude Code routine on Babu's plan (design doc 0015): on AWS
   the 06:00 run stores new roles without calling Claude, the routine analyses
   them at 07:00 through two key-protected endpoints (`/api/ranking/queue` and
