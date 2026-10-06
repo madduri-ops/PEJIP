@@ -142,6 +142,18 @@ site. The options were:
 - Yahoo IMAP with a stored app password: ruled out, as the build policy forbids
   long-lived credentials.
 
+### Other job boards (2026-10-06)
+
+Babu asked for job posting sites as well as company boards. Indeed closed its
+public job search API and the others publish none, so their own job alerts are the
+only route the sources policy allows. Ladders, Indeed, Glassdoor, Built In and
+Wellfound are job boards in `config/search.yaml`, read exactly like LinkedIn: Babu
+creates each alert with his Yahoo address, the forwarded email arrives in the
+inbox, and only email sent by that board becomes roles. Their link patterns are
+first guesses from each site's public job URLs, to be tuned on the first real
+alerts. Indeed and Glassdoor keep their full canonical link, because their role ids
+live in the query string.
+
 ## Alternatives considered
 
 - Forwarding from a mailbox at Babu's email provider: works, but adds a mailbox

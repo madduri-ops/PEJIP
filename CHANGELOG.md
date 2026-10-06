@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Job-alert emails from Ladders, Indeed, Glassdoor, Built In and Wellfound
+  become roles, the same way LinkedIn alerts do. Babu sets up each site's alert
+  with his Yahoo address.
 - Decisions on each role (design doc 0013): Interested, Watch, Not interested and
   Already applied buttons on the role page, saved with the score you saw. Watched
   roles show in Watched and the Watchlist; Not interested and Already applied roles
