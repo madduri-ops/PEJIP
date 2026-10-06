@@ -10,6 +10,7 @@ stored job field, or a connection from the candidate's own import.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlencode
 
 from pejip.analysis import EvidenceMatching, JobAnalysis, quote_in
 from pejip.network.matching import MATURED, NOT_MATURED, YOUR_CALL, NetworkSignal
@@ -77,14 +78,40 @@ def _more(total: int, one: str, many: str, tail: str = "") -> list[dict[str, Any
     return [_point(f"{extra} more {one if extra == 1 else many}{tail}.", [])]
 
 
-def network_points(signal: NetworkSignal | None, company: str) -> list[dict[str, Any]]:
-    """The "Who you know" section: matured connections, then titles that need a call."""
+def warm_path_url(company: str) -> str:
+    """LinkedIn's people search for the company, narrowed to second-degree connections.
+
+    PEJIP only has the candidate's first-degree export and never reads LinkedIn
+    pages (docs/sources.md), so finding a second-degree path is the candidate's call.
+    """
+    return "https://www.linkedin.com/search/results/people/?" + urlencode(
+        {"keywords": company, "network": '["S"]'}
+    )
+
+
+def network_points(
+    signal: NetworkSignal | None, company: str, warm_path: bool = False
+) -> list[dict[str, Any]]:
+    """The "Who you know" section: matured connections, then titles that need a call.
+
+    With ``warm_path`` (a strong-fit role), a company where the candidate knows
+    nobody directly also gets a prompt to look for a second-degree path.
+    """
     if signal is None:
         return [_point("Network data has not been imported yet.", [])]
     when = f"{signal.imported_at:%B %-d, %Y}" if signal.imported_at else "an unknown date"
     snapshot = f"As of your LinkedIn import on {when}; people may have moved since."
     if not signal.matches:
-        return [_point(f"No first-degree connections at {company}. {snapshot}", [])]
+        points = [_point(f"No first-degree connections at {company}. {snapshot}", [])]
+        if warm_path:
+            points.append(
+                _point(
+                    "Strong fit: check LinkedIn for someone who can introduce you "
+                    f"(second-degree connections at {company}): {warm_path_url(company)}",
+                    [],
+                )
+            )
+        return points
     level = LEVEL_TEXT.get(signal.role_level)
     points = [
         _point(

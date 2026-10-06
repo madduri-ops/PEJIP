@@ -88,6 +88,13 @@ flowchart LR
    first four of each, a line counts the rest so nobody is silently dropped. Each named
    person cites `{"type": "network", "connection_id": ...}`, which
    `verify_citations` checks against the role's own matches.
+   A strong-fit role (Fit at or above `strong_match_fit`) at a company where the
+   candidate has no first-degree connection also gets a "check for a warm path"
+   line linking LinkedIn's people search for that company, narrowed to
+   second-degree connections; the portal's role page shows the same link. The
+   export holds first-degree connections only and PEJIP never reads LinkedIn pages,
+   so finding an introducer is the candidate's call (Babu, 2026-10-06). The line
+   cites nothing and changes no score.
 
 Decisions are keyed by company, title (normalized) and role level, never by person:
 one answer covers everyone with that title there, and a re-import that changes the

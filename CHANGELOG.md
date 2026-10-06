@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- A strong-fit role at a company where you have no first-degree connection gets
+  a "check LinkedIn for a warm path" line in the digest and a link on its portal
+  page, to look for a second-degree introduction. Scores are unchanged.
 - Job-alert emails from Ladders, Indeed, Glassdoor, Built In and Wellfound
   become roles, the same way LinkedIn alerts do. Babu sets up each site's alert
   with his Yahoo address.
