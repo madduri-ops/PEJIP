@@ -28,6 +28,12 @@ locals {
   sign_in_accounts = length(var.sign_in_accounts) > 0 ? var.sign_in_accounts : { babu = local.sign_in_email }
   sign_in_registry = join(",", [for id, email in local.sign_in_accounts : "${id}=${email}"])
 
+  # The account ids alone, which are not secret: each gets its own inbox
+  # address, digest topic and scheduled run (design doc 0016). Babu's account is
+  # "babu", which keeps the resources from before accounts.
+  account_ids   = nonsensitive(keys(local.sign_in_accounts))
+  owner_account = "babu"
+
   google_oidc = {
     issuer                 = "https://accounts.google.com"
     authorization_endpoint = "https://accounts.google.com/o/oauth2/v2/auth"

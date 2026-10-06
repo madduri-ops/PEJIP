@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -16,7 +17,7 @@ from pydantic import ValidationError
 from pejip.accounts import open_store
 from pejip.ai.client import AIClient
 from pejip.companies import load_search_config
-from pejip.config import SearchConfig, Settings, load_config
+from pejip.config import SearchConfig, Settings, account_ids, load_config
 from pejip.cost import CostGuard, SqliteLedger
 from pejip.delivery import make_sns_client, send_digest
 from pejip.digest import Digest, render
@@ -90,7 +91,9 @@ def _cmd_run(settings: Settings) -> int:
     network, network_problem = _network(config, settings)
     inbox = None
     if settings.inbox_bucket:
-        inbox = S3Inbox(make_s3_client(settings.aws_region), settings.inbox_bucket)
+        inbox = S3Inbox(
+            make_s3_client(settings.aws_region), settings.inbox_bucket, settings.inbox_prefix
+        )
     try:
         digest = Pipeline(
             config,
@@ -301,29 +304,52 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+# The scheduled commands, run once per account (design doc 0016).
+_SCHEDULED: dict[str, Callable[[Settings], int]] = {
+    "run": _cmd_run,
+    "digest": _cmd_digest,
+    "purge": _cmd_purge,
+}
+
+
+def _for_each_account(command: str) -> int:
+    """Run a scheduled command for every account; one account's crash spares the rest.
+
+    The pejip-app-errors alarm counts ERROR lines, and a run that crashes never
+    logs run_finished, so each crash is logged at once (with the account id,
+    never its email). The first crash is raised again once every account has
+    had its turn, so the task still fails with its traceback.
+    """
+    worst, crashes = 0, list[Exception]()
+    for account in account_ids(os.environ):
+        try:
+            worst = max(worst, _SCHEDULED[command](Settings.from_env(account=account)))
+        except Exception as exc:  # noqa: BLE001 - one account must not stop the rest; re-raised below
+            _log_crash(command, account)
+            crashes.append(exc)
+    if crashes:
+        raise crashes[0]
+    return worst
+
+
+def _log_crash(command: str, account: str) -> None:
+    if command == "run":
+        log.exception("run_crashed", extra={"account": account})
+    elif command == "digest":
+        # As for run_crashed: a digest that never arrives must still alarm.
+        log.exception("digest_crashed", extra={"account": account})
+    else:
+        log.exception("purge_crashed", extra={"account": account})
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     configure_logging()
+    if args.command in _SCHEDULED:
+        return _for_each_account(args.command)
     settings = Settings.from_env()
-    if args.command == "run":
-        try:
-            return _cmd_run(settings)
-        except Exception:
-            # The pejip-app-errors alarm counts ERROR lines; a run that crashes
-            # never logs run_finished, so say so before the traceback.
-            log.exception("run_crashed")
-            raise
-    if args.command == "digest":
-        try:
-            return _cmd_digest(settings)
-        except Exception:
-            # As for run_crashed: a digest that never arrives must still alarm.
-            log.exception("digest_crashed")
-            raise
     if args.command == "connections":
         return _cmd_connections(settings, args.file)
-    if args.command == "purge":
-        return _cmd_purge(settings)
     if args.command == "export":
         return _cmd_export(settings, args.out)
     return _cmd_delete_all(settings, args.yes)

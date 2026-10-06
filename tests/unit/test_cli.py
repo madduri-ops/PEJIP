@@ -66,6 +66,9 @@ def test_commands_work_on_the_accounts_own_database(
     legacy.engine.dispose()
     monkeypatch.setenv("PEJIP_DATABASE_URL", f"sqlite:///{env}/accounts/{{account}}/pejip.db")
     monkeypatch.setenv("PEJIP_LEGACY_DATABASE_URL", f"sqlite:///{env / 'cli.db'}")
+    # Another account may only use places named per account.
+    monkeypatch.setenv("PEJIP_PROFILE", f"{env}/accounts/{{account}}/profile.yaml")
+    monkeypatch.setenv("PEJIP_OUTPUT_DIR", f"{env}/accounts/{{account}}/out")
 
     babu_export, friend_export = env / "babu.json", env / "friend.json"
     assert cli.main(["export", str(babu_export)]) == 0
@@ -113,8 +116,10 @@ def test_run_reads_the_inbox_only_when_a_bucket_is_named(monkeypatch: pytest.Mon
     assert built[-1]["inbox"] is None
     monkeypatch.setenv("PEJIP_INBOX_BUCKET", "inbox-bucket")
     monkeypatch.setenv("AWS_REGION", "us-west-2")
+    monkeypatch.setenv("PEJIP_INBOX_PREFIX", "inbound/{account}/")
     assert cli.main(["run"]) == 0
     assert built[-1]["inbox"] is not None
+    assert built[-1]["inbox"]._prefix == "inbound/babu/"  # only this account's mail
     assert regions == ["us-west-2"]
 
 
@@ -611,3 +616,47 @@ def test_the_digest_notes_a_missing_company_list(
     assert cli.main(["digest"]) == 0
     [written] = (env / "out").glob("digest-*.md")
     assert "Your company list is not stored yet" in written.read_text()
+
+
+def test_scheduled_commands_run_once_per_account(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[tuple[str, str]] = []
+
+    def record(settings: Settings) -> int:
+        seen.append((settings.account, settings.database_url))
+        return 0 if settings.account == "babu" else 1
+
+    monkeypatch.setitem(cli._SCHEDULED, "purge", record)
+    monkeypatch.delenv("PEJIP_ACCOUNT", raising=False)
+    monkeypatch.setenv("PEJIP_ACCOUNTS", "babu,friend")
+    monkeypatch.setenv("PEJIP_DATABASE_URL", "sqlite:////data/accounts/{account}/pejip.db")
+
+    assert cli.main(["purge"]) == 1
+    assert seen == [
+        ("babu", "sqlite:////data/accounts/babu/pejip.db"),
+        ("friend", "sqlite:////data/accounts/friend/pejip.db"),
+    ]
+
+
+@pytest.mark.parametrize(("command", "event"), [("run", "run_crashed"), ("purge", "purge_crashed")])
+def test_one_accounts_crash_spares_the_others(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture, command: str, event: str
+) -> None:
+    seen: list[str] = []
+
+    def crash_for_babu(settings: Settings) -> int:
+        seen.append(settings.account)
+        if settings.account == "babu":
+            raise RuntimeError("boom")
+        return 0
+
+    monkeypatch.setitem(cli._SCHEDULED, command, crash_for_babu)
+    monkeypatch.setattr(cli, "configure_logging", lambda: None)
+    monkeypatch.delenv("PEJIP_ACCOUNT", raising=False)
+    monkeypatch.setenv("PEJIP_ACCOUNTS", "babu,friend")
+
+    with caplog.at_level("ERROR", logger="pejip"), pytest.raises(RuntimeError):
+        cli.main([command])
+
+    assert seen == ["babu", "friend"]
+    crashed = [r for r in caplog.records if r.getMessage() == event]
+    assert [getattr(r, "account", None) for r in crashed] == ["babu"]

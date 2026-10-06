@@ -7,8 +7,9 @@ from pathlib import Path
 
 import pytest
 
+from pejip import accounts
 from pejip.accounts import check_account_id, fill, open_store, prepare, sqlite_path
-from pejip.config import Settings
+from pejip.config import Settings, account_ids
 
 
 def _settings(tmp_path: Path, account: str = "babu", **extra: str) -> Settings:
@@ -231,3 +232,108 @@ def test_open_store_gives_a_working_store_in_the_accounts_folder(tmp_path: Path)
     assert store.latest_run() is None
     store.engine.dispose()
     assert (tmp_path / "accounts" / "friend" / "pejip.db").is_file()
+
+
+# ── Places another account may use ───────────────────────────────────────────
+def test_another_account_gets_its_own_places_by_default() -> None:
+    friend = Settings.from_env({}, account="friend")
+
+    assert friend.database_url == "sqlite:///accounts/friend/pejip.db"
+    assert friend.output_dir == Path("accounts/friend/output")
+    assert friend.profile_path == Path("accounts/friend/profile.yaml")
+    assert friend.network_prefix == "network/friend/"
+    assert friend.inbox_prefix == "inbound/friend/"
+    assert friend.digest_topic_arn is None
+
+
+def test_babus_account_keeps_the_places_from_before_accounts() -> None:
+    babu = Settings.from_env({"PEJIP_DIGEST_TOPIC_ARN": "arn:babu"})
+
+    assert babu.database_url == "sqlite:///pejip.db"
+    assert babu.profile_path == Path("profile.yaml")
+    assert babu.inbox_prefix == "inbound/"
+    assert babu.digest_topic_arn == "arn:babu"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "PEJIP_DATABASE_URL",
+        "PEJIP_OUTPUT_DIR",
+        "PEJIP_PROFILE",
+        "PEJIP_PROFILE_PARAMETER",
+        "PEJIP_COMPANIES",
+        "PEJIP_COMPANIES_PARAMETER",
+        "PEJIP_CONNECTIONS",
+        "PEJIP_NETWORK_DECISIONS",
+        "PEJIP_NETWORK_PREFIX",
+        "PEJIP_INBOX_PREFIX",
+    ],
+)
+def test_another_account_refuses_a_shared_place(name: str) -> None:
+    # A place without {account} is Babu's; another account must never open it.
+    with pytest.raises(ValueError, match=name):
+        Settings.from_env({name: "babus-place"}, account="friend")
+    assert Settings.from_env({name: "babus-place"}) is not None
+
+
+def test_another_account_fills_its_own_local_files() -> None:
+    friend = Settings.from_env(
+        {
+            "PEJIP_CONNECTIONS": "/in/{account}/Connections.csv",
+            "PEJIP_NETWORK_DECISIONS": "/in/{account}/decisions.yaml",
+            "PEJIP_COMPANIES": "/in/{account}/companies.yaml",
+            "PEJIP_INBOX_PREFIX": "inbound/{account}/",
+        },
+        account="friend",
+    )
+
+    assert friend.connections_path == Path("/in/friend/Connections.csv")
+    assert friend.network_decisions_path == Path("/in/friend/decisions.yaml")
+    assert friend.companies_path == Path("/in/friend/companies.yaml")
+    assert friend.inbox_prefix == "inbound/friend/"
+
+
+def test_each_account_emails_only_its_own_digest_topic() -> None:
+    env = {
+        "PEJIP_DIGEST_TOPICS": "babu=arn:babu, friend=arn:friend",
+        "PEJIP_DIGEST_TOPIC_ARN": "arn:legacy",
+    }
+
+    assert Settings.from_env(env).digest_topic_arn == "arn:babu"
+    assert Settings.from_env(env, account="friend").digest_topic_arn == "arn:friend"
+    assert Settings.from_env(env, account="other").digest_topic_arn is None
+    # Without the map, the single old topic is Babu's alone.
+    legacy = {"PEJIP_DIGEST_TOPIC_ARN": "arn:legacy"}
+    assert Settings.from_env(legacy, account="friend").digest_topic_arn is None
+
+
+def test_parse_pairs_reads_and_rejects() -> None:
+    assert accounts.parse_pairs(" a=1 ,, b-2=x=y ", "X") == {"a": "1", "b-2": "x=y"}
+    for bad, message in [
+        ("a", "id=value"),
+        ("A=1", "id=value"),
+        ("a=", "id=value"),
+        ("a=1,a=2", "repeats an account id"),
+    ]:
+        with pytest.raises(ValueError, match=message) as raised:
+            accounts.parse_pairs(bad, "X")
+        assert raised.value.args[0].startswith("X ")
+
+
+@pytest.mark.parametrize(
+    ("env", "expected"),
+    [
+        ({}, ["babu"]),
+        ({"PEJIP_ACCOUNTS": "babu, friend,babu,"}, ["babu", "friend"]),
+        ({"PEJIP_ACCOUNTS": "babu,friend", "PEJIP_ACCOUNT": " friend "}, ["friend"]),
+        ({"PEJIP_ACCOUNTS": " , "}, ["babu"]),
+    ],
+)
+def test_account_ids(env: dict[str, str], expected: list[str]) -> None:
+    assert account_ids(env) == expected
+
+
+def test_account_ids_refuse_a_bad_id() -> None:
+    with pytest.raises(ValueError, match="account ids"):
+        account_ids({"PEJIP_ACCOUNTS": "babu,../x"})

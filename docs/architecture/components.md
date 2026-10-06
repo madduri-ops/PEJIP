@@ -57,7 +57,9 @@ flowchart TB
   delete-all --yes`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
   `PEJIP_DATABASE_URL`, `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's
   SQLite file), `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM
-  instead of a file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest),
+  instead of a file), `PEJIP_DIGEST_TOPICS` (each account's digest topic; `PEJIP_DIGEST_TOPIC_ARN`
+  still works for Babu alone), `PEJIP_ACCOUNTS` (the accounts the scheduled
+  commands loop over),
   `PEJIP_AI_ENABLED`, `PEJIP_RANKER` (`routine`: `run` makes no Claude calls and
   sends nothing, and `digest` emails the latest run ranked by the routine's stored
   analyses), `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the LinkedIn

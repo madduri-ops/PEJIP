@@ -45,7 +45,9 @@ flowchart LR
 
 - The receiving domain is a subdomain of the app's host name. The host name is a
   CNAME to the load balancer, and DNS does not allow an MX record beside a CNAME.
-- SES writes each message whole (MIME) under `inbound/`. The bucket encrypts with
+- SES writes each message whole (MIME) under `inbound/<account>/`: `alerts@` is
+  Babu's (`inbound/babu/`), and any other account receives at `<id>@` (design doc
+  0016). The bucket encrypts with
   the PEJIP key, which lets SES generate data keys only through S3 and only for
   this account.
 - The bucket accepts writes only from SES rules in the `pejip-inbox` rule set,
@@ -56,7 +58,7 @@ flowchart LR
 
 ### Reading the inbox
 
-`pejip run` lists `inbound/`, parses each message with the standard library's
+`pejip run` lists its account's own folder (`PEJIP_INBOX_PREFIX`, `inbound/{account}/` on AWS), parses each message with the standard library's
 `email` package and deletes it once its roles are stored.
 
 - The HTML part is preferred over plain text. Each link is followed through
@@ -104,7 +106,7 @@ flowchart LR
 
 ## Data model
 
-Messages are raw MIME objects at `inbound/<SES message id>`. They can hold Babu's
+Messages are raw MIME objects at `inbound/<account>/<SES message id>`. They can hold Babu's
 name and the alert's search terms, so the bucket is tagged
 `DataClassification = personal`. A message is deleted after it is read, and the
 lifecycle rule removes any message left after 90 days, plus deleted versions after

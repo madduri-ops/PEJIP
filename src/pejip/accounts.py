@@ -51,6 +51,26 @@ def check_account_id(account: str) -> str:
     return account
 
 
+def parse_pairs(value: str, name: str) -> dict[str, str]:
+    """Read comma-separated ``id=value`` pairs keyed by account id.
+
+    The error names the setting, never a value (values may be addresses).
+    """
+    pairs: dict[str, str] = {}
+    for entry in value.split(","):
+        if not entry.strip():
+            continue
+        account, separator, item = (part.strip() for part in entry.partition("="))
+        if not separator or not ACCOUNT_ID_PATTERN.fullmatch(account) or not item:
+            msg = f"{name} entries must be id=value"
+            raise ValueError(msg)
+        if account in pairs:
+            msg = f"{name} repeats an account id"
+            raise ValueError(msg)
+        pairs[account] = item
+    return pairs
+
+
 def fill(template: str, account: str) -> str:
     """Put the account id in a setting that names a per-account place."""
     return template.replace(PLACEHOLDER, account)

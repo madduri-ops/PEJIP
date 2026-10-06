@@ -66,7 +66,8 @@ Environment set by `infra/ecs.tf` for every task:
 | `PEJIP_OUTPUT_DIR` | `/data/output` |
 | `PEJIP_INBOX_BUCKET` | `pejip-inbox-275704950192` |
 | `PEJIP_PROFILE_PARAMETER` | `/pejip/accounts/{account}/profile` (when set, used instead of `PEJIP_PROFILE`; per account since design 0016) |
-| `PEJIP_DIGEST_TOPIC_ARN` | the `pejip-digest` topic |
+| `PEJIP_DIGEST_TOPICS` | each account's digest topic, `id=arn` pairs (Babu's is `pejip-digest`; design 0016) |
+| `PEJIP_ACCOUNTS` | the accounts `run`, `digest` and `purge` loop over |
 | `PEJIP_AI_ENABLED` | `true` once `claude_app_rule_id` and `claude_app_service_account_id` are set, else `false` |
 | `PEJIP_CLAUDE_IDENTITY` and `ANTHROPIC_*` IDs | `aws-sts` and the app's Console IDs, only when Claude is enabled |
 
