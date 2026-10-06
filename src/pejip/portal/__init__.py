@@ -18,7 +18,7 @@ from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
 from pejip.auth import session_cookie_names
 from pejip.config import SearchConfig
 from pejip.portal import render
-from pejip.portal.data import DECISIONS, Decisions, PortalData
+from pejip.portal.data import DECISIONS, Decisions, PortalData, SearchSettings
 from pejip.portal.views import (
     MAX_COMPANY_FILTER,
     MAX_PEOPLE_QUERY,
@@ -31,9 +31,12 @@ from pejip.portal.views import (
     referral_paths,
     watchlist,
 )
+from pejip.search_settings import SettingsError, SettingsForm, current
 
 # A decision form sends one short field; anything bigger is not from the page.
 MAX_FORM_BYTES = 256
+# The Settings form: a few hundred short terms at most (search_settings.MAX_TERMS).
+MAX_SETTINGS_BYTES = 64 * 1024
 
 
 def same_origin(request: Request) -> bool:
@@ -52,17 +55,20 @@ STYLESHEET = files("pejip.portal").joinpath("static/portal.css").read_text(encod
 Clock = Callable[[], datetime]
 
 
-def router(
+def router(  # noqa: PLR0913 - each data source is optional
     data: PortalData | None = None,
     clock: Clock | None = None,
+    *,
     config: SearchConfig | None = None,
     config_for: Callable[[str], SearchConfig | None] | None = None,
     data_for: Callable[[str], PortalData] | None = None,
+    search_settings: SearchSettings | None = None,
 ) -> APIRouter:
     """The portal's routes, reading the signed-in account's ``data_for``, else ``data``.
 
     Settings shows the signed-in account's search setup from ``config_for``
-    (design doc 0016), or ``config`` where no account-aware source is given.
+    (design doc 0016), or ``config`` where no account-aware source is given. With
+    ``search_settings`` its search fields can be edited and saved (design doc 0017).
     """
     now_fn = clock or (lambda: datetime.now(UTC))
     routes = APIRouter(tags=["portal"], default_response_class=HTMLResponse)
@@ -246,18 +252,17 @@ def router(
             body=render.watchlist_body(listing, now_fn()),
         )
 
-    @routes.get("/settings")
-    def settings(request: Request, data: AccountData) -> str:
-        """What PEJIP searches for, when, and how it ranks (spec 12.35)."""
-        account = account_of(request)
-        shown = config_for(account) if config_for is not None else config
-        return frame(
-            data=data,
-            active="settings",
-            heading="Settings",
-            subtitle="What PEJIP searches for, when, and how it ranks.",
-            body=render.settings_body(shown, alert_address(account)),
-        )
+    def config_of(account: str) -> SearchConfig | None:
+        return config_for(account) if config_for is not None else config
+
+    _add_settings_routes(
+        routes,
+        frame=frame,
+        account_of=account_of,
+        account_data=account_data,
+        config_of=config_of,
+        search_settings=search_settings,
+    )
 
     @routes.get("/search-health")
     def search_health(data: AccountData) -> str:
@@ -331,3 +336,81 @@ def _add_decision_route(routes: APIRouter, account_data: Callable[[Request], Por
         if not isinstance(data, Decisions) or not data.decide(opportunity_id, choice or None):
             return Response("Opportunity not found.", status_code=404)
         return RedirectResponse(f"/opportunities/{opportunity_id}#decision", status_code=303)
+
+
+Frame = Callable[..., str]
+
+
+def _add_settings_routes(  # noqa: PLR0913 - what the Settings routes read
+    routes: APIRouter,
+    *,
+    frame: Frame,
+    account_of: Callable[[Request], str],
+    account_data: Callable[[Request], PortalData],
+    config_of: Callable[[str], SearchConfig | None],
+    search_settings: SearchSettings | None,
+) -> None:
+    """Settings, and the form that saves its search fields (spec 12.35, design doc 0017)."""
+    AccountData = Annotated[PortalData, Depends(account_data)]  # noqa: N806 - a type alias
+
+    def settings_page(
+        request: Request,
+        data: PortalData,
+        *,
+        form: SettingsForm | None = None,
+        error: str = "",
+        saved: bool = False,
+    ) -> str:
+        account = account_of(request)
+        shown = config_of(account)
+        editing = None
+        if search_settings is not None and shown is not None:
+            editing = render.SettingsEditing(
+                form=form or SettingsForm.of(current(shown)),
+                saved_at=search_settings.saved_at(account),
+                error=error,
+                just_saved=saved,
+            )
+        return frame(
+            data=data,
+            active="settings",
+            heading="Settings",
+            subtitle="What PEJIP searches for, when, and how it ranks.",
+            body=render.settings_body(shown, alert_address(account), editing),
+        )
+
+    @routes.get("/settings")
+    def settings(
+        request: Request, data: AccountData, saved: Annotated[str, Query(max_length=1)] = ""
+    ) -> str:
+        """What PEJIP searches for, when, and how it ranks (spec 12.35)."""
+        return settings_page(request, data, saved=saved == "1")
+
+    @routes.post(
+        "/settings",
+        response_class=Response,
+        responses={303: {"description": "Back to Settings"}, 403: {}, 404: {}, 413: {}, 422: {}},
+    )
+    async def save_settings(request: Request, data: AccountData) -> Response:
+        """Save the account's search settings, or go back to the defaults (design doc 0017)."""
+        if not same_origin(request):
+            return Response("Forms are only accepted from this site.", status_code=403)
+        account = account_of(request)
+        shown = config_of(account)
+        if search_settings is None or shown is None:
+            return Response("Settings can't be changed on this server.", status_code=404)
+        body = await request.body()
+        if len(body) > MAX_SETTINGS_BYTES:
+            return Response("That is more than the Settings form sends.", status_code=413)
+        fields = parse_qs(body.decode("utf-8", "replace"), keep_blank_values=True)
+        if fields.get("action", [""])[0] == "reset":
+            search_settings.save(account, None)
+            return RedirectResponse("/settings?saved=1", status_code=303)
+        form = SettingsForm.posted(fields, list(shown.geography.scopes))
+        try:
+            parsed = form.parse(render.SCOPE_LABEL)
+        except SettingsError as exc:
+            page = settings_page(request, data, form=form, error=str(exc))
+            return HTMLResponse(page, status_code=422)
+        search_settings.save(account, parsed)
+        return RedirectResponse("/settings?saved=1", status_code=303)

@@ -200,8 +200,10 @@ flowchart TB
 - **Responsibility:** the HTTP surface of PEJIP: the health endpoint and the web
   portal's pages.
 - **Interfaces:** `GET /healthz`; the portal pages `GET /`, `/opportunities`,
-  `/opportunities/{id}` (and `POST /opportunities/{id}/decision`), `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` and `/portal.css`; `POST /signout` (and `GET`, for the return from an expired session) and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
-  shows the search setup with Babu's private companies (ADR-0009). Run with
+  `/opportunities/{id}` (and `POST /opportunities/{id}/decision`), `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` (and `POST /settings`) and `/portal.css`; `POST /signout` (and `GET`, for the return from an expired session) and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
+  shows the search setup with Babu's private companies (ADR-0009) and saves each
+  account's search settings to its database (`AccountSettings`,
+  [0017: Editable search settings](../design/0017-editable-settings.md)). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
   `/healthz`, `/signed-out` and `/portal.css` (and the ranking routes, below) requires Google sign-in: `pejip.auth` checks the ALB's signed
   `x-amzn-oidc-data` token against `PEJIP_AUTH_ALB_ARN`, maps the email to an
@@ -218,12 +220,13 @@ flowchart TB
 - **Responsibility:** server-rendered Home, Opportunities, Opportunity detail,
   Companies, Watchlist, Connections, Search Health and Settings pages built from the portal mocks; ranking, saved views, filters and Pacific time
   display.
-- **Interfaces:** `portal.router(data, clock, config, config_for, data_for)` mounted by `create_app`, which passes each account's data and the
+- **Interfaces:** `portal.router(data, clock, config=, config_for=, data_for=, search_settings=)` mounted by `create_app`, which passes each account's data and the
   search configuration from `PEJIP_CONFIG` for Settings; reads a
   `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`, `network()`), and records
-  decisions through `Decisions.decide()` when the source supports it. Pages get their own
+  decisions through `Decisions.decide()` when the source supports it, and search
+  settings through `SearchSettings.save()` when one is given. Pages get their own
   content security policy (`PAGE_CSP`), with no script.
-- **Data:** writes only the `decisions` table. `StoreData` reads each signed-in account's database (jobs seen in the last week, latest
+- **Data:** writes only the `decisions` and `search_settings` tables. `StoreData` reads each signed-in account's database (jobs seen in the last week, latest
   recommendations and explanations, recent runs, decisions); `SampleData` (synthetic) only when no database is configured.
 - **Design doc:** [0013: Web portal](../design/0013-web-portal.md).
 

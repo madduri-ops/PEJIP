@@ -12,6 +12,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The Settings page is editable: change the seniority words, role words, titles
+  left out, and each location's places and preference, then Save. The next
+  search, ranking and digest use the saved values; "Go back to the defaults"
+  undoes it. Companies, ranking weights and the schedule stay read-only there
+  (design doc 0017).
+
 - The digest email arrives as soon as the ranking routine finishes (about 20 to
   90 minutes after each search, depending on the season) instead of two hours
   after it. The scheduled 7 AM, 12 PM and 5 PM digests remain as a fallback and

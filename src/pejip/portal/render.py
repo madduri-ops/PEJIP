@@ -9,6 +9,7 @@ the pages carry no inline script or style, so the strict content security policy
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import datetime
 from html import escape
 from urllib.parse import quote
@@ -52,8 +53,10 @@ from pejip.portal.views import (
     latest_signal,
     rank,
     set_aside,
+    to_pacific,
     when,
 )
+from pejip.search_settings import PREFERENCES, TERM_FIELDS, SettingsForm
 
 FONTS = (
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600"
@@ -1198,10 +1201,118 @@ def _ranking(config: SearchConfig) -> str:
     )
 
 
-def settings_body(config: SearchConfig | None, address: str = ALERT_ADDRESS) -> str:
-    """What PEJIP searches for, when, and how it ranks: read-only for now (12.35).
+@dataclass(frozen=True)
+class SettingsEditing:
+    """The Settings form's state: its values, when it was last saved, and any problem."""
 
-    ``address`` is the signed-in account's own job-alert address.
+    form: SettingsForm
+    saved_at: datetime | None = None
+    error: str = ""
+    just_saved: bool = False
+
+
+def _textarea(name: str, label: str, value: str, hint: str) -> str:
+    return (
+        f'<div class="field"><label for="{name}">{e(label)}</label>'
+        f'<p class="hint" id="{name}-hint">{e(hint)}</p>'
+        f'<textarea id="{name}" name="{name}" rows="6" aria-describedby="{name}-hint">'
+        f"{e(value)}</textarea></div>"
+    )
+
+
+def _roles_form(form: SettingsForm) -> str:
+    hints = {
+        "seniority_patterns": "A title needs one of these, such as vice president or head of.",
+        "role_terms": "A title also needs one of these, such as operations or platform.",
+        "excluded_title_patterns": "A title with any of these is never searched.",
+    }
+    return "".join(
+        _textarea(name, label, form.terms[name], f"One per line. {hints[name]}")
+        for name, label in TERM_FIELDS.items()
+    )
+
+
+def _locations_form(form: SettingsForm) -> str:
+    rows = ""
+    for key, places in form.places.items():
+        label = SCOPE_LABEL.get(key, words(key))
+        chosen = form.preferences.get(key, "")
+        options = "".join(
+            f'<option value="{p}"{" selected" if p == chosen else ""}>{e(words(p))}</option>'
+            for p in PREFERENCES
+        )
+        hint = "One per line." + (
+            " Remote roles in the US count here too." if key == "US_REMOTE" else ""
+        )
+        rows += (
+            f'<fieldset class="scope"><legend>{e(label)}</legend>'
+            f'<div class="field"><label for="preference.{key}">Preference</label>'
+            f'<select id="preference.{key}" name="preference.{key}">{options}</select></div>'
+            + _textarea(f"places.{key}", "Places", places, hint)
+            + "</fieldset>"
+        )
+    checked = " checked" if form.hard_filter else ""
+    return (
+        rows + '<div class="check"><input type="checkbox" id="hard_filter" name="hard_filter"'
+        f'{checked}><label for="hard_filter">Hide roles outside every location</label></div>'
+    )
+
+
+def _saved_line(editing: SettingsEditing) -> str:
+    if editing.error:
+        return f'<p class="formerr" role="alert">Not saved. {e(editing.error)}</p>'
+    if editing.just_saved:
+        state = (
+            "Saved. The next search, ranking and digest use these settings."
+            if editing.saved_at
+            else "Back to the default settings. The next search uses them."
+        )
+        return f'<p class="saved" role="status">{state}</p>'
+    if editing.saved_at:
+        local = to_pacific(editing.saved_at)
+        hour = f"{local:%I}".lstrip("0")
+        return (
+            f'<p class="note">Your settings, saved {local:%b} {local.day}, {hour}:'
+            f"{local:%M %p %Z}. Changes to the default settings no longer reach these "
+            "fields until you go back to the defaults.</p>"
+        )
+    return '<p class="note">Using the default settings.</p>'
+
+
+def _editable(editing: SettingsEditing) -> str:
+    """The Roles and Locations cards as one form, saved for the account's next runs."""
+    reset = (
+        '<form method="post" action="/settings" class="reset">'
+        '<input type="hidden" name="action" value="reset">'
+        '<button class="btn" type="submit">Go back to the defaults</button></form>'
+        if editing.saved_at
+        else ""
+    )
+    rule = (
+        "Only the fields below can be changed here. Companies come from your encrypted "
+        "company list, and ranking weights change only through a reviewed change that "
+        "passes the ranking test set."
+    )
+    return (
+        _saved_line(editing)
+        + f'<form method="post" action="/settings" id="edit"><p class="note">{rule}</p>'
+        + _settings_card("Roles and titles", "roles", _roles_form(editing.form))
+        + _settings_card("Locations", "locations", _locations_form(editing.form))
+        + '<div class="row"><button class="btn primary" type="submit">Save settings</button>'
+        "</div></form>" + reset
+    )
+
+
+def settings_body(
+    config: SearchConfig | None,
+    address: str = ALERT_ADDRESS,
+    editing: SettingsEditing | None = None,
+) -> str:
+    """What PEJIP searches for, when, and how it ranks (12.35).
+
+    ``address`` is the signed-in account's own job-alert address. With ``editing``
+    the roles and locations are a form the account saves (design doc 0017);
+    without it they are read-only.
     """
     if config is None:
         return _empty("The search configuration is not available on this server.")
@@ -1242,12 +1353,17 @@ def settings_body(config: SearchConfig | None, address: str = ALERT_ADDRESS) -> 
         + _kv("Logs", "No personal data")
         + "</div>"
     )
-    return (
-        '<p class="note">These settings are read-only here for now; they change through '
+    search = (
+        _editable(editing)
+        if editing is not None
+        else '<p class="note">These settings are read-only here; they change through '
         "the search configuration file.</p>"
-        f'<nav class="views" aria-label="Settings sections">{jump}</nav>'
         + _settings_card("Roles and titles", "roles", roles)
         + _settings_card("Locations", "locations", _locations(config))
+    )
+    return (
+        f'<nav class="views" aria-label="Settings sections">{jump}</nav>'
+        + search
         + _settings_card("Search schedule", "schedule", schedule)
         + _settings_card("Sources", "sources", _sources(config, address))
         + _settings_card("Ranking", "ranking", _ranking(config))
