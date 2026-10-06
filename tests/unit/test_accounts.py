@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from pejip import accounts
 from pejip.accounts import check_account_id, fill, open_store, prepare, sqlite_path
 from pejip.config import Settings
 
@@ -159,7 +158,7 @@ def test_a_race_to_adopt_keeps_the_first_copy(
         Path(destination).write_bytes(b"the other process's copy")
         raise FileExistsError
 
-    monkeypatch.setattr(accounts.os, "link", lose_the_race)
+    monkeypatch.setattr(os, "link", lose_the_race)
     prepare(_settings(tmp_path))
 
     assert target.read_bytes() == b"the other process's copy"
