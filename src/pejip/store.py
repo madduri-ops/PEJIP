@@ -19,6 +19,7 @@ from sqlalchemy import (
     Engine,
     Float,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
@@ -26,6 +27,7 @@ from sqlalchemy import (
     Text,
     create_engine,
     delete,
+    func,
     insert,
     select,
     update,
@@ -122,6 +124,19 @@ runs = Table(
     Column("summary", JSON, nullable=False),
 )
 
+# Pages and runs look up a job's analyses, scores and decisions by job; without
+# these each lookup read the whole table (design doc 0013).
+Index("ix_analyses_job_id", analyses.c.job_id)
+Index("ix_recommendations_job_id", recommendations.c.job_id)
+Index("ix_decisions_job_id", decisions.c.job_id)
+
+# SQLite caps the parameters in one statement; batched lookups go in chunks.
+_CHUNK = 500
+
+
+def _chunks(ids: list[int]) -> list[list[int]]:
+    return [ids[i : i + _CHUNK] for i in range(0, len(ids), _CHUNK)]
+
 
 @dataclass(frozen=True)
 class UpsertResult:
@@ -165,6 +180,10 @@ class Store:
     def __init__(self, database_url: str) -> None:
         self.engine: Engine = create_engine(database_url)
         metadata.create_all(self.engine)
+        # create_all skips the indexes of tables that already exist.
+        for table in metadata.sorted_tables:
+            for index in table.indexes:
+                index.create(self.engine, checkfirst=True)
 
     # Jobs -----------------------------------------------------------------
 
@@ -208,6 +227,15 @@ class Store:
         with self.engine.connect() as conn:
             row = conn.execute(select(jobs).where(jobs.c.id == job_id)).mappings().first()
         return None if row is None else self._job(row)
+
+    def find_jobs(self, job_ids: list[int]) -> dict[int, dict[str, Any]]:
+        """The jobs that still exist among ``job_ids``, by id, in one read per chunk."""
+        found: dict[int, dict[str, Any]] = {}
+        with self.engine.connect() as conn:
+            for chunk in _chunks(job_ids):
+                for row in conn.execute(select(jobs).where(jobs.c.id.in_(chunk))).mappings():
+                    found[row["id"]] = self._job(row)
+        return found
 
     def get_job(self, job_id: int) -> dict[str, Any]:
         with self.engine.connect() as conn:
@@ -261,6 +289,20 @@ class Store:
                 .first()
             )
         return dict(row) if row else None
+
+    def latest_recommendations(self, job_ids: list[int]) -> dict[int, dict[str, Any]]:
+        """Each job's latest recommendation, by job id; unscored jobs are left out."""
+        found: dict[int, dict[str, Any]] = {}
+        with self.engine.connect() as conn:
+            for chunk in _chunks(job_ids):
+                latest = (
+                    select(func.max(recommendations.c.id))
+                    .where(recommendations.c.job_id.in_(chunk))
+                    .group_by(recommendations.c.job_id)
+                )
+                rows = conn.execute(select(recommendations).where(recommendations.c.id.in_(latest)))
+                found.update({row["job_id"]: dict(row) for row in rows.mappings()})
+        return found
 
     # Decisions ------------------------------------------------------------
 

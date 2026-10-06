@@ -188,13 +188,14 @@ class StoreData:
             if run["started_at"] >= now - ACTIVE_FOR:
                 discovery.update({int(j): d for j, d in run["summary"].get("seen", [])})
         decided = self._store.latest_decisions()
-        found = []
-        for job_id, how in discovery.items():
-            job = self._store.find_job(job_id)
-            if job is not None:
-                rec = self._store.latest_recommendation(job_id)
-                found.append(self._opportunity(job, how, rec, decided.get(job_id)))
-        return found
+        # One read for the jobs and one for their scores, not two per role.
+        found = self._store.find_jobs(list(discovery))
+        recs = self._store.latest_recommendations(list(found))
+        return [
+            self._opportunity(found[job_id], how, recs.get(job_id), decided.get(job_id))
+            for job_id, how in discovery.items()
+            if job_id in found
+        ]
 
     def decide(self, opportunity_id: int, decision: str | None) -> bool:
         """Record Babu's decision; False when the account has no such role."""
