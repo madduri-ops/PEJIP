@@ -73,6 +73,25 @@ taxonomy:
     - cloud
     - ai
     - governance
+    # Added 2026-10-06 from Babu's resumes: privacy, identity, security and
+    # mobile depth, IT and infrastructure, product, M&A and chief of staff roles.
+    - privacy
+    - identity
+    - security
+    - cybersecurity
+    - trust
+    - risk
+    - compliance
+    - mobile
+    - infrastructure
+    - information technology
+    - it
+    - developer
+    - product
+    - delivery
+    - m&a
+    - integration
+    - chief of staff
 
 geography:
   hard_filter: true             # drop roles outside every scope below (spec 4.7)

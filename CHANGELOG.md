@@ -48,6 +48,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- The search keeps more titles: privacy, identity, security, risk, compliance,
+  mobile, infrastructure, IT, developer, product, delivery, M&A, integration and
+  chief of staff roles now count as role words, matching Babu's resumes.
 - Searches run on weekdays only, at 5 AM, 10 AM and 3 PM Pacific, and the ranked
   digest arrives at 7 AM, 12 PM and 5 PM. The stalled-search alarm waits 64
   hours so weekends don't trip it; a digest built from a search more than 4
