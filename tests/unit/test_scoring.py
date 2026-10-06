@@ -15,6 +15,7 @@ from pejip.scoring import (
     NetworkFacts,
     Recommendation,
     compensation_fit,
+    fit_if_level_met,
     score_job,
 )
 from tests import factories as f
@@ -379,3 +380,38 @@ def test_a_role_below_the_network_minimum_fit_gains_no_priority(
     assert known.network_boost == 0.0
     assert known.priority_score == alone.priority_score
     assert "MATURED_CONNECTION" in known.reason_codes
+
+
+@pytest.mark.parametrize(
+    ("seniority", "expected"),
+    [
+        # A strong role read as Director against a Senior Director+ target: its Fit
+        # apart from level is what makes it Babu's call (ADR-0011).
+        ("DIRECTOR", 100.0),
+        ("SENIOR_DIRECTOR", None),
+        ("VP", None),
+        ("UNKNOWN", None),
+    ],
+)
+def test_fit_if_level_met(
+    profile: CareerProfile, config: SearchConfig, seniority: str, expected: float | None
+) -> None:
+    reqs, matches = all_categories()
+    analysis = JobAnalysis.model_validate(f.analysis(reqs, inferred_seniority=seniority))
+    matching = EvidenceMatching.model_validate(f.matching(matches))
+    unbound = fit_if_level_met(analysis, matching, profile, facts(), config.scoring)
+    assert unbound == expected
+    if expected is not None:
+        fit = score_job(analysis, matching, profile, facts(), config.scoring).fit
+        assert fit is not None
+        assert fit < expected
+
+
+def test_fit_if_level_met_without_ranked_targets(
+    profile: CareerProfile, config: SearchConfig
+) -> None:
+    custom = profile.model_copy(update={"target_seniority": ["UNKNOWN"]})
+    reqs, matches = all_categories()
+    analysis = JobAnalysis.model_validate(f.analysis(reqs, inferred_seniority="DIRECTOR"))
+    matching = EvidenceMatching.model_validate(f.matching(matches))
+    assert fit_if_level_met(analysis, matching, custom, facts(), config.scoring) is None

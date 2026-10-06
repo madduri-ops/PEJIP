@@ -105,13 +105,21 @@ def needs_attention(digest: Digest) -> int:
 def render(digest: Digest, strong_match_fit: float) -> str:
     items = sorted(digest.items, key=_fit, reverse=True)
     attention = [i for i in items if _priority(i) in SECTION_ORDER]
+    # Strong matches apart from their level: Babu decides, not a rule (ADR-0011).
+    your_call = [
+        i
+        for i in items
+        if i not in attention and i.recommendation and i.recommendation["detail"].get("your_call")
+    ]
     strong = [
         i
         for i in items
-        if i not in attention and i.discovery == "NEW_POSTING" and _fit(i) >= strong_match_fit
+        if i not in attention + your_call
+        and i.discovery == "NEW_POSTING"
+        and _fit(i) >= strong_match_fit
     ]
     unranked = [i for i in items if i.recommendation is None or i.recommendation["fit"] is None]
-    shown = {id(i) for i in attention + strong + unranked}
+    shown = {id(i) for i in attention + your_call + strong + unranked}
     other = [i for i in items if id(i) not in shown]
 
     lines = [
@@ -122,10 +130,13 @@ def render(digest: Digest, strong_match_fit: float) -> str:
     ]
     for title, group in (
         ("Requires your attention", attention),
+        ("Your call: strong match, level unclear", your_call),
         ("New strong matches", strong),
         ("Other opportunities", other),
         ("Unranked", unranked),
     ):
+        if not group and group is your_call:
+            continue  # shown only when a role needs the call
         lines += [f"## {title}", ""]
         if not group:
             lines += ["Nothing here this run.", ""]

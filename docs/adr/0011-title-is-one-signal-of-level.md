@@ -29,10 +29,13 @@ unclear, and California postings must state pay.
   left out for low pay are not mentioned at all ("don't even bring it to me").
 - Fit and Priority are unchanged: the analysis still infers the role's real level
   from its scope.
+- A role whose inferred level is below the target, but which would be a strong
+  match with its level met, is Babu's call: the digest and its explanation say so,
+  and his Interested or Not interested decision is kept to learn from.
 
 ## Consequences
 
 More roles reach the ranking routine on Babu's Claude plan (still at most
-`ai.max_jobs_per_run` per run), so a backlog may take a few runs to clear. A
-follow-up flags strong matches whose level looks below target as Babu's call and
-records his decision, so later rules can learn from it.
+`ai.max_jobs_per_run` per run), so a backlog may take a few runs to clear. Learning
+from Babu's decisions on flagged roles (for example, which companies' Directors he
+takes) is a later change.
