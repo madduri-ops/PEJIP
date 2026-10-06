@@ -87,3 +87,29 @@ def test_render_groups_items_and_shows_search_health() -> None:
 def test_render_empty_digest() -> None:
     text = render(Digest("r", NOW, "SUCCESS", []), strong_match_fit=75)
     assert text.count("Nothing here this run.") == 4
+    assert "Your call" not in text
+
+
+def test_a_strong_match_held_back_by_level_gets_its_own_section() -> None:
+    flagged = rec(70, "MEDIUM")
+    flagged["detail"]["your_call"] = True
+    urgent = rec(95, "IMMEDIATE")
+    urgent["detail"]["your_call"] = True
+    digest = Digest(
+        "r",
+        NOW,
+        "SUCCESS",
+        [],
+        items=[
+            DigestItem(job("Meta Director"), "NEW_POSTING", flagged),
+            DigestItem(job("Top"), "NEW_POSTING", urgent),
+            DigestItem(job("Strong new"), "NEW_POSTING", rec(80, "MEDIUM")),
+        ],
+    )
+    sections = render(digest, strong_match_fit=75).split("\n## ")
+    # An urgent role stays in "Requires your attention"; the call is listed after it.
+    assert "Top" in sections[1]
+    assert sections[2].startswith("Your call: strong match, level unclear")
+    assert "Meta Director" in sections[2]
+    assert "Strong new" in sections[3]
+    assert "Meta Director" not in sections[3]

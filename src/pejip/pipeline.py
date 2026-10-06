@@ -19,12 +19,17 @@ from pejip.config import AlertCompany, SearchConfig, SourceConfig
 from pejip.cost import BudgetExceededError
 from pejip.digest import Digest, DigestItem, SourceResult
 from pejip.discovery import KEPT, PAY, UNCLEAR_NO_PAY, classify_location, screen
-from pejip.explain import build_explanation, network_points, verify_citations
+from pejip.explain import (
+    build_explanation,
+    network_points,
+    verify_citations,
+    your_call_point,
+)
 from pejip.logs import run_id_var
 from pejip.models import Posting
 from pejip.network.matching import NetworkIndex, NetworkSignal
 from pejip.profile import CareerProfile
-from pejip.scoring import JobFacts, score_job
+from pejip.scoring import SENIORITY_RANK, JobFacts, fit_if_level_met, score_job
 from pejip.sources.ashby import fetch_ashby
 from pejip.sources.email_alerts import S3Inbox, parse_alert
 from pejip.sources.greenhouse import fetch_greenhouse
@@ -320,8 +325,15 @@ class Pipeline:
         # A strong role where Babu knows nobody directly gets a warm-path prompt.
         strong = rec.fit is not None and rec.fit >= self.config.scoring.strong_match_fit
         explanation["who_you_know"] = network_points(signal, job["company"], warm_path=strong)
+        # A strong match held back only by its level is Babu's call, not a rule's.
+        unbound = fit_if_level_met(analysis, matching, profile, facts, self.config.scoring)
+        your_call = unbound is not None and unbound >= self.config.scoring.strong_match_fit
+        if your_call:
+            lowest = min(profile.target_seniority, key=lambda t: SENIORITY_RANK.get(t, 99))
+            point = your_call_point(analysis.inferred_seniority, lowest, job["title"])
+            explanation["concerns"].insert(0, point)
         verify_citations(explanation, job, profile, signal)
-        detail = {**rec.to_dict(), "explanation": explanation}
+        detail = {**rec.to_dict(), "explanation": explanation, "your_call": your_call}
         if not self._recorded(job["id"], analysis_row["id"], rec.scoring_version):
             self.store.add_recommendation(
                 RecommendationRecord(

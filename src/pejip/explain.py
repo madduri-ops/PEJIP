@@ -143,6 +143,17 @@ def network_points(
     return points
 
 
+def your_call_point(level: str, lowest_target: str, title: str) -> dict[str, Any]:
+    """A strong match apart from its level: the candidate decides (ADR-0011)."""
+    return _point(
+        f"Your call: a strong match apart from level, which reads as {LEVEL_TEXT[level]} "
+        f"against your target of {LEVEL_TEXT[lowest_target]} or above. Levels differ by "
+        "company; mark it Interested "
+        "or Not interested and your choice is kept to learn from.",
+        [_posting(title)],
+    )
+
+
 def build_explanation(
     analysis: JobAnalysis,
     matching: EvidenceMatching,
