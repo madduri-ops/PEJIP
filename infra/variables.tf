@@ -216,10 +216,21 @@ variable "sign_in_accounts" {
   default     = {}
 
   validation {
-    # A second account would see the first one's data until each account has its
-    # own storage (design doc 0016); the app refuses it too.
-    condition     = length(var.sign_in_accounts) <= 1
-    error_message = "Only one account may sign in until each account has its own storage (design doc 0016)."
+    # Each account adds scheduled work and a digest topic; the app has the same cap.
+    condition     = length(var.sign_in_accounts) <= 5
+    error_message = "At most 5 accounts may sign in (design doc 0016)."
+  }
+
+  validation {
+    # Babu's data lives under account babu; leaving it out would lock him out of it.
+    condition     = length(var.sign_in_accounts) == 0 || contains(keys(var.sign_in_accounts), "babu")
+    error_message = "The registry must include Babu's account, babu."
+  }
+
+  validation {
+    # alerts@ is Babu's job-alert address; another account receives at <id>@.
+    condition     = !contains(keys(var.sign_in_accounts), "alerts")
+    error_message = "alerts is Babu's job-alert address and can't be an account id."
   }
 
   validation {

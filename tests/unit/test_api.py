@@ -9,7 +9,7 @@ import pytest
 from fastapi import FastAPI, Request
 
 from ci.alb_token import AlbSigner
-from pejip import __version__, api, auth
+from pejip import __version__, api
 from pejip.auth import OIDC_DATA_HEADER
 from pejip.portal.data import Company, Opportunity, SearchRun
 from tests.alb import ACCOUNT_ID, ALB_ARN, ALLOWED_EMAIL, auth_env, key_server
@@ -244,7 +244,6 @@ def test_settings_page_shows_each_account_its_own_setup(
     signer: AlbSigner, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Each account sees its own companies and its own job-alert address (design doc 0016).
-    monkeypatch.setattr(auth, "MAX_ACCOUNTS", 2)
     ssm = FakeSsm(value=EXAMPLE_COMPANIES)
     monkeypatch.setattr(api, "make_ssm_client", lambda _region: ssm)
     with key_server(signer) as key_url:

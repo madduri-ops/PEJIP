@@ -9,8 +9,9 @@ email address in the account registry. The request then belongs to that account
 (design doc 0016). Everything except ``/healthz`` requires it, so a request that
 skips the load balancer, or a Google account not in the registry, gets nothing.
 
-Until each account has its own storage, the registry may hold only one account:
-a second account would see the first one's data, so the settings refuse it.
+The registry holds at most :data:`MAX_ACCOUNTS` accounts. Each one adds work to
+every scheduled run and a digest topic, so the cap keeps the shared site's cost
+known; raising it is a deliberate change.
 
 When sign-in is not configured the app fails closed: every protected route
 answers 503.
@@ -52,8 +53,8 @@ _MAX_CACHED_KEYS = 16
 
 _P256_COORDINATE_BYTES = 32
 
-# Raised to more than one when every account has its own storage (design doc 0016).
-MAX_ACCOUNTS = 1
+# Every account has its own storage, inbox, digest and ranking key (design doc 0016).
+MAX_ACCOUNTS = 5
 
 
 class SignInRequiredError(Exception):
@@ -129,7 +130,7 @@ class AuthSettings:
         if not accounts or not alb_arn:
             return None
         if len(accounts) > MAX_ACCOUNTS:
-            msg = "only one account may sign in until each account has its own storage"
+            msg = f"at most {MAX_ACCOUNTS} accounts may sign in"
             raise ValueError(msg)
         arn_parts = alb_arn.split(":")
         if len(arn_parts) < 6 or not arn_parts[3]:  # noqa: PLR2004 - arn:partition:service:region:account:resource
