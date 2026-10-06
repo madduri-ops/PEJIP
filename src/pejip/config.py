@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Annotated, Literal
@@ -11,7 +12,12 @@ from typing import Annotated, Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from pejip import accounts
 from pejip.retention import RETENTION_DAYS
+
+# Where SES stores job-alert mail in the inbox bucket (design doc 0010); since
+# design doc 0016 each account reads its own folder under it.
+INBOX_PREFIX = "inbound/"
 
 Adapter = Literal["greenhouse", "lever"]
 Preference = Literal["PREFERRED", "ACCEPTABLE", "UNDESIRABLE"]
@@ -220,40 +226,113 @@ class Settings:
     ai_enabled: bool = True
     ranker: str = "api"
     ranking_key_parameter: str | None = None
+    account: str = accounts.DEFAULT_ACCOUNT_ID
+    network_prefix: str = "network/"
+    inbox_prefix: str = INBOX_PREFIX
+    legacy_database_url: str | None = None
+    legacy_output_dir: Path | None = None
 
     @classmethod
-    def from_env(cls, env: dict[str, str] | None = None) -> Settings:
+    def from_env(cls, env: dict[str, str] | None = None, account: str | None = None) -> Settings:
+        """Read the settings for ``account`` (``PEJIP_ACCOUNT``, else Babu's).
+
+        Settings naming a personal place carry an ``{account}`` placeholder
+        (design doc 0016), filled in here. Babu's account may also use a place
+        without one (local runs, and the settings from before accounts); any other
+        account must not, so it can never share Babu's database, inbox, files or
+        digest. Unset, such a place defaults to one under ``accounts/<id>/``.
+        The pre-account locations (``PEJIP_LEGACY_*``) are kept only for Babu's
+        account, the one account that may adopt them.
+        """
         e = dict(os.environ) if env is None else env
+        who = accounts.check_account_id(
+            account or e.get("PEJIP_ACCOUNT") or accounts.DEFAULT_ACCOUNT_ID
+        )
+        owner = who == accounts.DEFAULT_ACCOUNT_ID
+
+        def place(name: str, default: str | None = None, own: str | None = None) -> str | None:
+            value = e.get(name) or None
+            if value is None:
+                value = default if owner else own
+            elif not owner and accounts.PLACEHOLDER not in value:
+                msg = f"{name} must contain {accounts.PLACEHOLDER} for accounts other than Babu's"
+                raise ValueError(msg)
+            return accounts.fill(value, who) if value else None
+
+        def path(name: str, default: str | None = None, own: str | None = None) -> Path | None:
+            return _optional_path(place(name, default, own))
+
         return cls(
+            account=who,
             config_path=Path(e.get("PEJIP_CONFIG", "config/search.yaml")),
-            profile_path=Path(e.get("PEJIP_PROFILE", "profile.yaml")),
-            database_url=e.get("PEJIP_DATABASE_URL", "sqlite:///pejip.db"),
-            output_dir=Path(e.get("PEJIP_OUTPUT_DIR", "output")),
+            profile_path=Path(
+                place("PEJIP_PROFILE", "profile.yaml", "accounts/{account}/profile.yaml") or ""
+            ),
+            database_url=place(
+                "PEJIP_DATABASE_URL", "sqlite:///pejip.db", "sqlite:///accounts/{account}/pejip.db"
+            )
+            or "",
+            output_dir=Path(place("PEJIP_OUTPUT_DIR", "output", "accounts/{account}/output") or ""),
+            legacy_database_url=(e.get("PEJIP_LEGACY_DATABASE_URL") or None) if owner else None,
+            legacy_output_dir=_optional_path(e.get("PEJIP_LEGACY_OUTPUT_DIR")) if owner else None,
+            # One spend ledger for the whole deployment: the $100 cap is shared.
             ai_ledger_path=Path(e.get("PEJIP_AI_LEDGER", "pejip-ai-spend.db")),
-            # The job-alert inbox is read only where a bucket is named (in AWS).
+            # The job-alert inbox is read only where a bucket is named (in AWS), from
+            # the account's own prefix in it.
             inbox_bucket=e.get("PEJIP_INBOX_BUCKET") or None,
+            inbox_prefix=place("PEJIP_INBOX_PREFIX", INBOX_PREFIX, "inbound/{account}/") or "",
             aws_region=e.get("AWS_REGION") or None,
             # A LinkedIn Connections export and the candidate's network decisions, both
             # kept outside the repository (design doc 0014).
-            connections_path=_optional_path(e.get("PEJIP_CONNECTIONS")),
-            network_decisions_path=_optional_path(e.get("PEJIP_NETWORK_DECISIONS")),
-            # On AWS they are uploaded to network/ in this bucket instead.
+            connections_path=path("PEJIP_CONNECTIONS"),
+            network_decisions_path=path("PEJIP_NETWORK_DECISIONS"),
+            # On AWS they are uploaded to network/<account>/ in this bucket instead.
             network_bucket=e.get("PEJIP_NETWORK_BUCKET") or None,
-            # Babu's target companies, kept out of the public repository (ADR-0009):
-            # a local file, or on AWS an encrypted SSM parameter.
-            companies_path=_optional_path(e.get("PEJIP_COMPANIES")),
-            companies_parameter=e.get("PEJIP_COMPANIES_PARAMETER") or None,
+            network_prefix=place("PEJIP_NETWORK_PREFIX", "network/", "network/{account}/") or "",
+            # Target companies, kept out of the public repository (ADR-0009): a local
+            # file, or on AWS an encrypted SSM parameter.
+            companies_path=path("PEJIP_COMPANIES"),
+            companies_parameter=place("PEJIP_COMPANIES_PARAMETER"),
             # In AWS the profile is an encrypted SSM parameter, not a file.
-            profile_parameter=e.get("PEJIP_PROFILE_PARAMETER") or None,
-            # Where `pejip run` emails the digest (an SNS topic), when set.
-            digest_topic_arn=e.get("PEJIP_DIGEST_TOPIC_ARN") or None,
+            profile_parameter=place("PEJIP_PROFILE_PARAMETER"),
+            # Where `pejip run` emails the digest (an SNS topic per account), when set.
+            digest_topic_arn=_digest_topic(e, who),
             # Off until the workload can sign in to Claude; roles are then unranked.
             ai_enabled=_flag(e, "PEJIP_AI_ENABLED", default=True),
             # Who does the model step: the API, or the Claude Code routine (design 0015).
             ranker=_choice(e, "PEJIP_RANKER", RANKERS),
             # The SSM parameter holding the SHA-256 of the routine's key.
-            ranking_key_parameter=e.get("PEJIP_RANKING_KEY_PARAMETER") or None,
+            ranking_key_parameter=place("PEJIP_RANKING_KEY_PARAMETER"),
         )
+
+
+def _digest_topic(env: Mapping[str, str], account: str) -> str | None:
+    """The account's digest topic: its entry in ``PEJIP_DIGEST_TOPICS`` (``id=arn`` pairs).
+
+    ``PEJIP_DIGEST_TOPIC_ARN``, the single topic from before accounts, is Babu's
+    alone: another account without an entry gets no email rather than Babu's.
+    """
+    topics = accounts.parse_pairs(env.get("PEJIP_DIGEST_TOPICS", ""), "PEJIP_DIGEST_TOPICS")
+    if topics:
+        return topics.get(account)
+    if account == accounts.DEFAULT_ACCOUNT_ID:
+        return env.get("PEJIP_DIGEST_TOPIC_ARN") or None
+    return None
+
+
+def account_ids(env: Mapping[str, str]) -> list[str]:
+    """The accounts a scheduled command runs for.
+
+    ``PEJIP_ACCOUNT`` names one; otherwise every id in ``PEJIP_ACCOUNTS``
+    (comma-separated), else Babu's account alone.
+    """
+    one = env.get("PEJIP_ACCOUNT", "").strip()
+    if one:
+        return [accounts.check_account_id(one)]
+    listed = [a.strip() for a in env.get("PEJIP_ACCOUNTS", "").split(",") if a.strip()]
+    return [accounts.check_account_id(a) for a in dict.fromkeys(listed)] or [
+        accounts.DEFAULT_ACCOUNT_ID
+    ]
 
 
 def _optional_path(value: str | None) -> Path | None:

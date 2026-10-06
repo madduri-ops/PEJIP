@@ -80,12 +80,12 @@ output "inbox_dns_records" {
 
 output "digest_topic_arn" {
   description = "SNS topic the daily run emails the digest through. Babu confirms its subscription email once."
-  value       = aws_sns_topic.digest.arn
+  value       = try(aws_sns_topic.digest[local.owner_account].arn, null)
 }
 
 output "profile_parameter_name" {
   description = "SSM SecureString (key alias/pejip) that holds Babu's career profile YAML. Stored by hand, never by Terraform."
-  value       = local.profile_parameter
+  value       = replace(local.profile_parameter, "{account}", "babu")
 }
 
 output "public_subnet_ids" {
@@ -105,5 +105,5 @@ output "dashboard_url" {
 
 output "ranking_key_parameter_name" {
   description = "SSM parameter for the SHA-256 of the ranking routine's key (design doc 0015); Babu stores it."
-  value       = local.ranking_key_parameter
+  value       = replace(local.ranking_key_parameter, "{account}", local.owner_account)
 }

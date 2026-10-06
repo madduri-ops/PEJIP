@@ -209,6 +209,36 @@ variable "sign_in_email" {
   default     = null
 }
 
+variable "sign_in_accounts" {
+  description = "Who may sign in, as account id => Google email (design doc 0016). Not committed; pass with TF_VAR_sign_in_accounts. Empty means Babu alone, as account babu with sign_in_email."
+  type        = map(string)
+  sensitive   = true
+  default     = {}
+
+  validation {
+    # Each account adds scheduled work and a digest topic; the app has the same cap.
+    condition     = length(var.sign_in_accounts) <= 5
+    error_message = "At most 5 accounts may sign in (design doc 0016)."
+  }
+
+  validation {
+    # Babu's data lives under account babu; leaving it out would lock him out of it.
+    condition     = length(var.sign_in_accounts) == 0 || contains(keys(var.sign_in_accounts), "babu")
+    error_message = "The registry must include Babu's account, babu."
+  }
+
+  validation {
+    # alerts@ is Babu's job-alert address; another account receives at <id>@.
+    condition     = !contains(keys(var.sign_in_accounts), "alerts")
+    error_message = "alerts is Babu's job-alert address and can't be an account id."
+  }
+
+  validation {
+    condition     = alltrue([for id in keys(var.sign_in_accounts) : can(regex("^[a-z][a-z0-9-]{0,31}$", id))])
+    error_message = "Account ids are lowercase letters, digits and dashes, starting with a letter."
+  }
+}
+
 variable "sign_in_session_seconds" {
   description = "How long a Google sign-in lasts before the load balancer asks again."
   type        = number

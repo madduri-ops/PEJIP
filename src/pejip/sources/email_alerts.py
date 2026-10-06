@@ -26,12 +26,12 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from botocore.exceptions import BotoCoreError, ClientError
 
-from pejip.config import AlertCompany
+from pejip.config import INBOX_PREFIX, AlertCompany
 from pejip.models import Posting
 from pejip.sources.http import FetchError
 
 SOURCE = "email_alert"
-INBOX_PREFIX = "inbound/"
+__all__ = ["INBOX_PREFIX", "S3Inbox"]
 MAX_TITLE_CHARS = 200
 MAX_CONTEXT_LINES = 6
 MAX_CONTEXT_LINE_CHARS = 160

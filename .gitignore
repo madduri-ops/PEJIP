@@ -23,3 +23,6 @@ output/
 /Connections*.csv
 /Basic_LinkedInDataExport*
 /network-decisions.yaml
+
+# Local uv runs create this; the project pins dependencies in pyproject.toml.
+uv.lock

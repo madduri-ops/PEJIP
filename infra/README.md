@@ -48,6 +48,8 @@ Terraform 1.13.3 to `~/bin`.
 cd ~/PEJIP && git pull && cd infra
 export TF_VAR_alert_email='you@example.com'
 export TF_VAR_sign_in_email='you@gmail.com'   # optional; defaults to the alert email
+# optional account registry (design 0016), up to 5 accounts, babu always included
+# export TF_VAR_sign_in_accounts='{ babu = "you@gmail.com", friend = "friend@gmail.com" }'
 terraform init
 terraform plan
 terraform apply
@@ -105,7 +107,7 @@ creates the data file system, schedules and digest topic:
    `pejip-digest`. No digest is delivered until then.
 3. Store the career profile (the same YAML as `examples/profile.example.yaml`)
    from CloudShell, after uploading the file:
-   `aws ssm put-parameter --name /pejip/profile --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://profile.yaml`,
+   `aws ssm put-parameter --name /pejip/accounts/babu/profile --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://profile.yaml`,
    then delete the uploaded copy. To replace it later, add `--overwrite`.
 4. Create the app's Claude Console rule (the App column in
    [design 0007](../docs/design/0007-claude-identity-federation.md)) and set its
@@ -122,6 +124,27 @@ aws ecs run-task --cluster pejip-prod --task-definition pejip-prod --launch-type
   --overrides '{"cpu":"512","memory":"1024","containerOverrides":[{"name":"pejip","command":["pejip","run"]}]}'
 ```
 
+## Moving to per-account places (once, before applying design 0016 step 2)
+
+[Design 0016](../docs/design/0016-accounts.md). Each account's data now lives
+under its own id. Babu's database and digests on EFS move by themselves the first
+time the app opens them (the old database stays as it was, for a rollback). The
+profile, companies and LinkedIn files move by hand, from CloudShell, **before**
+`terraform apply`, so no run looks for them in the new place too early:
+
+```sh
+for name in profile companies; do
+  if value=$(aws ssm get-parameter --name /pejip/$name --with-decryption --query Parameter.Value --output text 2>/dev/null); then
+    aws ssm put-parameter --name /pejip/accounts/babu/$name --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value "$value"
+  fi
+done
+aws s3 mv --recursive s3://pejip-inbox-275704950192/network/ s3://pejip-inbox-275704950192/network/babu/ --exclude "babu/*"
+```
+
+Then pull and apply as usual. Once a digest has arrived from the new places, the
+old parameters can go: `aws ssm delete-parameter --name /pejip/profile` and the
+same for `/pejip/companies`.
+
 ## Target companies (once, then on each change)
 
 [ADR-0009](../docs/adr/0009-private-inputs-outside-the-public-repository.md). Babu's
@@ -129,7 +152,7 @@ target companies are not in the public repository. From CloudShell, upload the l
 (same format as `examples/companies.example.yaml`), store it, then delete the copy:
 
 ```sh
-aws ssm put-parameter --name /pejip/companies --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://companies.yaml
+aws ssm put-parameter --name /pejip/accounts/babu/companies --type SecureString --key-id alias/pejip --tier Intelligent-Tiering --value file://companies.yaml
 rm companies.yaml
 ```
 
@@ -143,13 +166,13 @@ the test boards in `config/search.yaml` are searched.
 CloudShell (Actions, Upload file), then delete the uploaded copy:
 
 ```sh
-aws s3 cp Connections.csv s3://pejip-inbox-275704950192/network/Connections.csv
+aws s3 cp Connections.csv s3://pejip-inbox-275704950192/network/babu/Connections.csv
 rm Connections.csv
 ```
 
 The bucket encrypts it with `alias/pejip` and deletes it 90 days later; the next
 morning's run uses it and the digest says when it was last refreshed. Answers to
-"Your call" questions go in `network/network-decisions.yaml` the same way (see
+"Your call" questions go in `network/babu/network-decisions.yaml` the same way (see
 `examples/network-decisions.example.yaml`). A new upload replaces the old one.
 
 ## Ranking routine (once, then every 90 days)
@@ -163,7 +186,11 @@ them at 06:04, 11:04 and 16:04, and `pejip digest` emails the ranked digest at
 1. In CloudShell, make the key and store only its SHA-256 on AWS:
    `key=$(openssl rand -base64 48 | tr -d '/+=\n' | cut -c1-48)`, then
    `printf %s "$key" | sha256sum | cut -d' ' -f1 > key.sha256` and
-   `aws ssm put-parameter --name /pejip/ranking-key-sha256 --type SecureString --key-id alias/pejip --value "$(cat key.sha256)" --overwrite`.
+   `aws ssm put-parameter --name /pejip/accounts/babu/ranking-key-sha256 --type SecureString --key-id alias/pejip --value "$(cat key.sha256)" --overwrite`
+   (another account: its own id in place of `babu`, with a key of its own; its
+   routine runs on that person's Claude plan, design doc 0016). Babu's hash
+   stored before accounts at `/pejip/ranking-key-sha256` keeps working until
+   then.
    Copy `$key` once (`echo "$key"`), then `rm key.sha256; unset key`.
 2. Apply and deploy.
 3. In claude.ai, add a cloud environment for the routine with the secret
@@ -177,13 +204,16 @@ so the old key stops working then.
 
 ## Google sign-in
 
-Every route except `/healthz` and the signed-out page requires signing in with the Google account in
-`sign_in_email` ([ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md),
+Every route except `/healthz` and the signed-out page requires signing in with a Google account in the
+account registry: `sign_in_accounts`, or `sign_in_email` alone as account `babu`
+([design 0016](../docs/design/0016-accounts.md),
+[ADR-0006](../docs/adr/0006-google-sign-in-at-the-load-balancer.md),
 [design 0009](../docs/design/0009-google-sign-in.md)). One-time setup:
 
 1. In Google Cloud Console, create (or pick) a project and set up the OAuth
    consent screen: External, app name `PEJIP`, publishing status **Testing**, and
-   add your Google address as the only test user.
+   add the Google address of each account in the registry as a test user
+   (Testing allows up to 100).
 2. Create an OAuth client ID of type **Web application** with the authorized
    redirect URI `https://job-search.zephyr-mcg.com/oauth2/idpresponse`
    (`terraform output google_redirect_uri`).
@@ -202,6 +232,56 @@ Every route except `/healthz` and the signed-out page requires signing in with t
    commit running now.
 
 To rotate the secret, update the parameter (`--overwrite`) and run `terraform apply`.
+
+## Adding an account
+
+[Design 0016](../docs/design/0016-accounts.md). Up to five people can each have a
+separate account on the one site. For a new person:
+
+1. Pick an id: lowercase letters, digits and dashes, starting with a letter, and
+   not `alerts` (for example their first name). Tell them, before they join, that
+   as the AWS administrator you could technically see their data, and that their
+   full digest is emailed to them (`docs/SECURITY.md`).
+2. In Google Cloud Console, add their Gmail address as a test user on the OAuth
+   consent screen.
+3. In CloudShell, list every account, Babu's included, and apply:
+   `export TF_VAR_sign_in_accounts='{ babu = "you@gmail.com", <id> = "them@gmail.com" }'`,
+   then `terraform plan` and `terraform apply`. Keep that export for every later
+   apply, or the account is removed. Then run the Deploy workflow on `main`.
+4. They click the link in the "AWS Notification - Subscription Confirmation"
+   email for `pejip-digest-<id>`.
+5. Store their profile and target companies as under "Daily run and storage" and
+   "Target companies", and later their `Connections.csv`, with `<id>` in place of
+   `babu` in each path. Delete each uploaded copy afterwards.
+6. Make their ranking key as in step 1 of "Ranking routine", with `<id>` in the
+   parameter name, and send them the key privately. They do steps 3 and 4 of
+   "Ranking routine" on their own claude.ai plan.
+7. They sign in at `https://job-search.zephyr-mcg.com`; the Settings page shows
+   the address to sign up for job alerts with, `<id>@inbox.job-search.zephyr-mcg.com`.
+
+## Removing an account
+
+[Design 0016](../docs/design/0016-accounts.md). To delete everything PEJIP holds
+for an account (`<id>` is its registry id; never `babu` unless that is the intent):
+
+1. Delete its runs, roles, rankings and digests from CloudShell, using the
+   `run-task` command under "Daily run and storage" with the command
+   `["pejip","delete-all","--account","<id>","--yes"]`. Its database file is left
+   empty.
+2. Remove its entry from `TF_VAR_sign_in_accounts` and apply. That ends its
+   sign-in and deletes its job-alert inbox rule and digest topic.
+3. Delete what it stored on AWS:
+
+   ```sh
+   aws ssm delete-parameters --names /pejip/accounts/<id>/profile \
+     /pejip/accounts/<id>/companies /pejip/accounts/<id>/ranking-key-sha256
+   aws s3 rm --recursive s3://pejip-inbox-275704950192/network/<id>/
+   aws s3 rm --recursive s3://pejip-inbox-275704950192/inbound/<id>/
+   ```
+
+4. Remove its Gmail address from the Google consent screen's test users.
+5. Tell the person their emailed digests stay in their own mailbox, and that they
+   can delete their ranking routine and its cloud environment on claude.ai.
 
 ## GitHub settings
 

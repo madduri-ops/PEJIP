@@ -14,6 +14,10 @@ These routes skip Google sign-in at the load balancer and in the app. Instead
 they need ``Authorization: Bearer <key>``, whose SHA-256 is kept in an encrypted
 SSM parameter (``PEJIP_RANKING_KEY_PARAMETER``). The key itself never reaches AWS.
 Without a configured hash, a database or a profile they answer 503.
+
+Each account has its own key, and the key alone decides whose roles and profile
+a request sees (design doc 0016): each account's routine runs on that person's
+own Claude plan, with their own key.
 """
 
 from __future__ import annotations
@@ -29,6 +33,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from pejip.accounts import DEFAULT_ACCOUNT_ID, open_store
 from pejip.ai.client import AIError
 from pejip.ai.prompts import load_prompt
 from pejip.analysis import (
@@ -39,7 +44,7 @@ from pejip.analysis import (
     ground_analysis,
     ground_matching,
 )
-from pejip.config import SearchConfig, Settings, load_config
+from pejip.config import SearchConfig, Settings, account_ids, load_config
 from pejip.profile import (
     CareerProfile,
     Evidence,
@@ -124,12 +129,20 @@ def prompt_versions() -> dict[str, int]:
     return {prompt_id: load_prompt(prompt_id).version for prompt_id in PROMPT_IDS}
 
 
-def key_hash_from_ssm(region: str | None, name: str) -> Callable[[], str | None]:
-    """Reads the key's SHA-256 (hex) from SSM, or None when it is not stored yet."""
+def key_hash_from_ssm(region: str | None, *names: str) -> Callable[[], str | None]:
+    """Reads the key's SHA-256 (hex) from SSM, or None when it is not stored yet.
+
+    With several names, the first one stored wins (Babu's account falls back to
+    the parameter from before accounts).
+    """
 
     def read() -> str | None:
-        value = read_parameter(make_ssm_client(region), name)
-        return None if value is None else value.strip().lower()
+        client = make_ssm_client(region)
+        for name in names:
+            value = read_parameter(client, name)
+            if value is not None:
+                return value.strip().lower()
+        return None
 
     return read
 
@@ -146,13 +159,24 @@ class RankingService:
     _cache: dict[str, tuple[float, Any]] = field(default_factory=dict, repr=False)
 
     @classmethod
-    def from_env(cls, env: Mapping[str, str]) -> RankingService:
-        settings = Settings.from_env(dict(env))
-        fixed = env.get("PEJIP_RANKING_KEY_SHA256", "").strip().lower() or None
-        if fixed is not None:
+    def from_env(cls, env: Mapping[str, str], account: str | None = None) -> RankingService:
+        """The service for ``account`` (``PEJIP_ACCOUNT``, else Babu's).
+
+        ``PEJIP_RANKING_KEY_SHA256`` (a fixed hash, for tests and CI) and
+        ``PEJIP_LEGACY_RANKING_KEY_PARAMETER`` (the parameter from before
+        accounts) are Babu's alone.
+        """
+        settings = Settings.from_env(dict(env), account=account)
+        owner = settings.account == DEFAULT_ACCOUNT_ID
+        fixed = env.get("PEJIP_RANKING_KEY_SHA256", "").strip().lower() if owner else ""
+        names = [settings.ranking_key_parameter or ""]
+        if owner:
+            names.append(env.get("PEJIP_LEGACY_RANKING_KEY_PARAMETER", ""))
+        names = [name for name in names if name]
+        if fixed:
             key_hash: Callable[[], str | None] = lambda: fixed  # noqa: E731
-        elif settings.ranking_key_parameter:
-            key_hash = key_hash_from_ssm(settings.aws_region, settings.ranking_key_parameter)
+        elif names:
+            key_hash = key_hash_from_ssm(settings.aws_region, *names)
         else:
             key_hash = lambda: None  # noqa: E731
         stores: list[Store] = []
@@ -161,7 +185,7 @@ class RankingService:
             if "PEJIP_DATABASE_URL" not in env:
                 return None
             if not stores:
-                stores.append(Store(settings.database_url))
+                stores.append(open_store(settings))
             return stores[0]
 
         def profile() -> CareerProfile | None:
@@ -215,25 +239,41 @@ class BodyTooLargeError(HTTPException):
         super().__init__(status_code=413, detail=f"bodies are limited to {MAX_BODY_BYTES} bytes")
 
 
-def check_key(service: RankingService, authorization: str) -> None:
-    """Raise unless ``authorization`` carries the routine's key."""
-    expected = service.expected_hash()
-    if expected is None:
-        raise NotConfiguredError(_NO_KEY)
-    header = authorization
-    key = header[len(_BEARER) :] if header.lower().startswith(_BEARER) else ""
-    if not _MIN_KEY_CHARS <= len(key) <= _MAX_KEY_CHARS:
-        raise KeyRequiredError
-    given = hashlib.sha256(key.encode()).hexdigest()
-    if not hmac.compare_digest(given, expected):
-        raise KeyRequiredError
+@dataclass
+class RankingServices:
+    """Every account's ranking service; a request's key picks the account (design doc 0016)."""
+
+    by_account: Mapping[str, RankingService]
+
+    @classmethod
+    def from_env(cls, env: Mapping[str, str]) -> RankingServices:
+        return cls({account: RankingService.from_env(env, account) for account in account_ids(env)})
+
+    def for_key(self, authorization: str) -> RankingService:
+        """The service whose key ``authorization`` carries, else raise.
+
+        Every account's hash is compared, in constant time, so the answer takes
+        as long whichever account (if any) the key belongs to.
+        """
+        expected = [(s, h) for s in self.by_account.values() if (h := s.expected_hash())]
+        if not expected:
+            raise NotConfiguredError(_NO_KEY)
+        header = authorization
+        key = header[len(_BEARER) :] if header.lower().startswith(_BEARER) else ""
+        if not _MIN_KEY_CHARS <= len(key) <= _MAX_KEY_CHARS:
+            raise KeyRequiredError
+        given = hashlib.sha256(key.encode()).hexdigest()
+        matches = [service for service, hashed in expected if hmac.compare_digest(given, hashed)]
+        if not matches:
+            raise KeyRequiredError
+        return matches[0]
 
 
-def screen(service: RankingService, request: Request) -> HTTPException | None:
+def screen(services: RankingServices, request: Request) -> HTTPException | None:
     """Checks made before a body is read, so a caller without the key can't make
     the app read a large one (the WAF lets these bodies past its 8 KB limit)."""
     try:
-        check_key(service, request.headers.get("authorization", ""))
+        services.for_key(request.headers.get("authorization", ""))
         if request.method == "POST":
             length = request.headers.get("content-length", "")
             if not length.isdigit() or int(length) > MAX_BODY_BYTES:
@@ -250,11 +290,11 @@ class StalePromptsError(HTTPException):
         super().__init__(status_code=409, detail=f"answers must use the current prompts {current}")
 
 
-def router(service: RankingService) -> APIRouter:
-    def require_key(request: Request) -> None:
-        check_key(service, request.headers.get("authorization", ""))
+def router(services: RankingServices) -> APIRouter:
+    def account_service(request: Request) -> RankingService:
+        return services.for_key(request.headers.get("authorization", ""))
 
-    def ready() -> tuple[Store, CareerProfile]:
+    def ready(service: RankingService) -> tuple[Store, CareerProfile]:
         store = service.store()
         if store is None:
             raise NotConfiguredError(_NO_DATABASE)
@@ -263,12 +303,15 @@ def router(service: RankingService) -> APIRouter:
             raise NotConfiguredError(_NO_PROFILE)
         return store, profile
 
-    routes = APIRouter(prefix=RANKING_PREFIX.rstrip("/"), dependencies=[Depends(require_key)])
+    # Every route needs a key (checked first, as a dependency); the key's account
+    # is the only one a route can touch.
+    routes = APIRouter(prefix=RANKING_PREFIX.rstrip("/"), dependencies=[Depends(account_service)])
 
     @routes.get("/queue")
-    def queue() -> Queue:
+    def queue(request: Request) -> Queue:
         """Roles from the latest run that still need an analysis, oldest first."""
-        store, profile = ready()
+        service = account_service(request)
+        store, profile = ready(service)
         run = store.latest_run()
         waiting: list[dict[str, Any]] = []
         # A role reported by two sources in one run is queued once.
@@ -301,9 +344,10 @@ def router(service: RankingService) -> APIRouter:
         )
 
     @routes.post("/analyses")
-    def analyses(submission: Submission) -> SubmissionResult:
+    def analyses(submission: Submission, request: Request) -> SubmissionResult:
         """Check each answer the way the API path does, and store the ones that pass."""
-        store, profile = ready()
+        service = account_service(request)
+        store, profile = ready(service)
         current = prompt_versions()
         if submission.prompts != current:
             raise StalePromptsError(current)

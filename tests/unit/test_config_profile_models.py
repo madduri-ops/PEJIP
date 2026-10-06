@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from pejip.config import SearchConfig, Settings, parse_private_companies, with_private_companies
+from pejip.discovery import title_matches
 from pejip.models import Posting
 from pejip.profile import CareerProfile, load_profile
 
@@ -19,6 +20,23 @@ def test_config_loads_and_validates(config: SearchConfig) -> None:
     assert config.sources[0].company == "Stripe"
     boards = [s.board for s in config.sources]
     assert len(boards) == len(set(boards))
+
+
+@pytest.mark.parametrize(
+    ("title", "kept"),
+    [
+        ("VP, Privacy Engineering", True),
+        ("Senior Director, Identity Platform", True),
+        ("Head of IT", True),
+        ("VP, M&A Integration", True),
+        ("Chief of Staff to the CTO", True),
+        ("Head of Mobile", True),
+        ("Assistant Vice President, Security", False),
+        ("VP of Marketing", False),
+    ],
+)
+def test_role_terms_cover_babus_resume_areas(config: SearchConfig, title: str, kept: bool) -> None:
+    assert title_matches(title, config.taxonomy) is kept
 
 
 def test_config_rejects_unknown_fields(config: SearchConfig) -> None:

@@ -125,7 +125,8 @@ data "aws_iam_policy_document" "ecs_task" {
     resources = ["${aws_s3_bucket.inbox.arn}/${local.inbox_prefix}*"]
   }
 
-  # Babu's LinkedIn export and network decisions, uploaded to network/ in the
+  # Each account's LinkedIn export and network decisions, uploaded to
+  # network/<account>/ in the
   # same encrypted, 90-day bucket (design doc 0014). Read only: the run never
   # writes or deletes them.
   statement {
@@ -171,22 +172,26 @@ data "aws_iam_policy_document" "ecs_task" {
     }
   }
 
-  # Babu's career profile and target companies (ADR-0009), SecureStrings Babu
-  # stores by hand (never in Terraform, so they never reach the state file).
+  # Each account's career profile and target companies (ADR-0009, design doc
+  # 0016), SecureStrings stored by hand (never in Terraform, so they never reach
+  # the state file). The app keeps each account to its own parameters.
   statement {
     sid     = "CareerProfile"
     actions = ["ssm:GetParameter"]
     resources = [
-      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.profile_parameter}",
-      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.companies_parameter}",
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${replace(local.profile_parameter, "{account}", "*")}",
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${replace(local.companies_parameter, "{account}", "*")}",
     ]
   }
 
   # The hash of the ranking routine's key, which the API checks it against.
   statement {
-    sid       = "RankingKeyHash"
-    actions   = ["ssm:GetParameter"]
-    resources = ["arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.ranking_key_parameter}"]
+    sid     = "RankingKeyHash"
+    actions = ["ssm:GetParameter"]
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${replace(local.ranking_key_parameter, "{account}", "*")}",
+      "arn:aws:ssm:${var.aws_region}:${local.account_id}:parameter${local.legacy_ranking_key_parameter}",
+    ]
   }
 
   statement {
@@ -205,7 +210,7 @@ data "aws_iam_policy_document" "ecs_task" {
   statement {
     sid       = "SendDigest"
     actions   = ["sns:Publish"]
-    resources = [aws_sns_topic.digest.arn]
+    resources = [for topic in aws_sns_topic.digest : topic.arn]
   }
 
   statement {
@@ -270,27 +275,41 @@ data "aws_ecs_container_definition" "live" {
 }
 
 locals {
-  data_dir            = "/data"
-  profile_parameter   = "/pejip/profile"
-  companies_parameter = "/pejip/companies"
+  data_dir = "/data"
+  # Per-account places (design doc 0016): the app fills in {account}.
+  profile_parameter   = "/pejip/accounts/{account}/profile"
+  companies_parameter = "/pejip/accounts/{account}/companies"
   # SHA-256 of the ranking routine's key (design doc 0015). Babu stores it by hand;
   # the key itself lives only in the routine's cloud environment.
-  ranking_key_parameter = "/pejip/ranking-key-sha256"
+  ranking_key_parameter = "/pejip/accounts/{account}/ranking-key-sha256"
+  # Babu's key hash from before accounts, still read for his account until he
+  # stores it at the per-account path (design doc 0016).
+  legacy_ranking_key_parameter = "/pejip/ranking-key-sha256"
 
   # What `pejip run`, `digest` and `purge` read (design doc 0012), the ranking
   # routine's endpoints in the API (design doc 0015), and the company list the
   # API's Settings page shows (ADR-0009).
   run_environment = [
-    { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
+    { name = "PEJIP_DATABASE_URL", value = "sqlite:///${local.data_dir}/accounts/{account}/pejip.db" },
+    { name = "PEJIP_OUTPUT_DIR", value = "${local.data_dir}/accounts/{account}/output" },
+    # Babu's pre-account data, adopted into accounts/babu on first use.
+    { name = "PEJIP_LEGACY_DATABASE_URL", value = "sqlite:///${local.data_dir}/pejip.db" },
+    { name = "PEJIP_LEGACY_OUTPUT_DIR", value = "${local.data_dir}/output" },
+    # One AI spend ledger for the whole deployment: the $100 cap is shared.
     { name = "PEJIP_AI_LEDGER", value = "${local.data_dir}/pejip-ai-spend.db" },
-    { name = "PEJIP_OUTPUT_DIR", value = "${local.data_dir}/output" },
     { name = "PEJIP_INBOX_BUCKET", value = aws_s3_bucket.inbox.id },
     { name = "PEJIP_NETWORK_BUCKET", value = aws_s3_bucket.inbox.id },
+    { name = "PEJIP_NETWORK_PREFIX", value = "${local.network_prefix}{account}/" },
     { name = "PEJIP_PROFILE_PARAMETER", value = local.profile_parameter },
     { name = "PEJIP_COMPANIES_PARAMETER", value = local.companies_parameter },
-    { name = "PEJIP_DIGEST_TOPIC_ARN", value = aws_sns_topic.digest.arn },
+    # Each account's own digest topic and job-alert folder (design doc 0016),
+    # and the accounts the scheduled commands run for.
+    { name = "PEJIP_DIGEST_TOPICS", value = join(",", [for id, topic in aws_sns_topic.digest : "${id}=${topic.arn}"]) },
+    { name = "PEJIP_INBOX_PREFIX", value = "${local.inbox_prefix}{account}/" },
+    { name = "PEJIP_ACCOUNTS", value = join(",", local.account_ids) },
     { name = "PEJIP_RANKER", value = var.ranker },
     { name = "PEJIP_RANKING_KEY_PARAMETER", value = local.ranking_key_parameter },
+    { name = "PEJIP_LEGACY_RANKING_KEY_PARAMETER", value = local.legacy_ranking_key_parameter },
   ]
 
   # Keyless Claude access (ADR-0004). Until the app's federation rule exists in
@@ -356,9 +375,9 @@ resource "aws_ecs_task_definition" "app" {
       { name = "PEJIP_HOST", value = "0.0.0.0" },
       { name = "PEJIP_PORT", value = tostring(var.container_port) },
       { name = "PEJIP_ENVIRONMENT", value = var.environment },
-      # Google sign-in check (ADR-0006): who may sign in, and which load
-      # balancer's tokens to trust.
-      { name = "PEJIP_AUTH_ALLOWED_EMAIL", value = local.sign_in_email },
+      # Google sign-in check (ADR-0006): who may sign in, as which account
+      # (design doc 0016), and which load balancer's tokens to trust.
+      { name = "PEJIP_AUTH_ACCOUNTS", value = local.sign_in_registry },
       { name = "PEJIP_AUTH_ALB_ARN", value = aws_lb.app.arn },
     ], local.run_environment, local.claude_environment)
     # The data file system (efs.tf) and a scratch /tmp, since the root

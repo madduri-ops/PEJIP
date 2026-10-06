@@ -15,6 +15,33 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 - The portal has a Sign out button. It ends the PEJIP session and lands on a
   signed-out page; Google itself stays signed in. Needs one `terraform apply` for
   the load balancer rule that keeps the signed-out page open.
+- More than one account (design doc 0016, step 6): up to five people can sign in,
+  each with separate data; `infra/README.md` has the steps for adding one.
+- Deleting an account (design doc 0016, step 5): `pejip export` and
+  `pejip delete-all` take `--account`, and delete-all also removes that account's
+  digests; `infra/README.md` has the steps for removing an account entirely, and
+  `docs/SECURITY.md` records what the AWS administrator can see.
+- Per-account ranking keys and portal settings (design doc 0016, step 4): each
+  account's ranking routine has its own key, which reaches only that account's
+  roles and profile; the Settings page shows the signed-in account's own
+  companies and job-alert address. Babu's existing key keeps working.
+- Per-account job-alert inbox, digest email and scheduled runs (design doc 0016,
+  step 3): each account receives job alerts at its own address and its digest
+  at its own email; the daily run, digest and purge go through every account in
+  turn, and one account's failure doesn't stop the others. Babu's `alerts@`
+  address and digest subscription carry over unchanged.
+- Per-account storage (design doc 0016, step 2): each account's database,
+  digests, profile, companies and LinkedIn files live under its own id
+  (`/data/accounts/<id>/`, `/pejip/accounts/<id>/...`, `network/<id>/`). Babu's
+  existing database and digests move to `accounts/babu` by themselves on first
+  use; the profile, companies and LinkedIn files move by hand before applying
+  (`infra/README.md`).
+- Sign-in by account (design doc 0016, step 1): the app maps the signed-in Google
+  email to an account through `PEJIP_AUTH_ACCOUNTS` (`id=email` pairs, Terraform
+  variable `sign_in_accounts`), so later steps can keep each person's data
+  separate. Only one account may sign in until per-account storage lands.
+  `PEJIP_AUTH_ALLOWED_EMAIL` alone still signs Babu in as account `babu`.
+
 - Ranking through a Claude Code routine on Babu's plan (design doc 0015): on AWS
   the 06:00 run stores new roles without calling Claude, the routine analyses
   them at 07:00 through two key-protected endpoints (`/api/ranking/queue` and
@@ -24,6 +51,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- The search keeps more titles: privacy, identity, security, risk, compliance,
+  mobile, infrastructure, IT, developer, product, delivery, M&A, integration and
+  chief of staff roles now count as role words, matching Babu's resumes.
 - Searches run on weekdays only, at 5 AM, 10 AM and 3 PM Pacific, and the ranked
   digest arrives at 7 AM, 12 PM and 5 PM. The stalled-search alarm waits 64
   hours so weekends don't trip it; a digest built from a search more than 4

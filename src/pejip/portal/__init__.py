@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
+from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
 from pejip.auth import session_cookie_names
 from pejip.config import SearchConfig
 from pejip.portal import render
@@ -36,9 +37,16 @@ Clock = Callable[[], datetime]
 
 
 def router(
-    data: PortalData, clock: Clock | None = None, config: SearchConfig | None = None
+    data: PortalData,
+    clock: Clock | None = None,
+    config: SearchConfig | None = None,
+    config_for: Callable[[str], SearchConfig | None] | None = None,
 ) -> APIRouter:
-    """The portal's routes, reading from ``data``; Settings shows ``config``."""
+    """The portal's routes, reading from ``data``.
+
+    Settings shows the signed-in account's search setup from ``config_for``
+    (design doc 0016), or ``config`` where no account-aware source is given.
+    """
     now_fn = clock or (lambda: datetime.now(UTC))
     routes = APIRouter(tags=["portal"], default_response_class=HTMLResponse)
 
@@ -187,13 +195,16 @@ def router(
         )
 
     @routes.get("/settings")
-    def settings() -> str:
+    def settings(request: Request) -> str:
         """What PEJIP searches for, when, and how it ranks (spec 12.35)."""
+        signed_in = getattr(request.state, "account", None)
+        account = signed_in.id if signed_in is not None else DEFAULT_ACCOUNT_ID
+        shown = config_for(account) if config_for is not None else config
         return frame(
             active="settings",
             heading="Settings",
             subtitle="What PEJIP searches for, when, and how it ranks.",
-            body=render.settings_body(config),
+            body=render.settings_body(shown, alert_address(account)),
         )
 
     @routes.get("/search-health")

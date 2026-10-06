@@ -1,13 +1,17 @@
 """Sign-in check for requests that reach PEJIP through the load balancer (ADR-0006).
 
-The load balancer signs Babu in with Google before it forwards a request, then
-passes the signed-in user's claims in the ``x-amzn-oidc-data`` header: a JWT the
-load balancer signs with ES256 (a P-256 key whose public half AWS publishes per
-region by key id). The app trusts a request only when that token is signed by the
-load balancer PEJIP runs behind, has not expired, and names the one allowed,
-Google-verified email address. Everything except ``/healthz`` requires it, so a
-request that skips the load balancer, or a Google account that is not Babu's,
-gets nothing.
+The load balancer signs the user in with Google before it forwards a request,
+then passes the signed-in user's claims in the ``x-amzn-oidc-data`` header: a JWT
+the load balancer signs with ES256 (a P-256 key whose public half AWS publishes
+per region by key id). The app trusts a request only when that token is signed by
+the load balancer PEJIP runs behind, has not expired, and names a Google-verified
+email address in the account registry. The request then belongs to that account
+(design doc 0016). Everything except ``/healthz`` requires it, so a request that
+skips the load balancer, or a Google account not in the registry, gets nothing.
+
+The registry holds at most :data:`MAX_ACCOUNTS` accounts. Each one adds work to
+every scheduled run and a digest topic, so the cap keeps the shared site's cost
+known; raising it is a deliberate change.
 
 When sign-in is not configured the app fails closed: every protected route
 answers 503.
@@ -26,6 +30,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
+
+from pejip.accounts import ACCOUNT_ID_PATTERN, DEFAULT_ACCOUNT_ID
 
 OIDC_DATA_HEADER = "x-amzn-oidc-data"
 
@@ -51,42 +57,92 @@ _MAX_CACHED_KEYS = 16
 
 _P256_COORDINATE_BYTES = 32
 
+# Every account has its own storage, inbox, digest and ranking key (design doc 0016).
+MAX_ACCOUNTS = 5
+
 
 class SignInRequiredError(Exception):
     """The request carries no valid token from PEJIP's load balancer (401)."""
 
 
 class AccountNotAllowedError(Exception):
-    """A valid token for an account other than the allowed one (403)."""
+    """A valid token for an email that is not in the account registry (403)."""
+
+
+@dataclass(frozen=True)
+class Account:
+    """A signed-in person: a short id that keys their data, and their Google email."""
+
+    id: str
+    email: str
+
+
+def parse_accounts(value: str) -> tuple[Account, ...]:
+    """Read the registry: comma-separated ``id=email`` pairs.
+
+    Ids must be plain (lowercase letters, digits and dashes, starting with a
+    letter) and unique; emails are compared without case and must be unique too.
+    The error never repeats an email, since the message may reach the logs.
+    """
+    accounts: list[Account] = []
+    for entry in value.split(","):
+        if not entry.strip():
+            continue
+        account_id, separator, email = entry.partition("=")
+        account_id, email = account_id.strip(), email.strip().lower()
+        if not separator or not ACCOUNT_ID_PATTERN.fullmatch(account_id) or "@" not in email:
+            msg = "PEJIP_AUTH_ACCOUNTS entries must be id=email"
+            raise ValueError(msg)
+        accounts.append(Account(account_id, email))
+    if len({a.id for a in accounts}) != len(accounts):
+        msg = "PEJIP_AUTH_ACCOUNTS repeats an account id"
+        raise ValueError(msg)
+    if len({a.email for a in accounts}) != len(accounts):
+        msg = "PEJIP_AUTH_ACCOUNTS repeats an email"
+        raise ValueError(msg)
+    return tuple(accounts)
 
 
 @dataclass(frozen=True)
 class AuthSettings:
     """Who may sign in, and how their token is checked."""
 
-    allowed_email: str
+    accounts: tuple[Account, ...]
     alb_arn: str
     key_url: str
+
+    def account_for(self, email: str) -> Account | None:
+        """The account a verified email signs in as, if any."""
+        wanted = email.strip().lower()
+        return next((a for a in self.accounts if a.email == wanted), None)
 
     @classmethod
     def from_env(cls, env: Mapping[str, str]) -> "AuthSettings | None":
         """Read the settings, or None when sign-in is not configured.
 
-        ``PEJIP_AUTH_ALLOWED_EMAIL`` and ``PEJIP_AUTH_ALB_ARN`` turn it on; the ECS
-        task definition sets both. ``PEJIP_AUTH_KEY_URL`` overrides where signing
-        keys are fetched (``{kid}`` is replaced by the key id); tests use it.
+        ``PEJIP_AUTH_ACCOUNTS`` (``id=email`` pairs) and ``PEJIP_AUTH_ALB_ARN`` turn
+        it on; the ECS task definition sets both. ``PEJIP_AUTH_ALLOWED_EMAIL`` alone
+        still works, as account ``babu``, so an older task definition keeps signing
+        in after a rollback. ``PEJIP_AUTH_KEY_URL`` overrides where signing keys
+        are fetched (``{kid}`` is replaced by the key id); tests use it.
         """
-        email = env.get("PEJIP_AUTH_ALLOWED_EMAIL", "").strip()
+        accounts = parse_accounts(env.get("PEJIP_AUTH_ACCOUNTS", ""))
+        if not accounts:
+            email = env.get("PEJIP_AUTH_ALLOWED_EMAIL", "").strip()
+            accounts = parse_accounts(f"{DEFAULT_ACCOUNT_ID}={email}") if email else ()
         alb_arn = env.get("PEJIP_AUTH_ALB_ARN", "").strip()
-        if not email or not alb_arn:
+        if not accounts or not alb_arn:
             return None
+        if len(accounts) > MAX_ACCOUNTS:
+            msg = f"at most {MAX_ACCOUNTS} accounts may sign in"
+            raise ValueError(msg)
         arn_parts = alb_arn.split(":")
         if len(arn_parts) < 6 or not arn_parts[3]:  # noqa: PLR2004 - arn:partition:service:region:account:resource
             msg = "PEJIP_AUTH_ALB_ARN is not a load balancer ARN"
             raise ValueError(msg)
         default_url = ALB_KEY_URL.replace("{region}", arn_parts[3])
         return cls(
-            allowed_email=email.lower(),
+            accounts=accounts,
             alb_arn=alb_arn,
             key_url=env.get("PEJIP_AUTH_KEY_URL", default_url),
         )
@@ -142,14 +198,14 @@ class KeyStore:
 
 
 class Authenticator:
-    """Checks the load balancer's token and returns the signed-in email."""
+    """Checks the load balancer's token and returns the signed-in account."""
 
     def __init__(self, settings: AuthSettings, keys: KeyStore | None = None) -> None:
         self.settings = settings
         self._keys = keys or KeyStore(settings.key_url)
 
-    async def verify(self, token: str | None, now: float | None = None) -> str:
-        """Return the allowed email, or raise if the token does not prove it."""
+    async def verify(self, token: str | None, now: float | None = None) -> Account:
+        """Return the signed-in account, or raise if the token does not prove one."""
         if not token:
             raise SignInRequiredError
         parts = token.split(".")
@@ -177,9 +233,10 @@ class Authenticator:
         verified = claims.get("email_verified") in (True, "true")
         if not isinstance(email, str) or not verified:
             raise AccountNotAllowedError
-        if email.strip().lower() != self.settings.allowed_email:
+        account = self.settings.account_for(email)
+        if account is None:
             raise AccountNotAllowedError
-        return self.settings.allowed_email
+        return account
 
 
 def _verify_signature(key: ec.EllipticCurvePublicKey, parts: list[str]) -> None:

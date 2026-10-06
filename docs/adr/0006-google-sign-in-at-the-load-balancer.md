@@ -28,7 +28,9 @@ from GitHub and must keep working.
   in `x-amzn-oidc-data`, an ES256 JWT it signs. `pejip.auth` verifies the signature
   with the ALB's public key for the token's `kid`, requires the `signer` to be
   PEJIP's own ALB ARN and the token to be unexpired, and admits only a
-  Google-verified email equal to `PEJIP_AUTH_ALLOWED_EMAIL`. Others get 401 (no or
+  Google-verified email equal to `PEJIP_AUTH_ALLOWED_EMAIL` (since
+  [ADR-0010](0010-one-deployment-separate-accounts.md), an email in the account
+  registry `PEJIP_AUTH_ACCOUNTS`). Others get 401 (no or
   bad token) or 403 (another account). Without these settings every route but
   `/healthz` answers 503: the app fails closed.
 - **Secrets stay out of the repo:** the OAuth client ID and secret live in SSM

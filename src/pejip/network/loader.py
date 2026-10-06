@@ -2,7 +2,7 @@
 
 Until the portal stores imports, a run reads the candidate's LinkedIn export from
 ``PEJIP_CONNECTIONS`` and their decisions from ``PEJIP_NETWORK_DECISIONS``. On AWS
-both are uploaded instead to ``network/`` in the encrypted bucket named by
+both are uploaded instead to ``network/<account>/`` in the encrypted bucket named by
 ``PEJIP_NETWORK_BUCKET``, where they expire after 90 days. Neither is in the
 repository, and neither holds anything PEJIP invents.
 
@@ -33,8 +33,11 @@ from pejip.profile import Seniority
 from pejip.sources.email_alerts import S3Client
 
 NETWORK_PREFIX = "network/"
-CONNECTIONS_KEY = f"{NETWORK_PREFIX}Connections.csv"
-DECISIONS_KEY = f"{NETWORK_PREFIX}network-decisions.yaml"
+CONNECTIONS_FILE = "Connections.csv"
+DECISIONS_FILE = "network-decisions.yaml"
+# The keys under the default prefix (local runs and tests).
+CONNECTIONS_KEY = NETWORK_PREFIX + CONNECTIONS_FILE
+DECISIONS_KEY = NETWORK_PREFIX + DECISIONS_FILE
 
 
 class _Strict(BaseModel):
@@ -90,24 +93,28 @@ def load_index(
     return _index(config, read_export(connections_path), load_decisions(decisions_path))
 
 
-def load_index_s3(client: S3Client, bucket: str, config: SearchConfig) -> NetworkIndex | None:
-    """The index from the uploaded export, or None when none has been uploaded.
+def load_index_s3(
+    client: S3Client, bucket: str, config: SearchConfig, prefix: str = NETWORK_PREFIX
+) -> NetworkIndex | None:
+    """The index from the export uploaded under ``prefix``, or None when there is none.
 
-    The prefix is listed first because without a broader s3:ListBucket grant, a
-    missing object reads as access denied rather than as absent.
+    ``prefix`` is the account's own folder (``network/<account>/``), so only that
+    account's files are read. It is listed first because without a broader
+    s3:ListBucket grant, a missing object reads as access denied, not as absent.
     """
-    listed = client.list_objects_v2(Bucket=bucket, Prefix=NETWORK_PREFIX)
+    connections_key, decisions_key = prefix + CONNECTIONS_FILE, prefix + DECISIONS_FILE
+    listed = client.list_objects_v2(Bucket=bucket, Prefix=prefix)
     keys = {item["Key"] for item in listed.get("Contents", [])}
-    if CONNECTIONS_KEY not in keys:
+    if connections_key not in keys:
         return None
-    export = client.get_object(Bucket=bucket, Key=CONNECTIONS_KEY)
+    export = client.get_object(Bucket=bucket, Key=connections_key)
     with closing(export["Body"]) as body:
         if export["ContentLength"] > MAX_EXPORT_BYTES:
             raise ExportError("too_large")
         preview = parse_export(body.read(), export["LastModified"])
     decisions = NetworkDecisions()
-    if DECISIONS_KEY in keys:
-        uploaded = client.get_object(Bucket=bucket, Key=DECISIONS_KEY)
+    if decisions_key in keys:
+        uploaded = client.get_object(Bucket=bucket, Key=decisions_key)
         with closing(uploaded["Body"]) as body:
             decisions = _parse_decisions(body.read())
     return _index(config, preview, decisions)[1]

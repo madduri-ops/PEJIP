@@ -5,8 +5,9 @@ and the web portal's pages (``pejip.portal``, design doc 0011). The system smoke
 test and DAST exercise every route in the OpenAPI document automatically.
 
 Every route except ``/healthz`` and the ranking routine's ``/api/ranking/*``
-requires Babu's Google sign-in, checked by ``pejip.auth`` against the token the
-load balancer adds (ADR-0006). The ranking routes need the routine's key instead
+requires Google sign-in, checked by ``pejip.auth`` against the token the load
+balancer adds (ADR-0006); the signed-in account is kept on ``request.state.account``
+for the routes to key data by (design doc 0016). The ranking routes need the routine's key instead
 (``pejip.ranking_api``, design doc 0015).
 """
 
@@ -22,6 +23,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from pejip import __version__, portal
+from pejip.accounts import DEFAULT_ACCOUNT_ID
 from pejip.auth import (
     OIDC_DATA_HEADER,
     PUBLIC_PATHS,
@@ -35,7 +37,7 @@ from pejip.config import SearchConfig, Settings, load_config
 from pejip.portal.data import PortalData
 from pejip.portal.sample import SampleData
 from pejip.profile import make_ssm_client
-from pejip.ranking_api import RANKING_PREFIX, RankingService, screen
+from pejip.ranking_api import RANKING_PREFIX, RankingService, RankingServices, screen
 from pejip.ranking_api import router as ranking_router
 
 log = logging.getLogger(__name__)
@@ -61,13 +63,14 @@ PAGE_CSP = (
 )
 
 
-def _search_config(env: Mapping[str, str]) -> SearchConfig | None:
-    """The search configuration Settings shows; None where the file is absent.
+def _search_config(env: Mapping[str, str], account: str) -> SearchConfig | None:
+    """The search configuration Settings shows an account; None without the file.
 
-    Babu's private companies are included (ADR-0009). If they can't be read, the
-    page still opens with the shipped setup; the daily run reports the problem.
+    The account's private companies are included (ADR-0009, design doc 0016). If
+    they can't be read, the page still opens with the shipped setup; the daily
+    run reports the problem.
     """
-    settings = Settings.from_env(dict(env))
+    settings = Settings.from_env(dict(env), account=account)
     if not settings.config_path.is_file():
         return None
     try:
@@ -81,7 +84,7 @@ def _search_config(env: Mapping[str, str]) -> SearchConfig | None:
 def create_app(
     env: Mapping[str, str] | None = None,
     data: PortalData | None = None,
-    ranking: RankingService | None = None,
+    ranking: RankingService | RankingServices | None = None,
 ) -> FastAPI:
     """Build the API. Interactive docs are off; the OpenAPI document stays for DAST.
 
@@ -93,7 +96,10 @@ def create_app(
     environment = os.environ if env is None else env
     settings = AuthSettings.from_env(environment)
     authenticator = Authenticator(settings) if settings else None
-    ranking_service = ranking or RankingService.from_env(environment)
+    # One service per account; a single service given (tests) is Babu's.
+    if isinstance(ranking, RankingService):
+        ranking = RankingServices({DEFAULT_ACCOUNT_ID: ranking})
+    ranking_service = ranking or RankingServices.from_env(environment)
 
     # The ranking routine's routes skip sign-in below and are screened here
     # instead, before any body is read (ranking_api.screen).
@@ -118,7 +124,9 @@ def create_app(
         if authenticator is None:
             return JSONResponse({"detail": "sign-in is not configured"}, status_code=503)
         try:
-            await authenticator.verify(request.headers.get(OIDC_DATA_HEADER))
+            request.state.account = await authenticator.verify(
+                request.headers.get(OIDC_DATA_HEADER)
+            )
         except SignInRequiredError:
             return JSONResponse({"detail": "sign-in required"}, status_code=401)
         except AccountNotAllowedError:
@@ -140,9 +148,15 @@ def create_app(
         """Liveness check used by the load balancer and the post-deploy health gate."""
         return {"status": "ok", "version": __version__}
 
-    app.include_router(
-        portal.router(SampleData() if data is None else data, config=_search_config(environment))
-    )
+    configs: dict[str, SearchConfig | None] = {}
+
+    def config_for(account: str) -> SearchConfig | None:
+        # Read once per account, as the shared config was before accounts.
+        if account not in configs:
+            configs[account] = _search_config(environment, account)
+        return configs[account]
+
+    app.include_router(portal.router(SampleData() if data is None else data, config_for=config_for))
     app.include_router(ranking_router(ranking_service))
     return app
 

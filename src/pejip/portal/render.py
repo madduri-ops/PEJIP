@@ -13,6 +13,7 @@ from datetime import datetime
 from html import escape
 from urllib.parse import quote
 
+from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
 from pejip.config import SearchConfig
 from pejip.portal.data import (
     Citation,
@@ -1024,8 +1025,9 @@ def watchlist_body(w: Watchlist, now: datetime) -> str:
 
 
 # ── Settings ─────────────────────────────────────────────────────────────────
-# PEJIP's own alert address (design doc 0010); Babu signs up for job alerts with it.
-ALERT_ADDRESS = "alerts@inbox.job-search.zephyr-mcg.com"
+# PEJIP's own alert address (design doc 0010); each account signs up for job
+# alerts with its own (design doc 0016), Babu's being this one.
+ALERT_ADDRESS = alert_address(DEFAULT_ACCOUNT_ID)
 ADAPTER_LABEL = {"greenhouse": "Public Greenhouse job board", "lever": "Public Lever job board"}
 MONTHLY_AI_CAP = "$100"
 ANY_PLACE = "Any remote role in the US"
@@ -1062,7 +1064,7 @@ def _locations(config: SearchConfig) -> str:
     )
 
 
-def _sources(config: SearchConfig) -> str:
+def _sources(config: SearchConfig, address: str) -> str:
     boards = "".join(
         f'<div class="li"><div class="grow"><h3>{e(s.company)}</h3>'
         f'<div class="muted">{e(ADAPTER_LABEL.get(s.adapter, s.adapter))}</div></div>'
@@ -1081,7 +1083,7 @@ def _sources(config: SearchConfig) -> str:
     )
     alert_html = (
         f'<h3>Job-alert emails</h3><p class="note">Sign up for each company\'s job alerts with '
-        f"<strong>{e(ALERT_ADDRESS)}</strong>. PEJIP reads only links to the careers pages "
+        f"<strong>{e(address)}</strong>. PEJIP reads only links to the careers pages "
         f'listed here.</p><div class="list">{alerts}</div>'
         if alerts
         else '<p class="note">Job-alert emails are not set up.</p>'
@@ -1118,8 +1120,11 @@ def _ranking(config: SearchConfig) -> str:
     )
 
 
-def settings_body(config: SearchConfig | None) -> str:
-    """What PEJIP searches for, when, and how it ranks: read-only for now (12.35)."""
+def settings_body(config: SearchConfig | None, address: str = ALERT_ADDRESS) -> str:
+    """What PEJIP searches for, when, and how it ranks: read-only for now (12.35).
+
+    ``address`` is the signed-in account's own job-alert address.
+    """
     if config is None:
         return _empty("The search configuration is not available on this server.")
     t = config.taxonomy
@@ -1166,7 +1171,7 @@ def settings_body(config: SearchConfig | None) -> str:
         + _settings_card("Roles and titles", "roles", roles)
         + _settings_card("Locations", "locations", _locations(config))
         + _settings_card("Search schedule", "schedule", schedule)
-        + _settings_card("Sources", "sources", _sources(config))
+        + _settings_card("Sources", "sources", _sources(config, address))
         + _settings_card("Ranking", "ranking", _ranking(config))
         + _settings_card("Privacy and data", "privacy", privacy)
     )

@@ -114,7 +114,7 @@ nothing since the run began.
 
 Infrastructure (`infra/`): `ranker` (default `routine`) sets `PEJIP_RANKER`;
 a listener rule at priority 2 forwards `/api/ranking/*` without Google sign-in;
-the task role may read `/pejip/ranking-key-sha256`; scheduled tasks are
+the task role may read `/pejip/accounts/*/ranking-key-sha256` (one key per account since design 0016) and Babu's original `/pejip/ranking-key-sha256`; scheduled tasks are
 `pejip-run-daily` (weekdays 05:00, 10:00 and 15:00 PT) and a new `pejip-digest-daily`
 (`digest_schedule`, weekdays 07:00, 12:00 and 17:00 PT). The WAF common rule set's 8 KB body limit is
 counted rather than blocked for `POST /api/ranking/analyses` only, by a
@@ -126,7 +126,7 @@ No schema change. Routine results are ordinary `analyses` rows with
 `status = OK`; `provenance.ranker = "routine"` tells them apart. They follow the
 90-day purge like every other row.
 
-New SSM SecureString `/pejip/ranking-key-sha256` (encrypted with `alias/pejip`),
+New SSM SecureString `/pejip/accounts/<account>/ranking-key-sha256` (originally `/pejip/ranking-key-sha256`, still read for Babu; encrypted with `alias/pejip`),
 read by the API task role only. The key itself is never stored on AWS.
 
 ## Non-functional considerations

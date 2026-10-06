@@ -18,8 +18,8 @@ locals {
   inbox_address = "alerts@${var.inbox_domain}"
   inbox_prefix  = "inbound/"
 
-  # Babu uploads his LinkedIn export here (design doc 0014); the same 90-day
-  # expiry applies.
+  # Each account's LinkedIn export goes under network/<account>/ (design docs
+  # 0014 and 0016); the same 90-day expiry applies.
   network_prefix = "network/"
 }
 
@@ -166,22 +166,31 @@ resource "aws_ses_receipt_rule_set" "inbox" {
   rule_set_name = "pejip-inbox"
 }
 
+# One rule per account (design doc 0016): mail to <id>@ lands under
+# inbound/<id>/, which only that account's run reads. Babu keeps alerts@, the
+# address his job alerts already go to.
 resource "aws_ses_receipt_rule" "inbox" {
-  name          = "pejip-alerts-to-s3"
+  for_each      = toset(local.account_ids)
+  name          = each.key == local.owner_account ? "pejip-alerts-to-s3" : "pejip-alerts-to-s3-${each.key}"
   rule_set_name = aws_ses_receipt_rule_set.inbox.rule_set_name
-  recipients    = [local.inbox_address]
+  recipients    = [each.key == local.owner_account ? local.inbox_address : "${each.key}@${var.inbox_domain}"]
   enabled       = true
   scan_enabled  = true
   tls_policy    = "Require"
 
   s3_action {
     bucket_name       = aws_s3_bucket.inbox.id
-    object_key_prefix = local.inbox_prefix
+    object_key_prefix = "${local.inbox_prefix}${each.key}/"
     position          = 1
   }
 
   # SES checks it can write to the bucket when the rule is created.
   depends_on = [aws_s3_bucket_policy.inbox, aws_kms_key.pejip]
+}
+
+moved {
+  from = aws_ses_receipt_rule.inbox
+  to   = aws_ses_receipt_rule.inbox["babu"]
 }
 
 resource "aws_ses_active_receipt_rule_set" "inbox" {

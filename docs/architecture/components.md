@@ -53,11 +53,13 @@ flowchart TB
 
 - **Responsibility:** command line entry point; wires configuration, profile,
   store, HTTP and AI clients together.
-- **Interfaces:** `pejip run | digest | connections <file> | purge | export <file> |
-  delete-all --yes`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
+- **Interfaces:** `pejip run | digest | connections <file> | purge | export <file> [--account <id>] |
+  delete-all --yes [--account <id>]`; environment variables `PEJIP_CONFIG`, `PEJIP_PROFILE`,
   `PEJIP_DATABASE_URL`, `PEJIP_OUTPUT_DIR`, `PEJIP_AI_LEDGER` (the cost guard's
   SQLite file), `PEJIP_INBOX_BUCKET`, `PEJIP_PROFILE_PARAMETER` (profile from SSM
-  instead of a file), `PEJIP_DIGEST_TOPIC_ARN` (email the digest),
+  instead of a file), `PEJIP_DIGEST_TOPICS` (each account's digest topic; `PEJIP_DIGEST_TOPIC_ARN`
+  still works for Babu alone), `PEJIP_ACCOUNTS` (the accounts the scheduled
+  commands loop over),
   `PEJIP_AI_ENABLED`, `PEJIP_RANKER` (`routine`: `run` makes no Claude calls and
   sends nothing, and `digest` emails the latest run ranked by the routine's stored
   analyses), `PEJIP_CONNECTIONS` and `PEJIP_NETWORK_DECISIONS` (the LinkedIn
@@ -74,7 +76,8 @@ flowchart TB
   ([design 0015](../design/0015-ranking-routine.md)): serve the latest run's roles
   that need analysis with the profile's matching fields, and validate, ground and
   store the routine's answers. They skip Google sign-in and check a bearer key
-  against its SHA-256 in SSM.
+  against each account's SHA-256 in SSM; the matching key picks the account whose
+  roles and profile the request sees ([design 0016](../design/0016-accounts.md)).
 - **Interfaces:** `GET /api/ranking/queue`, `POST /api/ranking/analyses`;
   `PEJIP_RANKING_KEY_PARAMETER` (or `PEJIP_RANKING_KEY_SHA256` in tests and DAST).
 - **Data:** reads jobs and runs, writes `analyses` rows with provenance
@@ -199,9 +202,11 @@ flowchart TB
   `/opportunities/{id}`, `/companies`, `/watchlist`, `/connections`, `/search-health`, `/settings` and `/portal.css`; `POST /signout` and `GET /signed-out`; the OpenAPI document at `/openapi.json`. Settings
   shows the search setup with Babu's private companies (ADR-0009). Run with
   `python -m pejip.api` (`PEJIP_HOST`, `PEJIP_PORT`). Every route except
-  `/healthz`, `/signed-out` and `/portal.css` (and the ranking routes, below) requires Babu's Google sign-in: `pejip.auth` checks the ALB's signed
-  `x-amzn-oidc-data` token against `PEJIP_AUTH_ALLOWED_EMAIL` and
-  `PEJIP_AUTH_ALB_ARN` ([0009: Google sign-in](../design/0009-google-sign-in.md)).
+  `/healthz`, `/signed-out` and `/portal.css` (and the ranking routes, below) requires Google sign-in: `pejip.auth` checks the ALB's signed
+  `x-amzn-oidc-data` token against `PEJIP_AUTH_ALB_ARN`, maps the email to an
+  account in `PEJIP_AUTH_ACCOUNTS` and puts it on `request.state.account`
+  ([0009: Google sign-in](../design/0009-google-sign-in.md),
+  [0016: Separate, private accounts](../design/0016-accounts.md)).
 - **Data:** none.
 - **Deployment:** the image's default command; runs as ECS service `pejip-prod`
   behind `pejip-alb` ([0005: App hosting and deploy](../design/0005-app-hosting-and-deploy.md)).

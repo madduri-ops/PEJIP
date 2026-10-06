@@ -102,8 +102,8 @@ title asks again. The company in a decision is resolved like any employer name, 
 - `pejip run` reads the export at `PEJIP_CONNECTIONS` and decisions at
   `PEJIP_NETWORK_DECISIONS` when they are set; the export file's modified time is
   the import date. On AWS, where there are no local files, `PEJIP_NETWORK_BUCKET`
-  names the bucket instead: the run reads `network/Connections.csv` and, if present,
-  `network/network-decisions.yaml` from the job-alert inbox bucket (KMS-encrypted,
+  names the bucket instead: the run reads `network/<account>/Connections.csv` and, if present,
+  `network/<account>/network-decisions.yaml` from the job-alert inbox bucket (KMS-encrypted,
   TLS-only, objects expire 90 days after upload), using the upload time as the
   import date. Babu uploads them from CloudShell (infra/README.md); the run's role
   can only list and read that prefix. Without an export the digest says network

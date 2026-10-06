@@ -8,6 +8,7 @@ shortened for a test or a cautious run, never lengthened.
 
 from __future__ import annotations
 
+import math
 import stat
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -33,7 +34,19 @@ def purge_files(directory: Path, now: datetime, days: int = RETENTION_DAYS) -> i
     outside ``directory``. Directories are left in place. Returns the number of
     files deleted; a missing directory deletes nothing.
     """
-    limit = cutoff(now, days).timestamp()
+    return _delete_files(directory, cutoff(now, days).timestamp())
+
+
+def delete_files(directory: Path) -> int:
+    """Delete every regular file under ``directory``, as :func:`purge_files` would.
+
+    For deleting an account's data on request; symbolic links and directories are
+    left in place, and the number of files deleted is returned.
+    """
+    return _delete_files(directory, math.inf)
+
+
+def _delete_files(directory: Path, limit: float) -> int:
     if not directory.is_dir():
         return 0
     deleted = 0
