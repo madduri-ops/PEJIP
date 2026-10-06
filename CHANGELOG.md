@@ -12,6 +12,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- The digest email arrives as soon as the ranking routine finishes (about 20 to
+  90 minutes after each search, depending on the season) instead of two hours
+  after it. The scheduled 7 AM, 12 PM and 5 PM digests remain as a fallback and
+  send only when the routine has not.
+
 - A strong-fit role at a company where you have no first-degree connection gets
   a "check LinkedIn for a warm path" line in the digest and a link on its portal
   page, to look for a second-degree introduction. Scores are unchanged.

@@ -1,6 +1,6 @@
 # 0015: Ranking through a Claude Code routine
 
-_Status: implemented. Last updated: 2026-10-05._
+_Status: implemented. Last updated: 2026-10-06._
 
 ## Purpose
 
@@ -41,9 +41,12 @@ sequenceDiagram
     C->>C: analyse each role with the versioned prompts
     C->>API: POST /api/ranking/analyses (key)
     API->>DB: validate, ground, store analyses
-    S->>D: two hours after the search
-    D->>DB: score roles from stored analyses
-    D-->>D: email the digest (SNS)
+    C->>API: POST /api/ranking/done (key)
+    API->>DB: score roles from stored analyses, mark the digest sent
+    API-->>API: email the digest (SNS), after replying
+    S->>D: two hours after the search (fallback)
+    D->>DB: digest already sent? then stop
+    D-->>D: otherwise score and email the digest
 ```
 
 1. **Weekdays 05:00, 10:00 and 15:00 Pacific, `pejip run`** (Babu chose digests at
@@ -61,14 +64,20 @@ sequenceDiagram
    writing one JSON result per role. `python -m pejip.routine submit` validates
    every result against the same Pydantic models before posting them, so a
    malformed result is fixed in the session rather than rejected later. The
-   routine never commits or pushes, and its instructions say so.
+   routine never commits or pushes, and its instructions say so. `submit` ends by
+   posting to `/api/ranking/done`, even when there was nothing to rank, and the
+   API emails the digest at once (Babu chose this on 2026-10-06 so the email
+   arrives minutes after ranking rather than two hours after the search).
 3. **On submit, the API.** Each result is checked as the API path checks it:
    schema, `ground_analysis` and `ground_matching` (quotes must appear in the
    posting, evidence IDs must exist in the profile). A result for a stale
    `content_hash` is refused. Accepted results are stored as `analyses` rows
    whose provenance records `ranker: routine`, the prompt versions and the
    model the session reports.
-4. **07:00, 12:00 and 17:00, `pejip digest`.** A second scheduled task re-ranks the latest run's
+4. **On done, and as a fallback at 07:00, 12:00 and 17:00, `pejip digest`.** The
+   digest is sent once per run: sending it records `digest_sent_at` in the run's
+   summary, and a later `pejip digest` for that run logs `digest_already_sent`
+   and stops. The scheduled task covers a routine that never reported. It re-ranks the latest run's
    roles with no AI client. Every role with a valid stored analysis is scored,
    explained and citation-checked by the existing code, and the digest is
    emailed. If the routine did not report, the digest goes out anyway, with
@@ -94,6 +103,10 @@ before any body is read, since these bodies pass the WAF's 8 KB limit.
   "analysis": {...}, "matching": {...}}]}` and returns
   `{"accepted": n, "rejected": [{"job_id", "reason"}]}`. The prompt versions
   must match the ones the queue served.
+- `POST /api/ranking/done` takes `{}` and returns `{"digest": "queued"}`. After
+  replying, the API runs the same code as `pejip digest` for the key's account.
+  A crash logs `digest_crashed` (ERROR, so it alarms) and leaves the run unmarked,
+  so the scheduled digest still sends it.
 
 CLI, `python -m pejip.routine --work DIR`:
 

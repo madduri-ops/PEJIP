@@ -47,6 +47,7 @@ def service(
         store=lambda: store,
         profile=lambda: profile,
         config=lambda: config,
+        digest=kw.get("digest", lambda: None),
     )
 
 
@@ -117,7 +118,9 @@ def test_the_routine_ranks_the_runs_new_roles(
 
     answer_all(work)
     assert routine.main(["--work", str(work), "submit", "--model", "test-model"]) == 0
-    assert "PEJIP accepted 2 of 2 answers." in capsys.readouterr().out
+    out = capsys.readouterr().out
+    assert "PEJIP accepted 2 of 2 answers." in out
+    assert "Asked PEJIP to email the digest now." in out
     assert ran.store.analyses_since(NOW, "routine") == 2
 
     digest = ran.digest_from(ran.store.latest_run() or {})
@@ -371,3 +374,43 @@ def test_the_profile_and_config_are_read_once_per_interval(
     for _ in range(3):
         assert app.get("/api/ranking/queue", headers=AUTH).status_code == 200
     assert calls == {"profile": 1, "config": 1}
+
+
+def test_done_emails_the_digest_after_replying(
+    ran: Pipeline, profile: CareerProfile, config: SearchConfig
+) -> None:
+    sent: list[str] = []
+    ranking = service(ran.store, profile, config, digest=lambda: sent.append("digest"))
+    client = TestClient(api.create_app(env={}, ranking=ranking))
+    reply = client.post("/api/ranking/done", headers=AUTH, json={})
+    assert reply.status_code == 200
+    assert reply.json() == {"digest": "queued"}
+    assert sent == ["digest"]
+
+
+def test_done_needs_the_key_and_a_profile(ran: Pipeline, config: SearchConfig) -> None:
+    sent: list[str] = []
+    ranking = service(ran.store, None, config, digest=lambda: sent.append("digest"))
+    client = TestClient(api.create_app(env={}, ranking=ranking))
+    assert client.post("/api/ranking/done", json={}).status_code == 401
+    assert client.post("/api/ranking/done", headers=AUTH, json={}).status_code == 503
+    assert sent == []
+
+
+@pytest.mark.usefixtures("ran", "connected")
+def test_an_empty_submit_still_asks_for_the_digest(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    work = tmp_path / "work"
+    assert routine.main(["--work", str(work), "fetch"]) == 0
+    answer_all(work)
+    assert routine.main(["--work", str(work), "submit", "--model", "m"]) == 0
+    capsys.readouterr()
+    # Nothing is left to rank, but the routine still submits so the digest goes out.
+    again = tmp_path / "again"
+    assert routine.main(["--work", str(again), "fetch"]) == 0
+    assert "Fetched 0 roles" in capsys.readouterr().out
+    assert routine.main(["--work", str(again), "submit", "--model", "m"]) == 0
+    out = capsys.readouterr().out
+    assert "PEJIP accepted 0 of 0 answers." in out
+    assert "Asked PEJIP to email the digest now." in out

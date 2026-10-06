@@ -9,6 +9,9 @@ roles waiting for analysis, does the model step, and posts the answers back:
 - ``POST /api/ranking/analyses``: answers for those roles. Each one is checked
   exactly as the API path checks its own (schema, then grounding against the
   posting and the profile) before it is stored.
+- ``POST /api/ranking/done``: the routine has finished, so the latest run's digest
+  is emailed now, in the background, instead of at its scheduled time. The
+  scheduled ``pejip digest`` then finds it sent and stays quiet.
 
 These routes skip Google sign-in at the load balancer and in the app. Instead
 they need ``Authorization: Bearer <key>``, whose SHA-256 is kept in an encrypted
@@ -30,7 +33,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from pejip.accounts import DEFAULT_ACCOUNT_ID, open_store
@@ -44,6 +47,7 @@ from pejip.analysis import (
     ground_analysis,
     ground_matching,
 )
+from pejip.cli import digest_now
 from pejip.config import SearchConfig, Settings, account_ids, load_config
 from pejip.profile import (
     CareerProfile,
@@ -125,6 +129,10 @@ class SubmissionResult(_Strict):
     rejected: list[Rejection]
 
 
+class Done(_Strict):
+    digest: str
+
+
 def prompt_versions() -> dict[str, int]:
     return {prompt_id: load_prompt(prompt_id).version for prompt_id in PROMPT_IDS}
 
@@ -156,6 +164,7 @@ class RankingService:
     profile: Callable[[], CareerProfile | None]
     config: Callable[[], SearchConfig]
     clock: Callable[[], float] = time.monotonic
+    digest: Callable[[], None] = lambda: None
     _cache: dict[str, tuple[float, Any]] = field(default_factory=dict, repr=False)
 
     @classmethod
@@ -196,7 +205,13 @@ class RankingService:
                 return load_profile(settings.profile_path)
             return None
 
-        return cls(key_hash, store, profile, lambda: load_config(settings.config_path))
+        return cls(
+            key_hash,
+            store,
+            profile,
+            lambda: load_config(settings.config_path),
+            digest=lambda: digest_now(settings),
+        )
 
     def _cached(self, name: str, read: Callable[[], Any]) -> Any:
         now = self.clock()
@@ -359,6 +374,14 @@ def router(services: RankingServices) -> APIRouter:
             else:
                 rejected.append(Rejection(job_id=answer.job_id, reason=reason))
         return SubmissionResult(accepted=accepted, rejected=rejected)
+
+    @routes.post("/done")
+    def done(request: Request, tasks: BackgroundTasks) -> Done:
+        """The routine has finished: email the digest now, after this reply is sent."""
+        service = account_service(request)
+        ready(service)
+        tasks.add_task(service.digest)
+        return Done(digest="queued")
 
     return routes
 
