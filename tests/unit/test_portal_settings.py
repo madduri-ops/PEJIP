@@ -84,6 +84,9 @@ def test_the_page_offers_the_current_settings_as_a_form() -> None:
     assert "Remote roles in the US count here too." in html
     assert 'name="hard_filter" checked>' in html
     assert "Using the default settings." in html
+    assert "How to change your search" in html
+    assert html.count('<button class="btn primary" type="submit">Save settings</button>') == 2
+    assert "Roles and titles · editable" in html
     assert "Go back to the defaults" not in html
     assert "read-only here" not in html
     assert f"Scoring version {CONFIG.scoring.version}." in html  # still shown, read-only

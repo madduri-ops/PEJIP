@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Settings shows how to change your search: a short how-to at the top, "editable"
+  on the two sections you can change, and a Save settings button at the end of each.
+
 - The Settings page is editable: change the seniority words, role words, titles
   left out, and each location's places and preference, then Save. The next
   search, ranking and digest use the saved values; "Go back to the defaults"
