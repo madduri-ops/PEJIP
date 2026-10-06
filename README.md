@@ -98,9 +98,10 @@ command line tool: it fetches roles from configured Greenhouse and Lever company
 boards and from career-site job-alert emails sent to PEJIP's own inbox, ranks them with separate Fit, Confidence and Priority, and writes a Markdown
 digest that explains each ranking with cited evidence, including matured LinkedIn
 connections at the hiring company ([design 0014](docs/design/0014-connection-matching.md)).
-Feedback, notifications and feature API endpoints come next. The web portal's Home,
+Notifications, preference learning from decisions and feature API endpoints come next. The web portal's Home,
 Opportunities, detail, Companies, Watchlist, Connections, Search Health and Settings pages show each
-account's own search results ([design 0013](docs/design/0013-web-portal.md)). The build policy,
+account's own search results, and each role takes a decision: Interested, Watch, Not
+interested or Already applied ([design 0013](docs/design/0013-web-portal.md)). The build policy,
 repository hygiene, the Python CI pipeline, a health endpoint, the golden evaluation
 set for rankings and foundation AWS infrastructure are in place. The hosting stack
 and continuous deploy for `job-search.zephyr-mcg.com` are defined

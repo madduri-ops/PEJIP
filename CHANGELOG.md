@@ -12,6 +12,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Decisions on each role (design doc 0013): Interested, Watch, Not interested and
+  Already applied buttons on the role page, saved with the score you saw. Watched
+  roles show in Watched and the Watchlist; Not interested and Already applied roles
+  leave Home and the lists but stay under All active, with new Interested and
+  Already applied views.
 - The portal has a Sign out button. It ends the PEJIP session and lands on a
   signed-out page; Google itself stays signed in. Needs one `terraform apply` for
   the load balancer rule that keeps the signed-out page open.

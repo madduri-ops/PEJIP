@@ -16,6 +16,7 @@ from urllib.parse import quote
 from pejip.accounts import DEFAULT_ACCOUNT_ID, alert_address
 from pejip.config import SearchConfig
 from pejip.portal.data import (
+    DECISIONS,
     Citation,
     Company,
     HistoryEvent,
@@ -49,6 +50,7 @@ from pejip.portal.views import (
     age,
     latest_signal,
     rank,
+    set_aside,
     when,
 )
 
@@ -109,6 +111,20 @@ def e(value: object) -> str:
 def words(code: str) -> str:
     """IMMEDIATE -> Immediate, NEW_POSTING -> New posting."""
     return code.replace("_", " ").capitalize()
+
+
+# Button text for each decision, and how a decided role is labelled elsewhere.
+DECISION_BUTTONS = {
+    "INTERESTED": "Interested",
+    "WATCH": "Watch",
+    "NOT_INTERESTED": "Not interested",
+    "ALREADY_APPLIED": "Already applied",
+}
+DECISION_LABELS = {**DECISION_BUTTONS, "WATCH": "Watching"}
+
+
+def decision_chip(o: Opportunity) -> str:
+    return f'<span class="chip">{e(DECISION_LABELS[o.decision])}</span>' if o.decision else ""
 
 
 def opportunity_url(o: Opportunity) -> str:
@@ -271,7 +287,8 @@ def card(o: Opportunity, now: datetime, label: str = "") -> str:
         f'<article class="card{hot}">{tag}<div class="row spread"><div>'
         f'<a class="title" href="{opportunity_url(o)}">{e(o.title)}</a>'
         f'<div class="co">{e(o.company)}</div></div>'
-        f'<div class="row">{priority_pill(o.priority)}{fit_block(o)}</div></div>'
+        f'<div class="row">{decision_chip(o)}{priority_pill(o.priority)}{fit_block(o)}</div>'
+        "</div>"
         f"{_meta(o, now)}{_why(o)}"
         f'<div class="actions"><a class="btn primary" href="{opportunity_url(o)}">'
         "View details</a></div></article>"
@@ -303,7 +320,7 @@ def _empty(text: str) -> str:
 # ── Home ─────────────────────────────────────────────────────────────────────
 def home_body(items: list[Opportunity], run: SearchRun | None, now: datetime) -> str:
     """Executive dashboard: counts, what needs attention, new matches, changes, health."""
-    items = rank(items)
+    items = [o for o in rank(items) if not set_aside(o)]
     attention = [o for o in items if o.priority in ("IMMEDIATE", "HIGH")]
     new = [
         o
@@ -661,8 +678,39 @@ def _role_history(events: tuple[HistoryEvent, ...], now: datetime) -> str:
     )
 
 
+def _decision_form(o: Opportunity, value: str, text: str, chosen: bool) -> str:
+    on = " sel" if chosen else ""
+    return (
+        f'<form method="post" action="{opportunity_url(o)}/decision">'
+        f'<input type="hidden" name="decision" value="{e(value)}">'
+        f'<button class="btn{on}" type="submit" aria-pressed="{str(chosen).lower()}">'
+        f"{e(text)}</button></form>"
+    )
+
+
+def decision_card(o: Opportunity) -> str:
+    """Babu's decision about the role (spec 10.2): one button per choice, plus Clear."""
+    buttons = "".join(_decision_form(o, d, DECISION_BUTTONS[d], o.decision == d) for d in DECISIONS)
+    if o.decision:
+        buttons += _decision_form(o, "", "Clear", chosen=False)
+    current = DECISION_LABELS[o.decision] if o.decision else "None yet"
+    return (
+        '<section class="card" id="decision"><div class="row spread"><h2>Your decision</h2>'
+        f'<span class="meta">Current: <strong>{e(current)}</strong></span></div>'
+        f'<div class="decide">{buttons}</div>'
+        '<p class="note">Not interested and Already applied take the role out of your '
+        "lists; it stays under All active. Your decision is kept with the score you saw "
+        "and never changes Fit.</p></section>"
+    )
+
+
 def detail_body(
-    o: Opportunity, now: datetime, company: Company | None = None, open_roles: int = 1
+    o: Opportunity,
+    now: datetime,
+    company: Company | None = None,
+    open_roles: int = 1,
+    *,
+    decide: bool = False,
 ) -> str:
     fit = "Unknown" if o.fit is None else f"{o.fit:.0f}"
     summary = (
@@ -688,7 +736,7 @@ def detail_body(
     no_fits = _empty("No strong reasons found." if scored else PENDING)
     nothing_now = _empty("Nothing urgent." if scored else PENDING)
     return (
-        summary + '<section class="grid2">'
+        summary + (decision_card(o) if decide else "") + '<section class="grid2">'
         f'<div class="card" id="fit"><h2>Fit analysis · {fit}</h2>{_bars(o)}'
         '<p class="note">Fit measures qualification only. Network, freshness and urgency '
         "affect priority, never fit.</p></div>"

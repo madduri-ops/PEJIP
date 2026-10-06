@@ -12,8 +12,8 @@ repository. Do not open a public issue.
 ## Personal data
 
 PEJIP treats the career profile (`profile.yaml`), compensation preferences, the
-LinkedIn connections export and network decisions, stored analyses and
-recommendations as personal data.
+LinkedIn connections export and network decisions, stored analyses,
+recommendations and Babu's decisions about roles from the portal as personal data.
 
 - **Where it lives:** the profile is a local YAML file outside the repository
   (`PEJIP_PROFILE`, git-ignored). Run data is in the database at
@@ -50,8 +50,8 @@ recommendations as personal data.
   read ([ADR-0009](adr/0009-private-inputs-outside-the-public-repository.md)).
   The names and titles of the connections shown for a role are stored with that
   role's recommendation, so they follow its 90-day retention, export and deletion.
-- **Retention:** each run deletes jobs, analyses, recommendations, AI usage and run
-  records older than 90 days (`pejip purge` does the same on demand).
+- **Retention:** each run deletes jobs, analyses, recommendations, decisions, AI usage
+  and run records older than 90 days (`pejip purge` does the same on demand).
 - **Export and deletion:** `pejip export <file>` writes every stored row as JSON;
   `pejip delete-all --yes` deletes them all, with the account's digests. Both act
   on one account (`--account <id>`, default Babu's). Removing an account entirely,

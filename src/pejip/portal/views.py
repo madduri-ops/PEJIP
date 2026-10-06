@@ -10,7 +10,15 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta, timezone
 
-from pejip.portal.data import PRIORITY_ORDER, Company, Network, Opportunity, Person, Signal
+from pejip.portal.data import (
+    PRIORITY_ORDER,
+    SET_ASIDE,
+    Company,
+    Network,
+    Opportunity,
+    Person,
+    Signal,
+)
 
 HIGH_FIT = 85
 # Bands the default views show; LOW and below appear only in "All active".
@@ -39,8 +47,12 @@ VIEWS = (
     View("remote", "Remote", lambda o: o.work_model == "Remote"),
     View("bay-area", "Bay Area", lambda o: o.location_scope == "BAY_AREA"),
     View("changed", "Recently changed", lambda o: o.discovery == "MATERIALLY_CHANGED"),
+    View("interested", "Interested", lambda o: o.decision == "INTERESTED"),
+    View("applied", "Already applied", lambda o: o.decision == "ALREADY_APPLIED"),
     View("all", "All active", lambda _o: True),
 )
+# Views that still show roles Babu set aside (Not interested, Already applied).
+SHOWS_SET_ASIDE = frozenset({"applied", "all"})
 VIEW_BY_KEY = {v.key: v for v in VIEWS}
 DEFAULT_VIEW = "attention"
 
@@ -162,11 +174,21 @@ def list_opportunities(items: list[Opportunity], filters: Filters, now: datetime
     """Split the ranked, filtered roles into the chosen view and the rest."""
     view = VIEW_BY_KEY[filters.view]
     kept = [o for o in rank(items) if filters.keep(o, now)]
-    shown = kept if view.key == "all" else [o for o in kept if o.priority in SHOWN_BANDS]
-    in_view = [o for o in kept if view.matches(o)]
+    active = [o for o in kept if not set_aside(o)]
+
+    def pool(key: str) -> list[Opportunity]:
+        return kept if key in SHOWS_SET_ASIDE else active
+
+    shown = kept if view.key == "all" else [o for o in active if o.priority in SHOWN_BANDS]
+    in_view = [o for o in pool(view.key) if view.matches(o)]
     others = [o for o in shown if o not in in_view]
-    counts = {v.key: sum(v.matches(o) for o in kept) for v in VIEWS}
+    counts = {v.key: sum(v.matches(o) for o in pool(v.key)) for v in VIEWS}
     return Listing(view, in_view, others, counts)
+
+
+def set_aside(o: Opportunity) -> bool:
+    """True when Babu marked the role Not interested or Already applied."""
+    return o.decision in SET_ASIDE
 
 
 # ── Companies (spec 12.18 to 12.21) ──────────────────────────────────────────

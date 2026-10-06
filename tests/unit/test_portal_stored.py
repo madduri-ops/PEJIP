@@ -286,3 +286,20 @@ def test_stored_times_are_utc() -> None:
     assert _aware(None) is None
     assert _aware(NOW) is NOW
     assert _aware(NOW.replace(tzinfo=None)) == NOW
+
+
+def test_decisions_are_recorded_and_shown(store: Store, config: SearchConfig) -> None:
+    watched = store.upsert_job(_posting(1), NOW)
+    other = store.upsert_job(_posting(2), NOW)
+    _run(store, "r", NOW, [[watched.job_id, "NEW_POSTING"], [other.job_id, "NEW_POSTING"]])
+    data = StoreData(store, config, clock=lambda: NOW)
+
+    assert data.decide(watched.job_id, "WATCH")
+    assert not data.decide(999, "WATCH")
+    assert not StoreData(None, config).decide(watched.job_id, "WATCH")
+
+    by_id = {o.id: o for o in data.opportunities()}
+    assert (by_id[watched.job_id].decision, by_id[watched.job_id].watched) == ("WATCH", True)
+    assert (by_id[other.job_id].decision, by_id[other.job_id].watched) == (None, False)
+    assert data.decide(watched.job_id, None)
+    assert {o.decision for o in data.opportunities()} == {None}

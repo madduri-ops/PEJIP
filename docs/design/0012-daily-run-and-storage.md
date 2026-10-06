@@ -87,7 +87,7 @@ the data file system (root `/pejip`, owner 10001, mode 0700):
 
 | Path in the task | What |
 |---|---|
-| `/data/pejip.db` | jobs, analyses, recommendations, runs (90-day retention) |
+| `/data/pejip.db` | jobs, analyses, recommendations, runs, decisions (90-day retention) |
 | `/data/pejip-ai-spend.db` | AI spend ledger behind the $100 monthly cap |
 | `/data/output/digest-*.md` | digests, deleted after 90 days |
 

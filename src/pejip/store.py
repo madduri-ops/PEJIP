@@ -85,6 +85,21 @@ recommendations = Table(
     Column("created_at", DateTime(timezone=True), nullable=False),
 )
 
+# Babu's decisions about roles from the portal (spec 10.4): every click is kept,
+# the latest one per job is current, and None clears it. The score he saw is kept
+# with it, so later learning knows what the decision was about.
+decisions = Table(
+    "decisions",
+    metadata,
+    Column("id", Integer, primary_key=True),
+    Column("job_id", ForeignKey("jobs.id", ondelete="CASCADE"), nullable=False),
+    Column("decision", String(32)),
+    Column("recommendation_id", Integer),
+    Column("fit", Float),
+    Column("priority", String(16)),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+)
+
 runs = Table(
     "runs",
     metadata,
@@ -235,6 +250,32 @@ class Store:
             )
         return dict(row) if row else None
 
+    # Decisions ------------------------------------------------------------
+
+    def add_decision(self, job_id: int, decision: str | None, now: datetime) -> None:
+        """Record Babu's decision about a job with the score he saw (None clears it)."""
+        rec = self.latest_recommendation(job_id)
+        with self.engine.begin() as conn:
+            conn.execute(
+                decisions.insert().values(
+                    job_id=job_id,
+                    decision=decision,
+                    recommendation_id=rec["id"] if rec else None,
+                    fit=rec["fit"] if rec else None,
+                    priority=rec["priority"] if rec else None,
+                    created_at=now,
+                )
+            )
+
+    def latest_decisions(self) -> dict[int, str]:
+        """Each job's current decision; cleared and undecided jobs are left out."""
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(decisions.c.job_id, decisions.c.decision).order_by(decisions.c.id)
+            ).all()
+        current: dict[int, str | None] = dict(rows)  # in order, so the latest wins
+        return {job_id: d for job_id, d in current.items() if d is not None}
+
     def needs_analysis(self, job: dict[str, Any]) -> bool:
         """True when the posting has no successful analysis of its current text."""
         return not is_current(self.latest_analysis(job["id"]), job)
@@ -315,6 +356,11 @@ class Store:
         deleted = 0
         with self.engine.begin() as conn:
             stale_jobs = select(jobs.c.id).where(jobs.c.last_seen_at < cutoff)
+            deleted += conn.execute(
+                delete(decisions).where(
+                    (decisions.c.created_at < cutoff) | decisions.c.job_id.in_(stale_jobs)
+                )
+            ).rowcount
             deleted += conn.execute(
                 delete(recommendations).where(
                     (recommendations.c.created_at < cutoff)

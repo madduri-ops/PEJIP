@@ -110,3 +110,41 @@ def test_aware_keeps_existing_timezones() -> None:
     assert _aware(NOW) is NOW
     assert _aware(None) is None
     assert _aware(NOW.replace(tzinfo=None)) == NOW
+
+
+def test_decisions_keep_the_score_seen_and_the_latest_wins(store: Store) -> None:
+    ranked = store.upsert_job(posting(), NOW).job_id
+    analysis = store.add_analysis(AnalysisRecord(ranked, "h", "OK", {}, None, {}, NOW))
+    store.add_recommendation(
+        RecommendationRecord(ranked, analysis, 88.0, "HIGH", "HIGH", {}, "v", NOW)
+    )
+    unranked = store.upsert_job(Posting("lever", "c:2", "Co", "VP", "SF", "d", "u"), NOW).job_id
+    cleared = store.upsert_job(Posting("lever", "c:3", "Co", "VP", "SF", "d", "u"), NOW).job_id
+
+    store.add_decision(ranked, "WATCH", NOW)
+    store.add_decision(ranked, "ALREADY_APPLIED", NOW)
+    store.add_decision(unranked, "NOT_INTERESTED", NOW)
+    store.add_decision(cleared, "INTERESTED", NOW)
+    store.add_decision(cleared, None, NOW)
+
+    assert store.latest_decisions() == {ranked: "ALREADY_APPLIED", unranked: "NOT_INTERESTED"}
+    rows = json.loads(store.export_all())["decisions"]
+    assert len(rows) == 5
+    assert (rows[0]["fit"], rows[0]["priority"], rows[0]["recommendation_id"]) == (
+        88.0,
+        "HIGH",
+        1,
+    )
+    assert rows[2]["fit"] is rows[2]["recommendation_id"] is None
+
+
+def test_purge_removes_old_decisions_and_those_of_expired_jobs(store: Store) -> None:
+    old = NOW - timedelta(days=120)
+    expired = store.upsert_job(posting(), old).job_id
+    current = store.upsert_job(Posting("lever", "c:2", "Co", "VP", "SF", "d", "u"), NOW).job_id
+    store.add_decision(expired, "WATCH", NOW)
+    store.add_decision(current, "WATCH", old)
+    store.add_decision(current, "INTERESTED", NOW)
+
+    assert store.purge_expired(NOW, 90) == 3  # two decisions and the expired job
+    assert store.latest_decisions() == {current: "INTERESTED"}
