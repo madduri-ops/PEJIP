@@ -1299,8 +1299,8 @@ def connections_body(  # noqa: PLR0913 - one argument per part of the page
     """Who Babu knows at the companies that matter, from the last LinkedIn import."""
     if network is None:
         return _empty(
-            "Your LinkedIn connections have not been imported yet. Until they are, "
-            "Who you know shows Unknown on every role."
+            "No LinkedIn import is available to this page yet. Each role's Who you know "
+            "comes from the latest search, which reads your import when there is one."
         ) + (
             '<p class="note">On LinkedIn, open Settings, Data privacy, Get a copy of your data, '
             "and choose Connections. Your LinkedIn password is never needed.</p>"

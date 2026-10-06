@@ -910,7 +910,7 @@ def test_connections_filters_people() -> None:
 def test_connections_before_any_import() -> None:
     html = _get(FakeData([_role()], None), "/connections").text
 
-    assert "have not been imported yet" in html
+    assert "No LinkedIn import is available to this page yet." in html
     assert "Your LinkedIn password is never needed." in html
 
 
@@ -940,3 +940,16 @@ def test_connections_role_with_only_unclear_titles() -> None:
     assert "No matured connection yet of 1 first-degree" in html
     assert "below the role" not in html
     assert "All connections · 0 shown" in html
+
+
+def test_the_portal_needs_somewhere_to_read_from() -> None:
+    app = FastAPI()
+    app.include_router(portal.router())
+
+    async def call() -> httpx.Response:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            return await client.get("/")
+
+    with pytest.raises(ValueError, match="needs data or data_for"):
+        asyncio.run(call())

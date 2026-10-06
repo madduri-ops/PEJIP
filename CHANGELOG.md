@@ -51,6 +51,10 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Changed
 
+- The portal shows each account's real search results instead of sample data
+  (design doc 0013): roles seen in the last week with their Fit, Priority and cited
+  explanation, recent runs on Search Health, and tracked companies from the search
+  setup. A new account sees "No search has run yet" until its first search.
 - The search keeps more titles: privacy, identity, security, risk, compliance,
   mobile, infrastructure, IT, developer, product, delivery, M&A, integration and
   chief of staff roles now count as role words, matching Babu's resumes.

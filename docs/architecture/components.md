@@ -217,11 +217,12 @@ flowchart TB
 - **Responsibility:** server-rendered Home, Opportunities, Opportunity detail,
   Companies, Watchlist, Connections, Search Health and Settings pages built from the portal mocks; ranking, saved views, filters and Pacific time
   display.
-- **Interfaces:** `portal.router(data, clock, config)` mounted by `create_app`, which passes the
+- **Interfaces:** `portal.router(data, clock, config, config_for, data_for)` mounted by `create_app`, which passes each account's data and the
   search configuration from `PEJIP_CONFIG` for Settings; reads a
   `PortalData` (`is_sample`, `latest_run()`, `recent_runs()`, `opportunities()`, `companies()`, `network()`). Pages get their own
   content security policy (`PAGE_CSP`), with no script.
-- **Data:** none stored. `SampleData` (synthetic) until a store-backed reader lands.
+- **Data:** none stored. `StoreData` reads each signed-in account's database (jobs seen in the last week, latest
+  recommendations and explanations, recent runs); `SampleData` (synthetic) only when no database is configured.
 - **Design doc:** [0013: Web portal](../design/0013-web-portal.md).
 
 
