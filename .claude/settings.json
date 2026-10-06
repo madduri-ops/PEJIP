@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(/tmp/pejip-work/**)",
+      "Write(/tmp/pejip-work/**)",
+      "Bash(/tmp/pejip-venv/bin/python -m pejip.routine:*)",
+      "Bash(/tmp/pejip-venv/bin/pip install:*)",
+      "Bash(python3 -m venv /tmp/pejip-venv:*)"
+    ]
+  }
+}
