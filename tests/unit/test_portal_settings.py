@@ -175,3 +175,24 @@ def test_the_form_round_trips_the_shipped_settings() -> None:
     )
     assert _post(app, fields).status_code == 303
     assert settings.saves[0][1] == current(CONFIG)
+
+
+def test_the_page_describes_the_current_schedule_ranking_and_privacy() -> None:
+    html = _call(_app(None), "GET", "/settings").text
+
+    assert "Weekdays at 5 AM, 10 AM and 3 PM Pacific" in html
+    assert "As soon as ranking finishes; otherwise at 7 AM, 12 PM and 5 PM Pacific" in html
+    assert "AI spending cap" not in html
+    assert "Pay against your profile&#x27;s minimum" in html
+    assert "Immediate also needs a role posted in the last 3 days." in html
+    assert "A matured connection at the company adds 10 Priority points." in html
+    assert "Otherwise, any first-degree connection there adds 3 Priority points." in html
+    assert "Only for roles with Fit 60 or more" in html
+    assert "saved search settings until you change them" in html
+    assert "your own email address and have your mailbox forward them" in html
+
+
+def test_without_a_network_boost_the_page_leaves_the_network_out() -> None:
+    scoring = CONFIG.scoring.model_copy(update={"network_priority_boost": {}})
+    html = _call(_app(None, CONFIG.model_copy(update={"scoring": scoring})), "GET", "/settings")
+    assert "Your network" not in html.text

@@ -1111,6 +1111,13 @@ ADAPTER_LABEL = {
     "ashby": "Public Ashby job board",
 }
 ANY_PLACE = "Any remote role in the US"
+# The weekday schedule set in infra (variables.tf run_schedule and digest_schedule,
+# design docs 0012 and 0015). Keep these in step with it.
+SEARCH_TIMES = "Weekdays at 5 AM, 10 AM and 3 PM Pacific"
+RANKING_TIMES = "The Claude Code routine on your plan, about 20 to 80 minutes after each search"
+DIGEST_TIMES = (
+    "As soon as ranking finishes; otherwise at 7 AM, 12 PM and 5 PM Pacific, unranked roles noted"
+)
 
 
 def _chips(values: Iterable[str]) -> str:
@@ -1179,12 +1186,25 @@ def _sources(config: SearchConfig, address: str) -> str:
     )
 
 
+PRIORITY_LABEL = {
+    "FIT": "Fit",
+    "FRESHNESS": "Freshness",
+    "COMPENSATION": "Pay against your profile's minimum",
+    "LOCATION": "Location preference",
+}
+
+
 def _ranking(config: SearchConfig) -> str:
     s = config.scoring
     weights = "".join(
         f'<div class="kv"><span class="lbl">{e(COMPONENT_LABEL.get(k, words(k)))}</span>'
         f'<span class="v">{v:.0f}%</span></div>'
         for k, v in s.fit_weights.items()
+    )
+    priority = "".join(
+        f'<div class="kv"><span class="lbl">{e(PRIORITY_LABEL.get(k, words(k)))}</span>'
+        f'<span class="v">{v:.0f}%</span></div>'
+        for k, v in s.priority_weights.items()
     )
     bands = "".join(
         f'<div class="kv"><span class="lbl">{e(words(band))}</span>'
@@ -1193,12 +1213,34 @@ def _ranking(config: SearchConfig) -> str:
         + "</span></div>"
         for band, threshold in s.priority_thresholds.items()
     )
+    boost = s.network_priority_boost
+    network = (
+        '<h3>Your network</h3><p class="note">'
+        + " ".join(
+            f"{label} adds {boost[key]:.0f} Priority points."
+            for key, label in (
+                ("MATURED", "A matured connection at the company"),
+                ("CONNECTED", "Otherwise, any first-degree connection there"),
+            )
+            if key in boost
+        )
+        + f" Only for roles with Fit {s.network_min_fit:.0f} or more; having no "
+        "connections never lowers a role.</p>"
+        if boost
+        else ""
+    )
     return (
-        f'<p class="note">Scoring version {e(s.version)}.</p>'
+        f'<p class="note">Scoring version {e(s.version)}. Roles are analysed by the ranking '
+        "routine on your Claude plan, then scored here.</p>"
         f'<h3>What makes up Fit</h3><div class="summary">{weights}</div>'
+        f'<h3>What makes up Priority</h3><div class="summary">{priority}</div>'
         f'<h3>Priority bands</h3><div class="summary">{bands}</div>'
-        '<p class="note">Fit measures qualification only. Freshness, pay and location '
-        "affect priority, never fit.</p>"
+        f'<p class="note">Immediate also needs a role posted in the last '
+        f"{s.immediate_max_age_days} days. A low-confidence analysis is held to Medium. "
+        "A role paying below a minimum your profile marks as firm is excluded.</p>"
+        + network
+        + '<p class="note">Fit measures qualification only. Freshness, pay, location and '
+        "your network affect priority, never fit.</p>"
     )
 
 
@@ -1339,17 +1381,26 @@ def settings_body(
     )
     schedule = (
         '<div class="summary">'
-        + _kv("Search", "Weekdays; digests at 7 AM, 12 PM and 5 PM Pacific")
-        + _kv("Roles analysed per search", str(config.ai.max_jobs_per_run))
+        + _kv("Search", SEARCH_TIMES)
+        + _kv("Ranking", RANKING_TIMES)
+        + _kv("Digest email", DIGEST_TIMES)
+        + _kv("Roles ranked per search, at most", str(config.ai.max_jobs_per_run))
         + "</div>"
     )
     privacy = (
         '<div class="summary">'
-        + _kv("Kept", f"{config.retention_days} days, then deleted")
+        + _kv(
+            "Kept",
+            f"Roles, rankings and decisions {config.retention_days} days, then deleted; "
+            "saved search settings until you change them",
+        )
         + _kv("Storage and transfer", "Encrypted at rest and in transit")
         + _kv(
-            "Shared with", "Anthropic (Claude), only the job and profile text each analysis needs"
+            "Shared with",
+            "Anthropic (Claude, through the ranking routine on your plan), only the job "
+            "text and the parts of your profile ranking needs",
         )
+        + _kv("Digest email", "The full digest; copies in your mailbox are yours to keep")
         + _kv("Logs", "No personal data")
         + "</div>"
     )

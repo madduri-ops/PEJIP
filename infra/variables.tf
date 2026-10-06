@@ -133,6 +133,8 @@ variable "run_schedule_enabled" {
   default     = true
 }
 
+# The portal's Settings page states these times (SEARCH_TIMES, RANKING_TIMES and
+# DIGEST_TIMES in src/pejip/portal/render.py): change both together.
 variable "run_schedule" {
   description = "When the search runs: an EventBridge Scheduler cron expression in run_schedule_timezone. Babu chose (2026-10-06) digests at 7 AM, 12 PM and 5 PM on weekdays, so searches start two hours earlier."
   type        = string

@@ -18,6 +18,11 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
   undoes it. Companies, ranking weights and the schedule stay read-only there
   (design doc 0017). The Search schedule section no longer lists the AI spending
   cap; the $100 cap and its alerts are unchanged.
+- Settings now describes PEJIP as it runs today: searches at 5 AM, 10 AM and
+  3 PM Pacific, ranking by the routine on your Claude plan, the digest as soon as
+  ranking finishes (7 AM, 12 PM and 5 PM as a fallback), what makes up Priority,
+  the network boost, the Immediate and low-confidence rules, signing up for job
+  alerts with your own address and forwarding them, and what is kept and shared.
 
 - The digest email arrives as soon as the ranking routine finishes (about 20 to
   90 minutes after each search, depending on the season) instead of two hours
