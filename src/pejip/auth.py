@@ -30,6 +30,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
+from pejip.accounts import ACCOUNT_ID_PATTERN, DEFAULT_ACCOUNT_ID
+
 OIDC_DATA_HEADER = "x-amzn-oidc-data"
 
 # Reachable without signing in: the load balancer and the post-deploy health gate
@@ -49,12 +51,6 @@ _KID_PATTERN = re.compile(r"^[A-Za-z0-9-]{1,128}$")
 _MAX_CACHED_KEYS = 16
 
 _P256_COORDINATE_BYTES = 32
-
-# Account ids name folders and parameter paths, so they are kept plain.
-_ACCOUNT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
-
-# The account ``PEJIP_AUTH_ALLOWED_EMAIL`` alone signs in as (older task definitions).
-DEFAULT_ACCOUNT_ID = "babu"
 
 # Raised to more than one when every account has its own storage (design doc 0016).
 MAX_ACCOUNTS = 1
@@ -89,7 +85,7 @@ def parse_accounts(value: str) -> tuple[Account, ...]:
             continue
         account_id, separator, email = entry.partition("=")
         account_id, email = account_id.strip(), email.strip().lower()
-        if not separator or not _ACCOUNT_ID_PATTERN.fullmatch(account_id) or "@" not in email:
+        if not separator or not ACCOUNT_ID_PATTERN.fullmatch(account_id) or "@" not in email:
             msg = "PEJIP_AUTH_ACCOUNTS entries must be id=email"
             raise ValueError(msg)
         accounts.append(Account(account_id, email))

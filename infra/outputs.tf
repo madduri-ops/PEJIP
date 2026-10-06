@@ -85,7 +85,7 @@ output "digest_topic_arn" {
 
 output "profile_parameter_name" {
   description = "SSM SecureString (key alias/pejip) that holds Babu's career profile YAML. Stored by hand, never by Terraform."
-  value       = local.profile_parameter
+  value       = replace(local.profile_parameter, "{account}", "babu")
 }
 
 output "public_subnet_ids" {

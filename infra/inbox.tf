@@ -18,8 +18,8 @@ locals {
   inbox_address = "alerts@${var.inbox_domain}"
   inbox_prefix  = "inbound/"
 
-  # Babu uploads his LinkedIn export here (design doc 0014); the same 90-day
-  # expiry applies.
+  # Each account's LinkedIn export goes under network/<account>/ (design docs
+  # 0014 and 0016); the same 90-day expiry applies.
   network_prefix = "network/"
 }
 

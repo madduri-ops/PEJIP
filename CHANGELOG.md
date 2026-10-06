@@ -12,6 +12,12 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Per-account storage (design doc 0016, step 2): each account's database,
+  digests, profile, companies and LinkedIn files live under its own id
+  (`/data/accounts/<id>/`, `/pejip/accounts/<id>/...`, `network/<id>/`). Babu's
+  existing database and digests move to `accounts/babu` by themselves on first
+  use; the profile, companies and LinkedIn files move by hand before applying
+  (`infra/README.md`).
 - Sign-in by account (design doc 0016, step 1): the app maps the signed-in Google
   email to an account through `PEJIP_AUTH_ACCOUNTS` (`id=email` pairs, Terraform
   variable `sign_in_accounts`), so later steps can keep each person's data

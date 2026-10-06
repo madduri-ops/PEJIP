@@ -91,7 +91,7 @@ flowchart LR
         run --> efs[(EFS: pejip-prod-data<br/>SQLite, spend ledger, digests)]
         svc --> efs
     end
-    run --> ssm[SSM: /pejip/profile]
+    run --> ssm[SSM: /pejip/accounts/&lt;account&gt;/profile]
     run --> digestsns[SNS: pejip-digest] --> digestmail([Digest email to Babu])
     ecr --> svc
     svc --> keyhash[SSM: /pejip/ranking-key-sha256]

@@ -24,7 +24,8 @@ recommendations as personal data.
   digests are on the EFS file system `pejip-prod-data`, encrypted with
   `alias/pejip`, TLS-only, mountable only by the app's task role, with no backups
   so nothing outlives the 90-day window ([ADR-0007](adr/0007-sqlite-on-efs-and-a-scheduled-daily-run.md)).
-  The career profile is the SecureString SSM parameter `/pejip/profile`, encrypted
+  The career profile is the SecureString SSM parameter
+  `/pejip/accounts/<account>/profile` (one per account, design doc 0016), encrypted
   with `alias/pejip` and stored by Babu, never by Terraform or in the repository.
 - **Job-alert inbox:** alert emails sent to `alerts@inbox.job-search.zephyr-mcg.com`
   are received by Amazon SES and stored in the bucket `pejip-inbox-275704950192`,
@@ -39,12 +40,12 @@ recommendations as personal data.
   git-ignored names). PEJIP never needs a LinkedIn login, drops e-mail addresses as
   it reads the file, sends no connection data to Claude or any other service, and
   logs no names or profile URLs ([design 0014](design/0014-connection-matching.md)).
-  On AWS the export and decisions file are uploaded by Babu to `network/` in the
+  On AWS the export and decisions file are uploaded to `network/<account>/` in the
   inbox bucket (encrypted with `alias/pejip`, TLS-only, deleted 90 days after
   upload); the app's role can list and read that prefix only.
 - **Target companies:** the repository is public, so Babu's target companies are
   not in it. They are a local file (`PEJIP_COMPANIES`) or, on AWS, the SecureString
-  `/pejip/companies` encrypted with `alias/pejip`, which only the app's role can
+  `/pejip/accounts/<account>/companies` encrypted with `alias/pejip`, which only the app's role can
   read ([ADR-0009](adr/0009-private-inputs-outside-the-public-repository.md)).
   The names and titles of the connections shown for a role are stored with that
   role's recommendation, so they follow its 90-day retention, export and deletion.

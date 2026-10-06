@@ -1,7 +1,7 @@
 # Babu's own target companies, kept out of the public repository (ADR-0009).
 # Every company here is invented. They are added to the boards, alert companies and
 # aliases in config/search.yaml. Locally, point PEJIP_COMPANIES at a copy outside
-# the repository; on AWS, store it as the SecureString /pejip/companies
+# the repository; on AWS, store it as the SecureString /pejip/accounts/<account>/companies
 # (infra/README.md).
 sources:
   # Public ATS boards; only sources listed in docs/sources.md are allowed.

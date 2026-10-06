@@ -29,6 +29,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from pejip.accounts import open_store
 from pejip.ai.client import AIError
 from pejip.ai.prompts import load_prompt
 from pejip.analysis import (
@@ -161,7 +162,7 @@ class RankingService:
             if "PEJIP_DATABASE_URL" not in env:
                 return None
             if not stores:
-                stores.append(Store(settings.database_url))
+                stores.append(open_store(settings))
             return stores[0]
 
         def profile() -> CareerProfile | None:
