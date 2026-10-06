@@ -994,7 +994,11 @@ class DecidingData(FakeData):
 
 
 def _post(
-    data: FakeData, path: str, body: str, origin: str | None = "http://test"
+    data: FakeData,
+    path: str,
+    body: str,
+    origin: str | None = "http://test",
+    site: str | None = None,
 ) -> httpx.Response:
     app = FastAPI()
     app.include_router(portal.router(data, clock=lambda: NOW))
@@ -1004,6 +1008,8 @@ def _post(
         headers = {"content-type": "application/x-www-form-urlencoded"}
         if origin is not None:
             headers["origin"] = origin
+        if site is not None:
+            headers["sec-fetch-site"] = site
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             return await client.post(path, content=body, headers=headers)
 
@@ -1021,9 +1027,28 @@ def test_decision_buttons_post_the_choice_and_return_to_the_role() -> None:
     assert data.decided == [(1, "WATCH"), (1, None)]
 
 
+def test_a_decision_from_this_site_is_accepted_although_origin_is_null() -> None:
+    # Regression: under Referrer-Policy no-referrer browsers send "Origin: null" with
+    # a form post from this very site, so Babu's own clicks were refused.
+    data = DecidingData([_role()])
+    response = _post(data, "/opportunities/1/decision", "decision=WATCH", "null", "same-origin")
+    assert response.status_code == 303
+    assert data.decided == [(1, "WATCH")]
+
+
+@pytest.mark.parametrize("site", ["cross-site", "same-site", "none"])
+def test_sec_fetch_site_other_than_this_site_is_refused_even_with_a_matching_origin(
+    site: str,
+) -> None:
+    data = DecidingData([_role()])
+    assert _post(data, "/opportunities/1/decision", "decision=WATCH", site=site).status_code == 403
+    assert data.decided == []
+
+
 @pytest.mark.parametrize(
     ("body", "origin", "status"),
     [
+        ("decision=WATCH", "null", 403),  # null Origin and no Sec-Fetch-Site
         ("decision=WATCH", None, 403),  # no Origin: not sent by a page
         ("decision=WATCH", "https://evil.example", 403),  # another site
         ("decision=HIRE_ME", "http://test", 422),

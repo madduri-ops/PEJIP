@@ -146,11 +146,27 @@ def test_a_refused_save_shows_what_was_typed_and_why() -> None:
     assert settings.saves == []
 
 
+def test_a_save_from_the_live_page_is_accepted() -> None:
+    # Regression (Babu, 2026-10-06): the browser sent "Origin: null" because the
+    # page's Referrer-Policy is no-referrer, and Save answered "Forms are only
+    # accepted from this site." Sec-Fetch-Site says the post came from this site.
+    settings = FakeSettings()
+    headers = {"content-type": FORM, "origin": "null", "sec-fetch-site": "same-origin"}
+    response = _call(
+        _app(settings), "POST", "/settings", content=urlencode(_fields()), headers=headers
+    )
+    assert response.status_code == 303
+    assert len(settings.saves) == 1
+
+
 def test_forms_from_other_sites_are_refused() -> None:
     settings = FakeSettings()
     app = _app(settings)
     assert _post(app, _fields(), origin="https://evil.example").status_code == 403
     assert _post(app, _fields(), origin=None).status_code == 403
+    cross = {"content-type": FORM, "origin": "https://test", "sec-fetch-site": "cross-site"}
+    forged = _call(app, "POST", "/settings", content=urlencode(_fields()), headers=cross)
+    assert forged.status_code == 403
     assert settings.saves == []
 
 

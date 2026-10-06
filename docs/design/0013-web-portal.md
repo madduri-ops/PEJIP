@@ -82,7 +82,7 @@ flowchart LR
 | `GET /connections` | The last LinkedIn import as a snapshot (date, counts, open roles with a matured connection), who Babu knows for each role with connections and each urgent role without (matured, your call, how many below the role's level), employer names waiting for a decision, and every imported connection with search (`q`), matched company (`company`, or `unmatched`) and `matured=1` |
 | `GET /settings` | The real search configuration, read-only: seniority, role words and excluded titles; locations and whether they are a hard filter; schedule and AI limits; careers-site boards and job-alert companies with PEJIP's alert address; Fit weights and priority bands; retention and sharing |
 | `GET /search-health` | Latest run, failed sources with their impact and last success (no raw errors, spec 12.31), every source in the latest run, recent run history |
-| `POST /opportunities/{opportunity_id}/decision` | Records Babu's decision about the role (form field `decision`: `INTERESTED`, `WATCH`, `NOT_INTERESTED`, `ALREADY_APPLIED`, or empty to clear) and answers 303 back to the role; 403 without a same-site `Origin`, 422 for any other value, 404 for an unknown role or read-only data |
+| `POST /opportunities/{opportunity_id}/decision` | Records Babu's decision about the role (form field `decision`: `INTERESTED`, `WATCH`, `NOT_INTERESTED`, `ALREADY_APPLIED`, or empty to clear) and answers 303 back to the role; 403 unless sent from this site (see Forgery), 422 for any other value, 404 for an unknown role or read-only data |
 | `GET /portal.css` | Styles |
 
 All nine require sign-in like every route except `/healthz`. The sidebar's Sign out
@@ -136,9 +136,13 @@ selected, plus Clear. Each button is a one-field form posting to
   every view except All active and, for Already applied, its own view; Interested
   has its own view. Cards show the decision as a chip.
 - **Forgery:** the sign-in cookie rides along on a post from any site, so the route
-  accepts a post only when its `Origin` header matches the request's `Host`
-  (browsers always send `Origin` on form posts; the load balancer keeps `Host`),
-  and only a body under 256 bytes naming a known decision.
+  accepts a post only from this site: `Sec-Fetch-Site: same-origin` when the
+  browser sends it (it always does now, and no page can set it), otherwise an
+  `Origin` matching the request's `Host` (the load balancer keeps `Host`). Origin
+  alone is not enough: the pages' `Referrer-Policy: no-referrer` makes browsers
+  send `Origin: null` on form posts from this site, which refused every real
+  click until 2026-10-06. Only a body under 256 bytes naming a known decision is
+  accepted.
 
 ### Reading the database (`pejip.portal.stored.StoreData`)
 
