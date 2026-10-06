@@ -35,6 +35,29 @@ inbox:
       job_board: true
       link_patterns: [linkedin.com/jobs/view, linkedin.com/comm/jobs/view]
       job_id_pattern: 'jobs/view/\d+'
+    # Other job boards' alert emails (added 2026-10-06). Babu signs up for each with
+    # his Yahoo address, which is auto-forwarded like LinkedIn's. Link patterns and role ids are
+    # first guesses from each site's public job URLs; tune them on real alerts.
+    # Indeed and Glassdoor have no role-id pattern: their ids sit in the query
+    # string, and a link rebuilt from the id alone would not open.
+    - company: Ladders
+      job_board: true
+      link_patterns: [theladders.com/job]
+      job_id_pattern: 'job/[\w-]+'
+    - company: Indeed
+      job_board: true
+      link_patterns: [indeed.com/rc/clk, indeed.com/viewjob, indeed.com/pagead/clk]
+    - company: Glassdoor
+      job_board: true
+      link_patterns: [glassdoor.com/job-listing, glassdoor.com/partner/joblisting.htm]
+    - company: Built In
+      job_board: true
+      link_patterns: [builtin.com/job]
+      job_id_pattern: 'job/[\w-]+/\d+'
+    - company: Wellfound
+      job_board: true
+      link_patterns: [wellfound.com/jobs]
+      job_id_pattern: 'jobs/\d+'
 
 fetch:
   user_agent: "PEJIP/0.1 (personal job research; +https://github.com/madduri-ops/PEJIP)"

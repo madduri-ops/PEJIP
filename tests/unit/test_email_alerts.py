@@ -145,7 +145,59 @@ def test_a_subdomain_of_a_careers_host_matches() -> None:
 def test_the_shipped_configuration_names_no_private_target_company(config: SearchConfig) -> None:
     # Babu's target companies live outside the public repository (ADR-0009).
     assert config.inbox is not None
-    assert [c.company for c in config.inbox.companies] == ["LinkedIn"]
+    assert all(c.job_board for c in config.inbox.companies)
+    assert [c.company for c in config.inbox.companies] == [
+        "LinkedIn",
+        "Ladders",
+        "Indeed",
+        "Glassdoor",
+        "Built In",
+        "Wellfound",
+    ]
+
+
+@pytest.mark.parametrize(
+    ("sender", "link", "url"),
+    [
+        (
+            "Ladders <jobs@email.theladders.com>",
+            "https://www.theladders.com/job/vp-technology-acme-san-jose-ca_123?src=email",
+            "https://theladders.com/job/vp-technology-acme-san-jose-ca_123",
+        ),
+        (
+            "Indeed <alert@indeed.com>",
+            "https://www.indeed.com/rc/clk?jk=4f2a9c&from=ja",
+            "https://www.indeed.com/rc/clk?from=ja&jk=4f2a9c",
+        ),
+        (
+            "Glassdoor Jobs <noreply@glassdoor.com>",
+            "https://www.glassdoor.com/partner/jobListing.htm?jobListingId=987&utm_source=x",
+            "https://www.glassdoor.com/partner/jobListing.htm?jobListingId=987",
+        ),
+        (
+            "Built In <support@builtin.com>",
+            "https://builtin.com/job/vp-technology/4567?utm_medium=email",
+            "https://builtin.com/job/vp-technology/4567",
+        ),
+        (
+            "Wellfound <team@wellfound.com>",
+            "https://wellfound.com/jobs/3456-vp-technology?utm_campaign=alert",
+            "https://wellfound.com/jobs/3456",
+        ),
+    ],
+)
+def test_the_shipped_job_boards_read_their_own_alerts(
+    config: SearchConfig, sender: str, link: str, url: str
+) -> None:
+    assert config.inbox is not None
+    body = f'<a href="{link}">VP, Technology</a><p>Acme Corp · San Jose, CA</p>'
+    (posting,) = parse_alert(email(body, sender=sender), config.inbox.companies).postings
+    assert (posting.title, posting.company, posting.location) == (
+        "VP, Technology",
+        "Acme Corp",
+        "San Jose, CA",
+    )
+    assert posting.url == url
 
 
 def test_inbox_lists_every_page_reads_and_deletes() -> None:

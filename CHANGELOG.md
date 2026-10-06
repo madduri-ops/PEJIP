@@ -12,6 +12,9 @@ Security. Releasing is described in [CONTRIBUTING.md](CONTRIBUTING.md#releasing)
 
 ### Added
 
+- Job-alert emails from Ladders, Indeed, Glassdoor, Built In and Wellfound
+  become roles, the same way LinkedIn alerts do. Babu sets up each site's alert
+  with his Yahoo address.
 - Ashby job boards: a company list can name `adapter: ashby` boards (for
   example OpenAI), read from Ashby's public job posting API with the same rate
   limit and `robots.txt` rules as Greenhouse and Lever.

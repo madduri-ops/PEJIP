@@ -143,7 +143,9 @@ def test_private_companies_are_added_to_the_shipped_ones(config: SearchConfig) -
     merged = with_private_companies(config, private)
     assert merged.sources[-1].company == "Private Co"
     assert merged.inbox is not None
-    assert [c.company for c in merged.inbox.companies] == ["LinkedIn", "Alert Co"]
+    names = [c.company for c in merged.inbox.companies]
+    assert names[0] == "LinkedIn"
+    assert names[-1] == "Alert Co"
     assert merged.network is not None
     assert merged.network.company_aliases == {"Private Co": ["Private Company Inc"]}
     assert merged.scoring == config.scoring
