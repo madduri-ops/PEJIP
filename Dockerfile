@@ -7,7 +7,7 @@
 # Base image pinned by digest; Dependabot (docker) keeps it current. Alpine,
 # because the Debian slim image carries dozens of high-severity OS package
 # findings (util-linux, gcc runtime, pcre2, acl) that the image scan blocks on.
-FROM python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4 AS build
+FROM python:3.14-alpine@sha256:f6a589d43c42b9e7f7dc67a12d37132491f362859a5d750607710cc56da3bc72 AS build
 
 WORKDIR /src
 RUN pip install --no-cache-dir build==1.6.1
@@ -16,7 +16,7 @@ COPY src ./src
 RUN python -m build --wheel --outdir /dist
 
 
-FROM python:3.12-alpine@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
+FROM python:3.14-alpine@sha256:f6a589d43c42b9e7f7dc67a12d37132491f362859a5d750607710cc56da3bc72
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
